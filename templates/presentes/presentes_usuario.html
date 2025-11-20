@@ -1,0 +1,518 @@
+{% extends 'base.html' %}
+
+{% block title %}Presentes de {{ usuario_presente.first_name }} - Lista de Presentes{% endblock %}
+
+{% block extra_css %}
+<style>
+    .page-header {
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        color: white;
+        padding: 40px 0;
+        margin: -20px -15px 30px;
+        border-radius: 0 0 30px 30px;
+    }
+
+    .usuario-info-card {
+        background: white;
+        border-radius: 20px;
+        box-shadow: 0 5px 20px rgba(0,0,0,0.08);
+        padding: 30px;
+        margin-bottom: 30px;
+        display: flex;
+        align-items: center;
+        gap: 25px;
+    }
+
+    .usuario-avatar-large {
+        width: 100px;
+        height: 100px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 2.5rem;
+        color: white;
+        font-weight: 700;
+        flex-shrink: 0;
+        box-shadow: 0 5px 15px rgba(245, 87, 108, 0.3);
+    }
+
+    .usuario-details {
+        flex: 1;
+    }
+
+    .usuario-name {
+        font-size: 2rem;
+        font-weight: 700;
+        color: #2c3e50;
+        margin-bottom: 10px;
+    }
+
+    .usuario-meta-info {
+        display: flex;
+        gap: 15px;
+        flex-wrap: wrap;
+    }
+
+    .meta-tag {
+        background: #fff0f6;
+        color: #f5576c;
+        padding: 5px 15px;
+        border-radius: 15px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+    }
+
+    .stats-row {
+        background: white;
+        border-radius: 15px;
+        padding: 20px;
+        margin-bottom: 30px;
+        box-shadow: 0 3px 10px rgba(0,0,0,0.05);
+    }
+
+    .stat-item {
+        text-align: center;
+    }
+
+    .stat-number {
+        font-size: 2rem;
+        font-weight: 700;
+        color: #f5576c;
+    }
+
+    .stat-label {
+        color: #6c757d;
+        font-size: 0.9rem;
+    }
+
+    .presente-card {
+        border: none;
+        border-radius: 15px;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+        transition: transform 0.3s, box-shadow 0.3s;
+        margin-bottom: 25px;
+        overflow: hidden;
+        height: 100%;
+    }
+
+    .presente-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+    }
+
+    .presente-card.comprado {
+        opacity: 0.6;
+        filter: grayscale(50%);
+    }
+
+    .presente-img {
+        height: 200px;
+        object-fit: cover;
+        width: 100%;
+    }
+
+    .presente-img-placeholder {
+        height: 200px;
+        background: linear-gradient(135deg, #f093fb20 0%, #f5576c20 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 4rem;
+        color: #f5576c;
+    }
+
+    .badge-status {
+        position: absolute;
+        top: 15px;
+        right: 15px;
+        padding: 8px 15px;
+        border-radius: 20px;
+        font-weight: 600;
+        font-size: 0.8rem;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+    }
+
+    .badge-disponivel {
+        background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+        color: white;
+    }
+
+    .badge-comprado {
+        background: linear-gradient(135deg, #6c757d 0%, #495057 100%);
+        color: white;
+    }
+
+    .presente-body {
+        padding: 20px;
+    }
+
+    .presente-descricao {
+        min-height: 60px;
+        margin-bottom: 15px;
+        color: #495057;
+    }
+
+    .presente-preco {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: #28a745;
+        margin-bottom: 15px;
+    }
+
+    .presente-url {
+        font-size: 0.85rem;
+        color: #6c757d;
+        text-decoration: none;
+        display: inline-block;
+        margin-bottom: 10px;
+    }
+
+    .presente-url:hover {
+        color: #f5576c;
+    }
+
+    .presente-data {
+        font-size: 0.75rem;
+        color: #adb5bd;
+        margin-top: 10px;
+    }
+
+    .btn-comprar {
+        width: 100%;
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        border: none;
+        color: white;
+        padding: 12px;
+        border-radius: 50px;
+        font-weight: 600;
+        font-size: 1rem;
+        transition: all 0.3s;
+        box-shadow: 0 4px 15px rgba(245, 87, 108, 0.3);
+    }
+
+    .btn-comprar:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(245, 87, 108, 0.5);
+        color: white;
+    }
+
+    .btn-voltar {
+        background: #f8f9fa;
+        border: 2px solid #dee2e6;
+        color: #6c757d;
+        padding: 12px 30px;
+        border-radius: 50px;
+        font-weight: 600;
+        transition: all 0.3s;
+    }
+
+    .btn-voltar:hover {
+        background: #e9ecef;
+        border-color: #adb5bd;
+        color: #495057;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 80px 20px;
+        background: white;
+        border-radius: 20px;
+        box-shadow: 0 5px 20px rgba(0,0,0,0.08);
+    }
+
+    .empty-state i {
+        font-size: 6rem;
+        color: #dee2e6;
+        margin-bottom: 20px;
+    }
+
+    .alert-info-custom {
+        background: linear-gradient(135deg, #f093fb10 0%, #f5576c10 100%);
+        border: none;
+        border-left: 4px solid #f5576c;
+        border-radius: 10px;
+        padding: 20px;
+        margin-bottom: 30px;
+    }
+
+    .sugestoes-badge {
+        background: #667eea;
+        color: white;
+        padding: 5px 12px;
+        border-radius: 15px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        margin-left: 10px;
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+    }
+
+    .btn-ver-sugestoes {
+        width: 100%;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border: none;
+        color: white;
+        padding: 10px;
+        border-radius: 25px;
+        font-weight: 600;
+        font-size: 0.9rem;
+        transition: all 0.3s;
+        margin-bottom: 10px;
+    }
+
+    .btn-ver-sugestoes:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        color: white;
+    }
+
+    .filter-tabs {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 30px;
+        justify-content: center;
+        flex-wrap: wrap;
+    }
+
+    .filter-tab {
+        padding: 10px 25px;
+        border-radius: 25px;
+        border: 2px solid #e9ecef;
+        background: white;
+        color: #6c757d;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s;
+    }
+
+    .filter-tab.active {
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        color: white;
+        border-color: transparent;
+    }
+
+    .filter-tab:hover {
+        border-color: #f5576c;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="container">
+        <a href="{% url 'lista_usuarios' %}" class="btn btn-voltar mb-3">
+            <i class="bi bi-arrow-left me-2"></i>
+            Voltar
+        </a>
+        <h1 class="mb-0">
+            <i class="bi bi-gift-fill me-2"></i>
+            Presentes de {{ usuario_presente.first_name }}
+        </h1>
+        <p class="mb-0 mt-2">Escolha o presente perfeito para dar</p>
+    </div>
+</div>
+
+<div class="container">
+    <div class="usuario-info-card">
+        <div class="usuario-avatar-large">
+            {{ usuario_presente.first_name.0|upper }}{{ usuario_presente.last_name.0|upper }}
+        </div>
+        <div class="usuario-details">
+            <h2 class="usuario-name">{{ usuario_presente.first_name }} {{ usuario_presente.last_name }}</h2>
+            <div class="usuario-meta-info">
+                <span class="meta-tag">
+                    <i class="bi bi-envelope"></i>
+                    {{ usuario_presente.email }}
+                </span>
+                {% if usuario_presente.data_cadastro %}
+                    <span class="meta-tag">
+                        <i class="bi bi-calendar-check"></i>
+                        Membro desde {{ usuario_presente.data_cadastro|date:"d/m/Y" }}
+                    </span>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="stats-row">
+        <div class="row">
+            <div class="col-md-4 stat-item">
+                <div class="stat-number">{{ presentes|length }}</div>
+                <div class="stat-label">Total de Presentes</div>
+            </div>
+            <div class="col-md-4 stat-item">
+                <div class="stat-number">{{ presentes|selectattr:"status", "equalto", "ATIVO"|list|length }}</div>
+                <div class="stat-label">Disponíveis</div>
+            </div>
+            <div class="col-md-4 stat-item">
+                <div class="stat-number">{{ presentes|selectattr:"status", "equalto", "COMPRADO"|list|length }}</div>
+                <div class="stat-label">Já Comprados</div>
+            </div>
+        </div>
+    </div>
+
+    {% if presentes|selectattr:"status", "equalto", "ATIVO"|list|length > 0 %}
+        <div class="alert-info-custom">
+            <i class="bi bi-info-circle-fill"></i>
+            <strong>Dica:</strong> Clique em "Marcar como Comprado" quando decidir presentear.
+            {{ usuario_presente.first_name }} receberá uma notificação!
+        </div>
+    {% endif %}
+
+    <div class="filter-tabs">
+        <button class="filter-tab active" onclick="filterPresentes('todos')" data-filter="todos">
+            <i class="bi bi-list"></i> Todos
+        </button>
+        <button class="filter-tab" onclick="filterPresentes('ATIVO')" data-filter="ATIVO">
+            <i class="bi bi-gift"></i> Disponíveis
+        </button>
+        <button class="filter-tab" onclick="filterPresentes('COMPRADO')" data-filter="COMPRADO">
+            <i class="bi bi-bag-check"></i> Comprados
+        </button>
+    </div>
+
+    {% if presentes %}
+        <div class="row" id="presentes-container">
+            {% for presente in presentes %}
+                <div class="col-md-6 col-lg-4 presente-item" data-status="{{ presente.status }}">
+                    <div class="card presente-card {% if presente.status == 'COMPRADO' %}comprado{% endif %}">
+                        <div class="position-relative">
+                            {% if presente.imagem %}
+                                <img src="{{ presente.imagem.url }}" alt="{{ presente.descricao }}" class="presente-img">
+                            {% else %}
+                                <div class="presente-img-placeholder">
+                                    <i class="bi bi-gift"></i>
+                                </div>
+                            {% endif %}
+                            <span class="badge badge-status {% if presente.status == 'ATIVO' %}badge-disponivel{% else %}badge-comprado{% endif %}">
+                                {% if presente.status == 'ATIVO' %}
+                                    <i class="bi bi-check-circle"></i> Disponível
+                                {% else %}
+                                    <i class="bi bi-bag-check"></i> Comprado
+                                {% endif %}
+                            </span>
+                        </div>
+
+                        <div class="presente-body">
+                            <h5 class="presente-descricao">
+                                {{ presente.descricao|truncatewords:15 }}
+                                {% if presente.sugestoes.count > 0 %}
+                                    <span class="sugestoes-badge" title="Tem sugestões de lojas">
+                                        <i class="bi bi-shop"></i>
+                                        {{ presente.sugestoes.count }}
+                                    </span>
+                                {% endif %}
+                            </h5>
+
+                            {% if presente.preco %}
+                                <div class="presente-preco">
+                                    R$ {{ presente.preco }}
+                                </div>
+                            {% endif %}
+
+                            {% if presente.url %}
+                                <a href="{{ presente.url }}" target="_blank" class="presente-url">
+                                    <i class="bi bi-link-45deg"></i> Ver produto original
+                                </a>
+                            {% endif %}
+
+                            <div class="presente-data">
+                                <i class="bi bi-calendar3"></i>
+                                Adicionado em {{ presente.data_cadastro|date:"d/m/Y" }}
+                            </div>
+
+                            <div class="mt-3">
+                                {% if presente.status == 'ATIVO' %}
+                                    {% if presente.sugestoes.count > 0 %}
+                                        <a href="{% url 'ver_sugestoes' presente.id %}" class="btn btn-ver-sugestoes">
+                                            <i class="bi bi-shop"></i> Ver {{ presente.sugestoes.count }} Sugestões
+                                        </a>
+                                    {% endif %}
+
+                                    <form method="post" action="{% url 'marcar_comprado' presente.id %}" onsubmit="return confirmCompra('{{ presente.descricao|truncatewords:8 }}')">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn btn-comprar">
+                                            <i class="bi bi-bag-heart me-2"></i>
+                                            Marcar como Comprado
+                                        </button>
+                                    </form>
+                                {% else %}
+                                    <div class="alert alert-secondary mb-0" role="alert">
+                                        <i class="bi bi-check-circle"></i>
+                                        Este presente já foi comprado por alguém
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+
+        <div id="no-results" class="empty-state" style="display: none;">
+            <i class="bi bi-funnel"></i>
+            <h3>Nenhum presente nesta categoria</h3>
+            <p>Tente outro filtro</p>
+        </div>
+
+    {% else %}
+        <div class="empty-state">
+            <i class="bi bi-gift"></i>
+            <h3>{{ usuario_presente.first_name }} ainda não adicionou presentes</h3>
+            <p>Quando adicionar, eles aparecerão aqui para você escolher!</p>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function confirmCompra(descricao) {
+        return confirm(`Tem certeza que deseja marcar "${descricao}" como comprado?\n\n{{ usuario_presente.first_name }} receberá uma notificação!`);
+    }
+
+    function filterPresentes(status) {
+        const container = document.getElementById('presentes-container');
+        const items = container ? container.getElementsByClassName('presente-item') : [];
+        const noResults = document.getElementById('no-results');
+        const tabs = document.querySelectorAll('.filter-tab');
+        let visibleCount = 0;
+
+        // Atualizar tabs
+        tabs.forEach(tab => {
+            if (tab.getAttribute('data-filter') === status) {
+                tab.classList.add('active');
+            } else {
+                tab.classList.remove('active');
+            }
+        });
+
+        // Filtrar presentes
+        for (let i = 0; i < items.length; i++) {
+            const itemStatus = items[i].getAttribute('data-status');
+
+            if (status === 'todos' || itemStatus === status) {
+                items[i].style.display = '';
+                visibleCount++;
+            } else {
+                items[i].style.display = 'none';
+            }
+        }
+
+        // Mostrar mensagem se não houver resultados
+        if (noResults) {
+            if (visibleCount === 0) {
+                noResults.style.display = 'block';
+            } else {
+                noResults.style.display = 'none';
+            }
+        }
+    }
+</script>
+{% endblock %}

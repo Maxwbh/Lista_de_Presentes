@@ -1,0 +1,61 @@
+# Configuração para deploy no Render.com
+# https://render.com/docs/yaml-spec
+
+services:
+  # Web Service (Django)
+  - type: web
+    name: lista-presentes
+    env: python
+    region: oregon # ou ohio, frankfurt, singapore
+    plan: free # ou starter, standard, pro
+    branch: claude/review-wishlist-system-01KfJhmcrfGbvMcnDhbE7pNx # branch para deploy automático
+
+    # Build - Usar script para garantir DJANGO_SETTINGS_MODULE correto
+    buildCommand: bash build.sh
+
+    # Start
+    startCommand: |
+      gunicorn --bind 0.0.0.0:$PORT --workers 3 --timeout 120 lista_presentes.wsgi:application
+
+    # Variáveis de ambiente
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+
+      - key: DEBUG
+        value: false
+
+      - key: DJANGO_SETTINGS_MODULE
+        value: lista_presentes.settings
+
+      - key: SECRET_KEY
+        generateValue: true
+
+      - key: ALLOWED_HOSTS
+        value: .onrender.com
+
+      - key: DATABASE_URL
+        fromDatabase:
+          name: lista-presentes-db
+          property: connectionString
+
+      - key: ANTHROPIC_API_KEY
+        sync: false  # Definir manualmente no dashboard
+
+      - key: OPENAI_API_KEY
+        sync: false  # Definir manualmente no dashboard
+
+      - key: GEMINI_API_KEY
+        sync: false  # Definir manualmente no dashboard
+
+    # Health check
+    healthCheckPath: /
+
+# Banco de dados PostgreSQL
+databases:
+  - name: lista-presentes-db
+    databaseName: lista_presentes
+    user: lista_presentes_user
+    region: oregon # mesma região do web service
+    plan: free # ou starter, standard, pro
+    ipAllowList: [] # vazio = permite todas as conexões
