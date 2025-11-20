@@ -196,6 +196,49 @@ GEMINI_API_KEY = sua-chave
 
 ---
 
+## ⚠️ Limitações do Plano Free do Render.com
+
+O plano **free** do Render.com tem algumas limitações importantes:
+
+### 🔴 Sem Disco Persistente
+- **Não suporta armazenamento permanente de arquivos**
+- Arquivos estáticos (CSS/JS) são servidos pelo **WhiteNoise** ✅ (já configurado)
+- **Uploads de imagens** dos usuários **não são persistidos** entre deploys
+
+### 💡 Soluções para Upload de Imagens:
+
+#### Opção 1: Serviço Externo (Recomendado para Free)
+```python
+# Use serviços gratuitos de CDN:
+# - Cloudinary (10 GB grátis)
+# - ImgBB (ilimitado)
+# - Amazon S3 (12 meses grátis)
+# - Backblaze B2 (10 GB grátis)
+```
+
+#### Opção 2: Upgrade para Plano Pago
+```
+Render.com Starter Plan ($7/mês):
+✅ Disco persistente (1 GB incluído)
+✅ Mais CPU e memória
+✅ Sem sleep automático
+```
+
+### 🌐 Outras Limitações do Free:
+- **Sleep automático** após 15 minutos de inatividade (primeiro acesso pode demorar ~30s)
+- **750 horas/mês** de uptime (suficiente para 1 serviço 24/7)
+- **Banco PostgreSQL Free**: 1 GB de armazenamento (suficiente para ~10.000 presentes)
+
+### ✅ O que Funciona no Free:
+- ✅ Django + PostgreSQL
+- ✅ Arquivos estáticos (CSS, JS, imagens do projeto)
+- ✅ Migrations automáticas
+- ✅ SSL/HTTPS gratuito
+- ✅ Deploy automático via Git
+- ✅ Superusuário criado automaticamente
+
+---
+
 ## 🔐 Configuração de Variáveis de Ambiente
 
 ### Variáveis Obrigatórias
