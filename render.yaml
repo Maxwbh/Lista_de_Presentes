@@ -8,7 +8,7 @@ services:
     env: python
     region: oregon # ou ohio, frankfurt, singapore
     plan: free # ou starter, standard, pro
-    branch: main # branch para deploy automático
+    branch: claude/review-wishlist-system-01KfJhmcrfGbvMcnDhbE7pNx # branch para deploy automático
 
     # Build
     buildCommand: |
@@ -20,12 +20,6 @@ services:
     # Start
     startCommand: |
       gunicorn --bind 0.0.0.0:$PORT --workers 3 --timeout 120 lista_presentes.wsgi:application
-
-    # Disco para arquivos estáticos e media
-    disk:
-      name: data
-      mountPath: /app/data
-      sizeGB: 1
 
     # Variáveis de ambiente
     envVars:
