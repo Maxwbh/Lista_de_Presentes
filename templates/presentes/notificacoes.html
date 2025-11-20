@@ -1,0 +1,460 @@
+{% extends 'base.html' %}
+
+{% block title %}Notificações - Lista de Presentes{% endblock %}
+
+{% block extra_css %}
+<style>
+    .page-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 40px 0;
+        margin: -20px -15px 30px;
+        border-radius: 0 0 30px 30px;
+    }
+
+    .header-stats {
+        display: flex;
+        gap: 30px;
+        justify-content: center;
+        margin-top: 20px;
+        flex-wrap: wrap;
+    }
+
+    .header-stat {
+        background: rgba(255, 255, 255, 0.2);
+        padding: 10px 25px;
+        border-radius: 25px;
+        backdrop-filter: blur(10px);
+    }
+
+    .header-stat-number {
+        font-size: 1.5rem;
+        font-weight: 700;
+    }
+
+    .header-stat-label {
+        font-size: 0.85rem;
+        opacity: 0.9;
+    }
+
+    .notificacao-card {
+        background: white;
+        border-radius: 15px;
+        box-shadow: 0 3px 15px rgba(0,0,0,0.06);
+        padding: 25px;
+        margin-bottom: 20px;
+        transition: transform 0.3s, box-shadow 0.3s;
+        border-left: 5px solid transparent;
+        animation: slideIn 0.5s ease-out;
+        position: relative;
+    }
+
+    @keyframes slideIn {
+        from {
+            opacity: 0;
+            transform: translateX(-30px);
+        }
+        to {
+            opacity: 1;
+            transform: translateX(0);
+        }
+    }
+
+    .notificacao-card:hover {
+        transform: translateX(5px);
+        box-shadow: 0 5px 20px rgba(0,0,0,0.12);
+    }
+
+    .notificacao-card.nao-lida {
+        border-left-color: #667eea;
+        background: linear-gradient(to right, #667eea08 0%, white 100%);
+    }
+
+    .notificacao-card.nao-lida::before {
+        content: '';
+        position: absolute;
+        top: 25px;
+        left: -12px;
+        width: 24px;
+        height: 24px;
+        background: #667eea;
+        border-radius: 50%;
+        border: 3px solid white;
+        box-shadow: 0 2px 8px rgba(102, 126, 234, 0.4);
+    }
+
+    .notificacao-card.lida {
+        border-left-color: #dee2e6;
+        opacity: 0.8;
+    }
+
+    .notificacao-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: start;
+        margin-bottom: 15px;
+    }
+
+    .notificacao-icon {
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 1.5rem;
+        flex-shrink: 0;
+        margin-right: 15px;
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+    }
+
+    .notificacao-content {
+        flex: 1;
+    }
+
+    .notificacao-mensagem {
+        font-size: 1.1rem;
+        color: #2c3e50;
+        margin-bottom: 10px;
+        line-height: 1.5;
+    }
+
+    .notificacao-data {
+        font-size: 0.85rem;
+        color: #adb5bd;
+        display: flex;
+        align-items: center;
+        gap: 5px;
+    }
+
+    .notificacao-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        padding: 5px 12px;
+        border-radius: 15px;
+        font-size: 0.8rem;
+        font-weight: 600;
+    }
+
+    .badge-nova {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+    }
+
+    .badge-lida {
+        background: #e9ecef;
+        color: #6c757d;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 80px 20px;
+        background: white;
+        border-radius: 20px;
+        box-shadow: 0 5px 20px rgba(0,0,0,0.08);
+    }
+
+    .empty-state i {
+        font-size: 6rem;
+        color: #dee2e6;
+        margin-bottom: 20px;
+    }
+
+    .empty-state h3 {
+        color: #495057;
+        margin-bottom: 15px;
+    }
+
+    .empty-state p {
+        color: #6c757d;
+        margin-bottom: 30px;
+    }
+
+    .filter-section {
+        background: white;
+        border-radius: 15px;
+        padding: 20px;
+        margin-bottom: 30px;
+        box-shadow: 0 3px 10px rgba(0,0,0,0.05);
+    }
+
+    .filter-tabs {
+        display: flex;
+        gap: 10px;
+        justify-content: center;
+        flex-wrap: wrap;
+    }
+
+    .filter-tab {
+        padding: 10px 25px;
+        border-radius: 25px;
+        border: 2px solid #e9ecef;
+        background: white;
+        color: #6c757d;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s;
+    }
+
+    .filter-tab.active {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-color: transparent;
+    }
+
+    .filter-tab:hover {
+        border-color: #667eea;
+    }
+
+    .timeline-date {
+        text-align: center;
+        margin: 30px 0 20px;
+        position: relative;
+    }
+
+    .timeline-date span {
+        background: white;
+        padding: 10px 25px;
+        border-radius: 25px;
+        font-weight: 700;
+        color: #667eea;
+        box-shadow: 0 3px 10px rgba(0,0,0,0.08);
+        display: inline-block;
+    }
+
+    .btn-marcar-todas {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border: none;
+        color: white;
+        padding: 10px 25px;
+        border-radius: 25px;
+        font-weight: 600;
+        transition: all 0.3s;
+    }
+
+    .btn-marcar-todas:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        color: white;
+    }
+
+    .notificacao-actions {
+        margin-top: 15px;
+        padding-top: 15px;
+        border-top: 1px solid #f0f0f0;
+    }
+
+    .btn-action-notif {
+        background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+        border: none;
+        color: white;
+        padding: 8px 20px;
+        border-radius: 20px;
+        font-weight: 600;
+        font-size: 0.85rem;
+        transition: all 0.3s;
+    }
+
+    .btn-action-notif:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(17, 153, 142, 0.4);
+        color: white;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="container">
+        <h1 class="mb-0">
+            <i class="bi bi-bell-fill me-2"></i>
+            Minhas Notificações
+        </h1>
+        <p class="mb-0 mt-2">Acompanhe as novidades sobre seus presentes</p>
+
+        <div class="header-stats">
+            <div class="header-stat">
+                <div class="header-stat-number">{{ notificacoes|length }}</div>
+                <div class="header-stat-label">Total</div>
+            </div>
+            <div class="header-stat">
+                <div class="header-stat-number">{{ notificacoes|rejectattr:"lida"|list|length }}</div>
+                <div class="header-stat-label">Novas</div>
+            </div>
+            <div class="header-stat">
+                <div class="header-stat-number">{{ notificacoes|selectattr:"lida"|list|length }}</div>
+                <div class="header-stat-label">Lidas</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="container">
+    {% if notificacoes %}
+        <div class="filter-section">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+                <div class="filter-tabs">
+                    <button class="filter-tab active" onclick="filterNotificacoes('todas')" data-filter="todas">
+                        <i class="bi bi-list"></i> Todas
+                    </button>
+                    <button class="filter-tab" onclick="filterNotificacoes('nao-lida')" data-filter="nao-lida">
+                        <i class="bi bi-bell"></i> Novas
+                    </button>
+                    <button class="filter-tab" onclick="filterNotificacoes('lida')" data-filter="lida">
+                        <i class="bi bi-bell-slash"></i> Lidas
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div id="notificacoes-container">
+            {% regroup notificacoes by data_notificacao|date:"Y-m-d" as notificacoes_por_dia %}
+
+            {% for dia in notificacoes_por_dia %}
+                <div class="timeline-date">
+                    <span>
+                        <i class="bi bi-calendar3"></i>
+                        {% if dia.grouper == request.META.SERVER_NAME|default:"hoje"|date:"Y-m-d" %}
+                            Hoje
+                        {% else %}
+                            {{ dia.list.0.data_notificacao|date:"d/m/Y" }}
+                        {% endif %}
+                    </span>
+                </div>
+
+                {% for notificacao in dia.list %}
+                    <div class="notificacao-card {% if not notificacao.lida %}nao-lida{% else %}lida{% endif %}" data-status="{% if not notificacao.lida %}nao-lida{% else %}lida{% endif %}">
+                        <div class="notificacao-header">
+                            <div class="d-flex w-100">
+                                <div class="notificacao-icon">
+                                    <i class="bi bi-gift-fill"></i>
+                                </div>
+
+                                <div class="notificacao-content">
+                                    <div class="notificacao-mensagem">
+                                        {{ notificacao.mensagem }}
+                                    </div>
+
+                                    <div class="d-flex gap-3 flex-wrap align-items-center">
+                                        <div class="notificacao-data">
+                                            <i class="bi bi-clock"></i>
+                                            {{ notificacao.data_notificacao|date:"d/m/Y às H:i" }}
+                                        </div>
+
+                                        <span class="notificacao-badge {% if not notificacao.lida %}badge-nova{% else %}badge-lida{% endif %}">
+                                            {% if not notificacao.lida %}
+                                                <i class="bi bi-star-fill"></i> Nova
+                                            {% else %}
+                                                <i class="bi bi-check2"></i> Lida
+                                            {% endif %}
+                                        </span>
+                                    </div>
+
+                                    <div class="notificacao-actions">
+                                        <a href="{% url 'meus_presentes' %}" class="btn btn-action-notif">
+                                            <i class="bi bi-gift"></i> Ver Meus Presentes
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            {% endfor %}
+        </div>
+
+        <div id="no-results" class="empty-state" style="display: none;">
+            <i class="bi bi-funnel"></i>
+            <h3>Nenhuma notificação nesta categoria</h3>
+            <p>Tente outro filtro</p>
+        </div>
+
+    {% else %}
+        <div class="empty-state">
+            <i class="bi bi-bell-slash"></i>
+            <h3>Nenhuma notificação ainda</h3>
+            <p>Quando alguém marcar um dos seus presentes como comprado, você receberá uma notificação aqui!</p>
+            <a href="{% url 'meus_presentes' %}" class="btn btn-action-notif">
+                <i class="bi bi-gift"></i> Ver Meus Presentes
+            </a>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function filterNotificacoes(status) {
+        const container = document.getElementById('notificacoes-container');
+        const cards = container ? container.getElementsByClassName('notificacao-card') : [];
+        const noResults = document.getElementById('no-results');
+        const tabs = document.querySelectorAll('.filter-tab');
+        let visibleCount = 0;
+
+        // Atualizar tabs
+        tabs.forEach(tab => {
+            if (tab.getAttribute('data-filter') === status) {
+                tab.classList.add('active');
+            } else {
+                tab.classList.remove('active');
+            }
+        });
+
+        // Filtrar notificações
+        for (let i = 0; i < cards.length; i++) {
+            const cardStatus = cards[i].getAttribute('data-status');
+
+            if (status === 'todas' || cardStatus === status) {
+                cards[i].style.display = '';
+                visibleCount++;
+            } else {
+                cards[i].style.display = 'none';
+            }
+        }
+
+        // Mostrar/ocultar timeline dates
+        const timelineDates = container ? container.getElementsByClassName('timeline-date') : [];
+        for (let i = 0; i < timelineDates.length; i++) {
+            let hasVisibleNext = false;
+            let next = timelineDates[i].nextElementSibling;
+
+            while (next && !next.classList.contains('timeline-date')) {
+                if (next.classList.contains('notificacao-card') && next.style.display !== 'none') {
+                    hasVisibleNext = true;
+                    break;
+                }
+                next = next.nextElementSibling;
+            }
+
+            timelineDates[i].style.display = hasVisibleNext ? '' : 'none';
+        }
+
+        // Mostrar mensagem se não houver resultados
+        if (noResults) {
+            if (visibleCount === 0) {
+                noResults.style.display = 'block';
+                if (container) container.style.display = 'none';
+            } else {
+                noResults.style.display = 'none';
+                if (container) container.style.display = 'block';
+            }
+        }
+    }
+
+    // Animar cards conforme aparecem
+    const cards = document.querySelectorAll('.notificacao-card');
+    cards.forEach((card, index) => {
+        card.style.animationDelay = `${index * 0.05}s`;
+    });
+
+    // Auto-refresh do contador do navbar (já marcou como lida ao abrir)
+    setTimeout(() => {
+        if (typeof atualizarNotificacoes === 'function') {
+            atualizarNotificacoes();
+        }
+    }, 1000);
+</script>
+{% endblock %}
