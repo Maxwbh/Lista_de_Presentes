@@ -1,0 +1,213 @@
+from django.shortcuts import render, redirect, get_object_or_404
+from django.contrib.auth import login, logout, authenticate
+from django.contrib.auth.decorators import login_required
+from django.contrib import messages
+from django.db.models import Count, Q
+from django.http import JsonResponse
+from .models import Usuario, Presente, Compra, Notificacao, SugestaoCompra
+from .forms import UsuarioRegistroForm, PresenteForm, LoginForm
+from .services import IAService
+
+def registro_view(request):
+    if request.method == 'POST':
+        form = UsuarioRegistroForm(request.POST)
+        if form.is_valid():
+            usuario = form.save()
+            login(request, usuario)
+            messages.success(request, 'Cadastro realizado com sucesso!')
+            return redirect('dashboard')
+    else:
+        form = UsuarioRegistroForm()
+    return render(request, 'presentes/registro.html', {'form': form})
+
+def login_view(request):
+    if request.method == 'POST':
+        form = LoginForm(request.POST)
+        if form.is_valid():
+            email = form.cleaned_data['email']
+            password = form.cleaned_data['password']
+            usuario = authenticate(request, username=email, password=password)
+            if usuario:
+                login(request, usuario)
+                return redirect('dashboard')
+            else:
+                messages.error(request, 'Email ou senha inválidos')
+    else:
+        form = LoginForm()
+    return render(request, 'presentes/login.html', {'form': form})
+
+@login_required
+def logout_view(request):
+    logout(request)
+    return redirect('login')
+
+@login_required
+def dashboard_view(request):
+    # Total de usuários
+    total_usuarios = Usuario.objects.filter(ativo=True).count()
+    
+    # Meus presentes ativos
+    meus_presentes_ativos = Presente.objects.filter(
+        usuario=request.user,
+        status='ATIVO'
+    ).count()
+    
+    # Total de presentes não comprados (todos os usuários)
+    presentes_nao_comprados = Presente.objects.filter(status='ATIVO').count()
+    
+    # Notificações não lidas
+    notificacoes_nao_lidas = Notificacao.objects.filter(
+        usuario=request.user,
+        lida=False
+    ).count()
+    
+    context = {
+        'total_usuarios': total_usuarios,
+        'meus_presentes_ativos': meus_presentes_ativos,
+        'presentes_nao_comprados': presentes_nao_comprados,
+        'notificacoes_nao_lidas': notificacoes_nao_lidas,
+    }
+    return render(request, 'presentes/dashboard.html', context)
+
+@login_required
+def meus_presentes_view(request):
+    presentes = Presente.objects.filter(usuario=request.user)
+    return render(request, 'presentes/meus_presentes.html', {'presentes': presentes})
+
+@login_required
+def adicionar_presente_view(request):
+    if request.method == 'POST':
+        form = PresenteForm(request.POST, request.FILES)
+        if form.is_valid():
+            presente = form.save(commit=False)
+            presente.usuario = request.user
+            presente.save()
+            messages.success(request, 'Presente adicionado com sucesso!')
+            return redirect('meus_presentes')
+    else:
+        form = PresenteForm()
+    return render(request, 'presentes/adicionar_presente.html', {'form': form})
+
+@login_required
+def editar_presente_view(request, pk):
+    presente = get_object_or_404(Presente, pk=pk, usuario=request.user)
+    if request.method == 'POST':
+        form = PresenteForm(request.POST, request.FILES, instance=presente)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Presente atualizado com sucesso!')
+            return redirect('meus_presentes')
+    else:
+        form = PresenteForm(instance=presente)
+    return render(request, 'presentes/editar_presente.html', {'form': form, 'presente': presente})
+
+@login_required
+def deletar_presente_view(request, pk):
+    presente = get_object_or_404(Presente, pk=pk, usuario=request.user)
+    if request.method == 'POST':
+        presente.delete()
+        messages.success(request, 'Presente excluído com sucesso!')
+        return redirect('meus_presentes')
+    return render(request, 'presentes/deletar_presente.html', {'presente': presente})
+
+@login_required
+def buscar_sugestoes_ia_view(request, pk):
+    presente = get_object_or_404(Presente, pk=pk, usuario=request.user)
+    
+    # Escolher qual IA usar (pode ser configurável)
+    ia_escolhida = request.GET.get('ia', 'claude')  # claude, chatgpt, gemini
+    
+    if ia_escolhida == 'claude':
+        sucesso, mensagem = IAService.buscar_sugestoes_claude(presente)
+    elif ia_escolhida == 'chatgpt':
+        sucesso, mensagem = IAService.buscar_sugestoes_chatgpt(presente)
+    elif ia_escolhida == 'gemini':
+        sucesso, mensagem = IAService.buscar_sugestoes_gemini(presente)
+    else:
+        sucesso, mensagem = False, "IA não reconhecida"
+    
+    if sucesso:
+        messages.success(request, mensagem)
+    else:
+        messages.error(request, mensagem)
+    
+    return redirect('ver_sugestoes', pk=pk)
+
+@login_required
+def ver_sugestoes_view(request, pk):
+    presente = get_object_or_404(Presente, pk=pk, usuario=request.user)
+    sugestoes = SugestaoCompra.objects.filter(presente=presente)
+    return render(request, 'presentes/ver_sugestoes.html', {
+        'presente': presente,
+        'sugestoes': sugestoes
+    })
+
+@login_required
+def lista_usuarios_view(request):
+    usuarios = Usuario.objects.filter(ativo=True).exclude(id=request.user.id)
+    return render(request, 'presentes/lista_usuarios.html', {'usuarios': usuarios})
+
+@login_required
+def presentes_usuario_view(request, user_id):
+    usuario = get_object_or_404(Usuario, pk=user_id)
+    presentes = Presente.objects.filter(usuario=usuario)
+    return render(request, 'presentes/presentes_usuario.html', {
+        'usuario_presente': usuario,
+        'presentes': presentes
+    })
+
+@login_required
+def marcar_comprado_view(request, pk):
+    presente = get_object_or_404(Presente, pk=pk)
+    
+    # Não pode comprar seu próprio presente
+    if presente.usuario == request.user:
+        messages.error(request, 'Você não pode marcar seu próprio presente como comprado!')
+        return redirect('presentes_usuario', user_id=presente.usuario.id)
+    
+    # Verificar se já foi comprado
+    if presente.status == 'COMPRADO':
+        messages.warning(request, 'Este presente já foi comprado!')
+        return redirect('presentes_usuario', user_id=presente.usuario.id)
+    
+    # Marcar como comprado
+    presente.status = 'COMPRADO'
+    presente.save()
+    
+    # Registrar compra
+    Compra.objects.create(
+        presente=presente,
+        comprador=request.user
+    )
+    
+    # Criar notificação
+    Notificacao.objects.create(
+        usuario=presente.usuario,
+        mensagem=f'🎁 Um dos seus presentes foi comprado: {presente.descricao[:50]}!'
+    )
+    
+    messages.success(request, 'Presente marcado como comprado!')
+    return redirect('presentes_usuario', user_id=presente.usuario.id)
+
+@login_required
+def notificacoes_view(request):
+    notificacoes = Notificacao.objects.filter(usuario=request.user)
+    
+    # Marcar todas como lidas
+    notificacoes.filter(lida=False).update(lida=True)
+    
+    return render(request, 'presentes/notificacoes.html', {'notificacoes': notificacoes})
+
+@login_required
+def notificacoes_nao_lidas_json(request):
+    """API para buscar notificações não lidas"""
+    count = Notificacao.objects.filter(usuario=request.user, lida=False).count()
+    notificacoes = Notificacao.objects.filter(
+        usuario=request.user, 
+        lida=False
+    ).values('id', 'mensagem', 'data_notificacao')[:5]
+    
+    return JsonResponse({
+        'count': count,
+        'notificacoes': list(notificacoes)
+    })
