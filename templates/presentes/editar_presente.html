@@ -1,0 +1,392 @@
+{% extends 'base.html' %}
+
+{% block title %}Editar Presente - Lista de Presentes{% endblock %}
+
+{% block extra_css %}
+<style>
+    .page-header {
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        color: white;
+        padding: 40px 0;
+        margin: -20px -15px 30px;
+        border-radius: 0 0 30px 30px;
+    }
+
+    .form-card {
+        background: white;
+        border-radius: 20px;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+        padding: 40px;
+        max-width: 800px;
+        margin: 0 auto;
+        animation: fadeIn 0.5s ease-out;
+    }
+
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .form-label {
+        font-weight: 600;
+        color: #495057;
+        margin-bottom: 8px;
+    }
+
+    .form-label i {
+        color: #f5576c;
+    }
+
+    .form-control:focus, .form-select:focus {
+        border-color: #f5576c;
+        box-shadow: 0 0 0 0.2rem rgba(245, 87, 108, 0.25);
+    }
+
+    .btn-submit {
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        border: none;
+        color: white;
+        padding: 15px 40px;
+        font-weight: 600;
+        font-size: 1.1rem;
+        border-radius: 50px;
+        transition: all 0.3s;
+        box-shadow: 0 5px 20px rgba(245, 87, 108, 0.3);
+    }
+
+    .btn-submit:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 8px 30px rgba(245, 87, 108, 0.5);
+        color: white;
+    }
+
+    .btn-cancel {
+        background: #f8f9fa;
+        border: 2px solid #dee2e6;
+        color: #6c757d;
+        padding: 15px 40px;
+        font-weight: 600;
+        font-size: 1.1rem;
+        border-radius: 50px;
+        transition: all 0.3s;
+    }
+
+    .btn-cancel:hover {
+        background: #e9ecef;
+        border-color: #adb5bd;
+        color: #495057;
+    }
+
+    .current-image-container {
+        text-align: center;
+        margin-bottom: 20px;
+    }
+
+    .current-image {
+        max-width: 100%;
+        max-height: 300px;
+        border-radius: 15px;
+        box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+    }
+
+    .image-preview {
+        max-width: 100%;
+        max-height: 300px;
+        border-radius: 15px;
+        box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+        display: none;
+        margin: 15px auto;
+    }
+
+    .image-placeholder {
+        width: 100%;
+        height: 200px;
+        background: linear-gradient(135deg, #f093fb20 0%, #f5576c20 100%);
+        border-radius: 15px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-direction: column;
+        color: #f5576c;
+        margin-bottom: 15px;
+        transition: all 0.3s;
+        cursor: pointer;
+        border: 3px dashed #f5576c40;
+    }
+
+    .image-placeholder:hover {
+        background: linear-gradient(135deg, #f093fb30 0%, #f5576c30 100%);
+        border-color: #f5576c;
+    }
+
+    .image-placeholder i {
+        font-size: 3rem;
+        margin-bottom: 10px;
+    }
+
+    .alert-edit {
+        background: linear-gradient(135deg, #f093fb10 0%, #f5576c10 100%);
+        border: none;
+        border-left: 4px solid #f5576c;
+        border-radius: 10px;
+        margin-bottom: 30px;
+    }
+
+    .character-counter {
+        font-size: 0.85rem;
+        color: #6c757d;
+        text-align: right;
+        margin-top: 5px;
+    }
+
+    .input-icon {
+        position: relative;
+    }
+
+    .input-icon i {
+        position: absolute;
+        right: 15px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #adb5bd;
+        pointer-events: none;
+    }
+
+    .currency-input {
+        padding-left: 40px !important;
+    }
+
+    .currency-symbol {
+        position: absolute;
+        left: 15px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #28a745;
+        font-weight: 600;
+        font-size: 1.1rem;
+    }
+
+    .change-image-btn {
+        margin-top: 15px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border: none;
+        color: white;
+        padding: 10px 25px;
+        border-radius: 25px;
+        font-weight: 600;
+    }
+
+    .change-image-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        color: white;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="container">
+        <h1 class="mb-0">
+            <i class="bi bi-pencil-square me-2"></i>
+            Editar Presente
+        </h1>
+        <p class="mb-0 mt-2">Atualize as informações do seu presente</p>
+    </div>
+</div>
+
+<div class="container">
+    <div class="form-card">
+        <div class="alert alert-edit" role="alert">
+            <i class="bi bi-info-circle-fill"></i>
+            <strong>Editando:</strong> {{ presente.descricao|truncatewords:10 }}
+        </div>
+
+        <form method="post" enctype="multipart/form-data" novalidate id="presente-form">
+            {% csrf_token %}
+
+            <div class="mb-4">
+                <label for="{{ form.descricao.id_for_label }}" class="form-label">
+                    <i class="bi bi-card-text"></i> Descrição do Presente *
+                </label>
+                {{ form.descricao }}
+                <div class="character-counter">
+                    <span id="char-count">{{ form.descricao.value|length|default:0 }}</span> caracteres
+                </div>
+                {% if form.descricao.errors %}
+                    <div class="text-danger small mt-1">{{ form.descricao.errors.0 }}</div>
+                {% endif %}
+            </div>
+
+            <div class="mb-4">
+                <label class="form-label">
+                    <i class="bi bi-image"></i> Imagem do Presente
+                </label>
+
+                {% if presente.imagem %}
+                    <div class="current-image-container" id="current-image-container">
+                        <img src="{{ presente.imagem.url }}" alt="{{ presente.descricao }}" class="current-image">
+                        <div>
+                            <button type="button" class="btn change-image-btn" onclick="showImageUpload()">
+                                <i class="bi bi-arrow-repeat"></i> Alterar Imagem
+                            </button>
+                        </div>
+                    </div>
+                {% endif %}
+
+                <div id="image-upload-section" {% if presente.imagem %}style="display: none;"{% endif %}>
+                    <div class="image-placeholder" onclick="document.getElementById('{{ form.imagem.id_for_label }}').click();">
+                        <i class="bi bi-cloud-upload"></i>
+                        <p class="mb-0"><strong>Clique para fazer upload</strong></p>
+                        <small class="text-muted">ou arraste uma imagem aqui</small>
+                    </div>
+                    {{ form.imagem }}
+                    <img id="image-preview" class="image-preview" alt="Preview">
+                </div>
+
+                {% if form.imagem.errors %}
+                    <div class="text-danger small mt-1">{{ form.imagem.errors.0 }}</div>
+                {% endif %}
+            </div>
+
+            <div class="row">
+                <div class="col-md-6 mb-4">
+                    <label for="{{ form.url.id_for_label }}" class="form-label">
+                        <i class="bi bi-link-45deg"></i> Link do Produto
+                    </label>
+                    <div class="input-icon">
+                        {{ form.url }}
+                        <i class="bi bi-box-arrow-up-right"></i>
+                    </div>
+                    <small class="form-text text-muted">
+                        Cole o link de onde você viu o produto
+                    </small>
+                    {% if form.url.errors %}
+                        <div class="text-danger small mt-1">{{ form.url.errors.0 }}</div>
+                    {% endif %}
+                </div>
+
+                <div class="col-md-6 mb-4">
+                    <label for="{{ form.preco.id_for_label }}" class="form-label">
+                        <i class="bi bi-cash-coin"></i> Preço Estimado
+                    </label>
+                    <div class="position-relative">
+                        <span class="currency-symbol">R$</span>
+                        {{ form.preco }}
+                    </div>
+                    <small class="form-text text-muted">
+                        Preço aproximado do produto
+                    </small>
+                    {% if form.preco.errors %}
+                        <div class="text-danger small mt-1">{{ form.preco.errors.0 }}</div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="d-flex gap-3 justify-content-center mt-5">
+                <a href="{% url 'meus_presentes' %}" class="btn btn-cancel">
+                    <i class="bi bi-x-circle me-2"></i>
+                    Cancelar
+                </a>
+                <button type="submit" class="btn btn-submit">
+                    <i class="bi bi-check-circle me-2"></i>
+                    Salvar Alterações
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function showImageUpload() {
+        document.getElementById('current-image-container').style.display = 'none';
+        document.getElementById('image-upload-section').style.display = 'block';
+    }
+
+    // Preview de imagem
+    const imageInput = document.getElementById('{{ form.imagem.id_for_label }}');
+    const imagePreview = document.getElementById('image-preview');
+    const placeholder = document.querySelector('.image-placeholder');
+
+    if (imageInput) {
+        imageInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    imagePreview.src = event.target.result;
+                    imagePreview.style.display = 'block';
+                    if (placeholder) placeholder.style.display = 'none';
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+    }
+
+    // Drag and drop
+    const dropArea = placeholder;
+    if (dropArea) {
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropArea.addEventListener(eventName, preventDefaults, false);
+        });
+
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropArea.addEventListener(eventName, highlight, false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropArea.addEventListener(eventName, unhighlight, false);
+        });
+
+        function highlight(e) {
+            dropArea.style.borderColor = '#f5576c';
+            dropArea.style.background = 'linear-gradient(135deg, #f093fb30 0%, #f5576c30 100%)';
+        }
+
+        function unhighlight(e) {
+            dropArea.style.borderColor = '#f5576c40';
+            dropArea.style.background = 'linear-gradient(135deg, #f093fb20 0%, #f5576c20 100%)';
+        }
+
+        dropArea.addEventListener('drop', handleDrop, false);
+
+        function handleDrop(e) {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+
+            imageInput.files = files;
+            const event = new Event('change', { bubbles: true });
+            imageInput.dispatchEvent(event);
+        }
+    }
+
+    // Contador de caracteres
+    const descricaoInput = document.getElementById('{{ form.descricao.id_for_label }}');
+    const charCount = document.getElementById('char-count');
+
+    if (descricaoInput && charCount) {
+        descricaoInput.addEventListener('input', function() {
+            charCount.textContent = this.value.length;
+        });
+    }
+
+    // Formatar input de preço
+    const precoInput = document.getElementById('{{ form.preco.id_for_label }}');
+    if (precoInput) {
+        precoInput.classList.add('currency-input');
+    }
+</script>
+{% endblock %}
