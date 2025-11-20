@@ -10,12 +10,8 @@ services:
     plan: free # ou starter, standard, pro
     branch: claude/review-wishlist-system-01KfJhmcrfGbvMcnDhbE7pNx # branch para deploy automático
 
-    # Build
-    buildCommand: |
-      pip install --upgrade pip
-      pip install -r requirements.txt
-      python manage.py collectstatic --noinput
-      python manage.py migrate --noinput
+    # Build - Usar script para garantir DJANGO_SETTINGS_MODULE correto
+    buildCommand: bash build.sh
 
     # Start
     startCommand: |
