@@ -1,10 +1,20 @@
 import os
 from pathlib import Path
+import dj_database_url
+from dotenv import load_dotenv
+
+# Carregar variáveis de ambiente do arquivo .env
+load_dotenv()
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-SECRET_KEY = 'sua-chave-secreta-aqui'
-DEBUG = True
-ALLOWED_HOSTS = ['*']
+
+# SECURITY WARNING: keep the secret key used in production secret!
+SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-CHANGE-THIS-IN-PRODUCTION')
+
+# SECURITY WARNING: don't run with debug turned on in production!
+DEBUG = os.getenv('DEBUG', 'True') == 'True'
+
+ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -21,6 +31,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',  # Servir arquivos estáticos em produção
     'django.contrib.sessions.middleware.SessionMiddleware',
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -48,21 +59,28 @@ TEMPLATES = [
     },
 ]
 
-# Banco de Dados MySQL
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'lista_presentes_db',
-        'USER': 'presente',
-        'PASSWORD': 'presente',
-        'HOST': 'localhost',
-        'PORT': '3306',
-        'OPTIONS': {
-            'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
-            'charset': 'utf8mb4',
+# Banco de Dados
+# Usa DATABASE_URL se disponível (Render.com, Heroku, etc.)
+# Caso contrário, usa SQLite para desenvolvimento local
+DATABASE_URL = os.getenv('DATABASE_URL')
+
+if DATABASE_URL:
+    # Produção: PostgreSQL via DATABASE_URL
+    DATABASES = {
+        'default': dj_database_url.config(
+            default=DATABASE_URL,
+            conn_max_age=600,
+            conn_health_checks=True,
+        )
+    }
+else:
+    # Desenvolvimento: SQLite
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
         }
     }
-}
 
 # Autenticação
 AUTH_USER_MODEL = 'presentes.Usuario'
@@ -78,22 +96,19 @@ USE_TZ = True
 
 # Arquivos estáticos
 STATIC_URL = '/static/'
-STATIC_ROOT = str(BASE_DIR / "staticfiles")
+STATIC_ROOT = BASE_DIR / 'staticfiles'
 
-#STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')  # Use os.path.join ao invés de /
+# Diretórios de arquivos estáticos adicionais
 STATICFILES_DIRS = [
-    os.path.join(BASE_DIR, 'static'),
-]
+    BASE_DIR / 'static',
+] if (BASE_DIR / 'static').exists() else []
 
+# WhiteNoise para servir arquivos estáticos em produção
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+
+# Arquivos de mídia (uploads)
 MEDIA_URL = '/media/'
-MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
-
-#STATIC_URL = '/static/'
-#STATIC_ROOT = BASE_DIR / 'staticfiles'
-#STATICFILES_DIRS = [BASE_DIR / 'static']
-
-#MEDIA_URL = '/media/'
-#MEDIA_ROOT = BASE_DIR / 'media'
+MEDIA_ROOT = BASE_DIR / 'media'
 
 # PWA Settings
 PWA_APP_NAME = 'Lista de Presentes'
@@ -116,9 +131,23 @@ PWA_APP_ICONS = [
 ]
 
 # APIs de IA
-ANTHROPIC_API_KEY = 'sua-chave-anthropic'
-OPENAI_API_KEY = 'sua-chave-openai'
-GEMINI_API_KEY = 'sua-chave-gemini'
+ANTHROPIC_API_KEY = os.getenv('ANTHROPIC_API_KEY', 'sua-chave-anthropic')
+OPENAI_API_KEY = os.getenv('OPENAI_API_KEY', 'sua-chave-openai')
+GEMINI_API_KEY = os.getenv('GEMINI_API_KEY', 'sua-chave-gemini')
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# Configurações de segurança para produção
+if not DEBUG:
+    SECURE_SSL_REDIRECT = True
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_BROWSER_XSS_FILTER = True
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+    X_FRAME_OPTIONS = 'DENY'
+
+    # HSTS (HTTP Strict Transport Security)
+    SECURE_HSTS_SECONDS = 31536000  # 1 ano
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
 
