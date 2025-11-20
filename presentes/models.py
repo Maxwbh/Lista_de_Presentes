@@ -37,6 +37,11 @@ class Presente(models.Model):
         verbose_name = 'Presente'
         verbose_name_plural = 'Presentes'
         ordering = ['-data_cadastro']
+        indexes = [
+            models.Index(fields=['usuario', 'status'], name='presente_usuario_status_idx'),
+            models.Index(fields=['status', '-data_cadastro'], name='presente_status_data_idx'),
+            models.Index(fields=['-data_cadastro'], name='presente_data_idx'),
+        ]
     
     def __str__(self):
         return f"{self.descricao[:50]} - {self.usuario}"
@@ -50,6 +55,10 @@ class Compra(models.Model):
     class Meta:
         verbose_name = 'Compra'
         verbose_name_plural = 'Compras'
+        indexes = [
+            models.Index(fields=['comprador', '-data_compra'], name='compra_comprador_data_idx'),
+            models.Index(fields=['-data_compra'], name='compra_data_idx'),
+        ]
     
     def __str__(self):
         return f"Compra de {self.presente.descricao[:30]} por {self.comprador}"
@@ -66,6 +75,10 @@ class SugestaoCompra(models.Model):
         verbose_name = 'Sugestão de Compra'
         verbose_name_plural = 'Sugestões de Compra'
         ordering = ['preco_sugerido']
+        indexes = [
+            models.Index(fields=['presente', 'preco_sugerido'], name='sugestao_presente_preco_idx'),
+            models.Index(fields=['-data_busca'], name='sugestao_data_idx'),
+        ]
     
     def __str__(self):
         return f"{self.local_compra} - R$ {self.preco_sugerido}"
@@ -81,6 +94,10 @@ class Notificacao(models.Model):
         verbose_name = 'Notificação'
         verbose_name_plural = 'Notificações'
         ordering = ['-data_notificacao']
+        indexes = [
+            models.Index(fields=['usuario', 'lida', '-data_notificacao'], name='notif_usuario_lida_data_idx'),
+            models.Index(fields=['lida', '-data_notificacao'], name='notif_lida_data_idx'),
+        ]
     
     def __str__(self):
         return f"Notificação para {self.usuario} - {self.mensagem[:30]}"

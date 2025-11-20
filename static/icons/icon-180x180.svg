@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 180">
+  <!-- Background -->
+  <rect width="180" height="180" fill="#667eea"/>
+
+  <!-- Gift box -->
+  <g transform="translate(90, 90)">
+    <!-- Box body -->
+    <rect x="-45" y="-22" width="90" height="45" fill="#ffffff" rx="8"/>
+
+    <!-- Box lid -->
+    <rect x="-45" y="-45" width="90" height="22" fill="#f5f5f5" rx="8"/>
+
+    <!-- Ribbon vertical -->
+    <rect x="-7" y="-45" width="15" height="90" fill="#764ba2" rx="4"/>
+
+    <!-- Ribbon horizontal -->
+    <rect x="-45" y="-7" width="90" height="15" fill="#764ba2" rx="4"/>
+
+    <!-- Bow -->
+    <circle cx="-15" cy="-45" r="11" fill="#f093fb"/>
+    <circle cx="15" cy="-45" r="11" fill="#f093fb"/>
+    <circle cx="0" cy="-45" r="9" fill="#f5576c"/>
+  </g>
+
+  <!-- Text (optional for larger icons) -->
+  
+</svg>

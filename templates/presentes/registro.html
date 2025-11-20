@@ -1,0 +1,363 @@
+{% extends 'base.html' %}
+
+{% block title %}Cadastro - Lista de Presentes{% endblock %}
+
+{% block extra_css %}
+<style>
+    body {
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        min-height: 100vh;
+        padding: 30px 0;
+    }
+
+    .register-container {
+        max-width: 600px;
+        margin: 0 auto;
+    }
+
+    .register-card {
+        background: white;
+        border-radius: 20px;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+        overflow: hidden;
+        animation: slideUp 0.5s ease-out;
+    }
+
+    @keyframes slideUp {
+        from {
+            opacity: 0;
+            transform: translateY(30px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .register-header {
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        color: white;
+        padding: 40px 30px;
+        text-align: center;
+    }
+
+    .register-header i {
+        font-size: 4rem;
+        margin-bottom: 15px;
+        animation: rotate 3s linear infinite;
+    }
+
+    @keyframes rotate {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+    }
+
+    .register-body {
+        padding: 40px 30px;
+    }
+
+    .form-control:focus {
+        border-color: #f5576c;
+        box-shadow: 0 0 0 0.2rem rgba(245, 87, 108, 0.25);
+    }
+
+    .btn-register {
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        border: none;
+        color: white;
+        padding: 12px;
+        font-weight: 600;
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .btn-register:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 20px rgba(245, 87, 108, 0.4);
+        color: white;
+    }
+
+    .login-link {
+        text-align: center;
+        margin-top: 20px;
+    }
+
+    .login-link a {
+        color: #f5576c;
+        text-decoration: none;
+        font-weight: 600;
+        transition: color 0.3s;
+    }
+
+    .login-link a:hover {
+        color: #f093fb;
+    }
+
+    .divider {
+        text-align: center;
+        margin: 25px 0;
+        position: relative;
+    }
+
+    .divider::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 50%;
+        width: 100%;
+        height: 1px;
+        background: #dee2e6;
+    }
+
+    .divider span {
+        background: white;
+        padding: 0 15px;
+        position: relative;
+        color: #6c757d;
+        font-size: 0.9rem;
+    }
+
+    .password-strength {
+        height: 5px;
+        background: #e9ecef;
+        border-radius: 5px;
+        margin-top: 10px;
+        overflow: hidden;
+    }
+
+    .password-strength-bar {
+        height: 100%;
+        width: 0;
+        transition: width 0.3s, background 0.3s;
+    }
+
+    .strength-weak { background: #dc3545; }
+    .strength-medium { background: #ffc107; }
+    .strength-strong { background: #28a745; }
+
+    .form-label {
+        font-weight: 600;
+        color: #495057;
+    }
+
+    .form-text {
+        font-size: 0.875rem;
+    }
+
+    .step-indicator {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 30px;
+    }
+
+    .step {
+        flex: 1;
+        text-align: center;
+        padding: 15px;
+        background: #f8f9fa;
+        margin: 0 5px;
+        border-radius: 10px;
+        transition: all 0.3s;
+    }
+
+    .step.active {
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        color: white;
+        transform: scale(1.05);
+    }
+
+    .step i {
+        font-size: 1.5rem;
+        display: block;
+        margin-bottom: 5px;
+    }
+
+    .step span {
+        font-size: 0.8rem;
+        font-weight: 600;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="register-container">
+    <div class="register-card">
+        <div class="register-header">
+            <i class="bi bi-person-plus-fill"></i>
+            <h2 class="mb-0">Criar Conta</h2>
+            <p class="mb-0 mt-2">Junte-se à sua família no amigo secreto!</p>
+        </div>
+
+        <div class="register-body">
+            <div class="step-indicator">
+                <div class="step active">
+                    <i class="bi bi-person-badge"></i>
+                    <span>Dados Pessoais</span>
+                </div>
+                <div class="step">
+                    <i class="bi bi-envelope-at"></i>
+                    <span>Email & Usuário</span>
+                </div>
+                <div class="step">
+                    <i class="bi bi-shield-lock"></i>
+                    <span>Segurança</span>
+                </div>
+            </div>
+
+            <form method="post" novalidate>
+                {% csrf_token %}
+
+                {% if form.non_field_errors %}
+                    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                        {{ form.non_field_errors }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                {% endif %}
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="{{ form.first_name.id_for_label }}" class="form-label">
+                            <i class="bi bi-person-fill text-danger"></i> Nome *
+                        </label>
+                        {{ form.first_name }}
+                        {% if form.first_name.errors %}
+                            <div class="text-danger small mt-1">{{ form.first_name.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="col-md-6 mb-3">
+                        <label for="{{ form.last_name.id_for_label }}" class="form-label">
+                            <i class="bi bi-person-fill text-danger"></i> Sobrenome *
+                        </label>
+                        {{ form.last_name }}
+                        {% if form.last_name.errors %}
+                            <div class="text-danger small mt-1">{{ form.last_name.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label for="{{ form.email.id_for_label }}" class="form-label">
+                        <i class="bi bi-envelope-fill text-danger"></i> Email *
+                    </label>
+                    {{ form.email }}
+                    <div class="form-text">
+                        <i class="bi bi-info-circle"></i> Será usado para fazer login
+                    </div>
+                    {% if form.email.errors %}
+                        <div class="text-danger small mt-1">{{ form.email.errors.0 }}</div>
+                    {% endif %}
+                </div>
+
+                <div class="mb-3">
+                    <label for="{{ form.username.id_for_label }}" class="form-label">
+                        <i class="bi bi-at text-danger"></i> Nome de Usuário *
+                    </label>
+                    {{ form.username }}
+                    <div class="form-text">
+                        <i class="bi bi-info-circle"></i> Escolha um nome único para identificação
+                    </div>
+                    {% if form.username.errors %}
+                        <div class="text-danger small mt-1">{{ form.username.errors.0 }}</div>
+                    {% endif %}
+                </div>
+
+                <div class="mb-3">
+                    <label for="{{ form.password1.id_for_label }}" class="form-label">
+                        <i class="bi bi-lock-fill text-danger"></i> Senha *
+                    </label>
+                    {{ form.password1 }}
+                    <div class="password-strength">
+                        <div class="password-strength-bar" id="strength-bar"></div>
+                    </div>
+                    <div class="form-text">
+                        <i class="bi bi-shield-check"></i> Mínimo 8 caracteres, com letras e números
+                    </div>
+                    {% if form.password1.errors %}
+                        <div class="text-danger small mt-1">{{ form.password1.errors.0 }}</div>
+                    {% endif %}
+                </div>
+
+                <div class="mb-4">
+                    <label for="{{ form.password2.id_for_label }}" class="form-label">
+                        <i class="bi bi-lock-fill text-danger"></i> Confirmar Senha *
+                    </label>
+                    {{ form.password2 }}
+                    {% if form.password2.errors %}
+                        <div class="text-danger small mt-1">{{ form.password2.errors.0 }}</div>
+                    {% endif %}
+                </div>
+
+                <button type="submit" class="btn btn-register w-100 btn-lg">
+                    <i class="bi bi-check-circle me-2"></i>
+                    Criar Minha Conta
+                </button>
+            </form>
+
+            <div class="divider">
+                <span>JÁ TEM CONTA?</span>
+            </div>
+
+            <div class="login-link">
+                <a href="{% url 'login' %}">
+                    <i class="bi bi-box-arrow-in-right"></i> Fazer Login
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="text-center mt-4">
+        <p class="text-white">
+            <i class="bi bi-heart-fill"></i>
+            Compartilhe alegria com presentes especiais
+        </p>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Indicador de força da senha
+    const password1 = document.getElementById('{{ form.password1.id_for_label }}');
+    const strengthBar = document.getElementById('strength-bar');
+
+    if (password1) {
+        password1.addEventListener('input', function() {
+            const value = this.value;
+            let strength = 0;
+
+            if (value.length >= 8) strength += 33;
+            if (value.match(/[a-z]/) && value.match(/[A-Z]/)) strength += 33;
+            if (value.match(/[0-9]/)) strength += 34;
+
+            strengthBar.style.width = strength + '%';
+
+            strengthBar.className = 'password-strength-bar';
+            if (strength <= 33) {
+                strengthBar.classList.add('strength-weak');
+            } else if (strength <= 66) {
+                strengthBar.classList.add('strength-medium');
+            } else {
+                strengthBar.classList.add('strength-strong');
+            }
+        });
+    }
+
+    // Animação dos steps
+    const steps = document.querySelectorAll('.step');
+    const inputs = document.querySelectorAll('.form-control');
+
+    inputs.forEach((input, index) => {
+        input.addEventListener('focus', function() {
+            steps.forEach(step => step.classList.remove('active'));
+
+            if (index <= 1) {
+                steps[0].classList.add('active');
+            } else if (index <= 3) {
+                steps[1].classList.add('active');
+            } else {
+                steps[2].classList.add('active');
+            }
+        });
+    });
+</script>
+{% endblock %}
