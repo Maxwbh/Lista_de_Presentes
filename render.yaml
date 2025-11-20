@@ -30,7 +30,7 @@ services:
         value: false
 
       - key: DJANGO_SETTINGS_MODULE
-        value: settings  # ou settings_prod se criar arquivo separado
+        value: lista_presentes.settings
 
       - key: SECRET_KEY
         generateValue: true
@@ -51,18 +51,6 @@ services:
 
       - key: GEMINI_API_KEY
         sync: false  # Definir manualmente no dashboard
-
-      - key: CREATE_SUPERUSER
-        value: true
-
-      - key: DJANGO_SUPERUSER_EMAIL
-        value: admin@example.com
-
-      - key: DJANGO_SUPERUSER_PASSWORD
-        generateValue: true
-
-      - key: DJANGO_SUPERUSER_USERNAME
-        value: admin
 
     # Health check
     healthCheckPath: /
