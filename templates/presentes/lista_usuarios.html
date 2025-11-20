@@ -1,0 +1,355 @@
+{% extends 'base.html' %}
+
+{% block title %}Ver Presentes - Lista de Presentes{% endblock %}
+
+{% block extra_css %}
+<style>
+    .page-header {
+        background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+        color: white;
+        padding: 40px 0;
+        margin: -20px -15px 30px;
+        border-radius: 0 0 30px 30px;
+    }
+
+    .intro-text {
+        text-align: center;
+        max-width: 700px;
+        margin: 0 auto 40px;
+        color: #6c757d;
+    }
+
+    .intro-text i {
+        font-size: 3rem;
+        color: #11998e;
+        margin-bottom: 15px;
+    }
+
+    .usuario-card {
+        background: white;
+        border-radius: 20px;
+        box-shadow: 0 5px 20px rgba(0,0,0,0.08);
+        padding: 30px;
+        transition: transform 0.3s, box-shadow 0.3s;
+        margin-bottom: 25px;
+        border: 2px solid transparent;
+        animation: fadeIn 0.5s ease-out;
+    }
+
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .usuario-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+        border-color: #11998e;
+    }
+
+    .usuario-header {
+        display: flex;
+        align-items: center;
+        gap: 20px;
+        margin-bottom: 20px;
+    }
+
+    .usuario-avatar {
+        width: 80px;
+        height: 80px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 2rem;
+        color: white;
+        font-weight: 700;
+        flex-shrink: 0;
+        box-shadow: 0 5px 15px rgba(17, 153, 142, 0.3);
+    }
+
+    .usuario-info {
+        flex: 1;
+    }
+
+    .usuario-nome {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: #2c3e50;
+        margin-bottom: 5px;
+    }
+
+    .usuario-email {
+        color: #6c757d;
+        font-size: 0.9rem;
+    }
+
+    .usuario-stats {
+        display: flex;
+        gap: 20px;
+        margin-bottom: 20px;
+        padding: 15px;
+        background: #f8f9fa;
+        border-radius: 10px;
+    }
+
+    .stat {
+        flex: 1;
+        text-align: center;
+    }
+
+    .stat-number {
+        font-size: 1.8rem;
+        font-weight: 700;
+        color: #11998e;
+    }
+
+    .stat-label {
+        font-size: 0.8rem;
+        color: #6c757d;
+        text-transform: uppercase;
+        font-weight: 600;
+    }
+
+    .btn-ver-presentes {
+        width: 100%;
+        background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+        border: none;
+        color: white;
+        padding: 12px;
+        border-radius: 50px;
+        font-weight: 600;
+        font-size: 1rem;
+        transition: all 0.3s;
+        box-shadow: 0 4px 15px rgba(17, 153, 142, 0.3);
+    }
+
+    .btn-ver-presentes:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(17, 153, 142, 0.5);
+        color: white;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 80px 20px;
+        background: white;
+        border-radius: 20px;
+        box-shadow: 0 5px 20px rgba(0,0,0,0.08);
+    }
+
+    .empty-state i {
+        font-size: 6rem;
+        color: #dee2e6;
+        margin-bottom: 20px;
+    }
+
+    .empty-state h3 {
+        color: #495057;
+        margin-bottom: 15px;
+    }
+
+    .empty-state p {
+        color: #6c757d;
+    }
+
+    .badge-presentes {
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        color: white;
+        padding: 5px 12px;
+        border-radius: 20px;
+        font-size: 0.8rem;
+        font-weight: 600;
+        margin-left: 10px;
+    }
+
+    .search-box {
+        max-width: 600px;
+        margin: 0 auto 40px;
+    }
+
+    .search-input {
+        border-radius: 50px;
+        padding: 15px 25px;
+        border: 2px solid #e9ecef;
+        font-size: 1rem;
+    }
+
+    .search-input:focus {
+        border-color: #11998e;
+        box-shadow: 0 0 0 0.2rem rgba(17, 153, 142, 0.25);
+    }
+
+    .usuario-meta {
+        display: flex;
+        gap: 15px;
+        flex-wrap: wrap;
+        align-items: center;
+    }
+
+    .meta-badge {
+        background: #e7f9f5;
+        color: #11998e;
+        padding: 5px 12px;
+        border-radius: 15px;
+        font-size: 0.8rem;
+        font-weight: 600;
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="container">
+        <h1 class="mb-0">
+            <i class="bi bi-people-fill me-2"></i>
+            Ver Presentes da Família
+        </h1>
+        <p class="mb-0 mt-2">Escolha quem você quer presentear</p>
+    </div>
+</div>
+
+<div class="container">
+    <div class="intro-text">
+        <i class="bi bi-heart-fill"></i>
+        <p>
+            Aqui você pode ver a lista de presentes de cada membro da família.
+            Clique em "Ver Presentes" para escolher o que deseja comprar!
+        </p>
+    </div>
+
+    {% if usuarios %}
+        <div class="search-box">
+            <input type="text" class="form-control search-input" id="search-input" placeholder="🔍 Buscar por nome..." onkeyup="filterUsuarios()">
+        </div>
+
+        <div id="usuarios-container">
+            {% for usuario in usuarios %}
+                <div class="usuario-card" data-nome="{{ usuario.first_name }} {{ usuario.last_name }}">
+                    <div class="usuario-header">
+                        <div class="usuario-avatar">
+                            {{ usuario.first_name.0|upper }}{{ usuario.last_name.0|upper }}
+                        </div>
+                        <div class="usuario-info">
+                            <h3 class="usuario-nome">
+                                {{ usuario.first_name }} {{ usuario.last_name }}
+                                {% if usuario.presentes.count > 0 %}
+                                    <span class="badge-presentes">
+                                        {{ usuario.presentes.count }}
+                                        {% if usuario.presentes.count == 1 %}presente{% else %}presentes{% endif %}
+                                    </span>
+                                {% endif %}
+                            </h3>
+                            <div class="usuario-email">
+                                <i class="bi bi-envelope"></i>
+                                {{ usuario.email }}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="usuario-stats">
+                        <div class="stat">
+                            <div class="stat-number">
+                                {{ usuario.presentes.all|length }}
+                            </div>
+                            <div class="stat-label">Total</div>
+                        </div>
+                        <div class="stat">
+                            <div class="stat-number">
+                                {{ usuario.presentes.filter|selectattr:"status", "equalto", "ATIVO"|list|length|default:0 }}
+                            </div>
+                            <div class="stat-label">Disponíveis</div>
+                        </div>
+                        <div class="stat">
+                            <div class="stat-number">
+                                {{ usuario.presentes.filter|selectattr:"status", "equalto", "COMPRADO"|list|length|default:0 }}
+                            </div>
+                            <div class="stat-label">Comprados</div>
+                        </div>
+                    </div>
+
+                    <div class="usuario-meta">
+                        {% if usuario.presentes.filter|selectattr:"status", "equalto", "ATIVO"|list|length > 0 %}
+                            <span class="meta-badge">
+                                <i class="bi bi-gift"></i>
+                                Tem presentes disponíveis
+                            </span>
+                        {% endif %}
+
+                        {% if usuario.data_cadastro %}
+                            <span class="meta-badge">
+                                <i class="bi bi-calendar-check"></i>
+                                Membro desde {{ usuario.data_cadastro|date:"m/Y" }}
+                            </span>
+                        {% endif %}
+                    </div>
+
+                    <a href="{% url 'presentes_usuario' usuario.id %}" class="btn btn-ver-presentes mt-3">
+                        <i class="bi bi-arrow-right-circle me-2"></i>
+                        Ver Presentes de {{ usuario.first_name }}
+                    </a>
+                </div>
+            {% endfor %}
+        </div>
+
+        <div id="no-results" class="empty-state" style="display: none;">
+            <i class="bi bi-search"></i>
+            <h3>Nenhum usuário encontrado</h3>
+            <p>Tente buscar por outro nome</p>
+        </div>
+
+    {% else %}
+        <div class="empty-state">
+            <i class="bi bi-person-x"></i>
+            <h3>Nenhum outro membro cadastrado ainda</h3>
+            <p>Convide seus familiares e amigos para participarem do amigo secreto!</p>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function filterUsuarios() {
+        const input = document.getElementById('search-input');
+        const filter = input.value.toLowerCase();
+        const container = document.getElementById('usuarios-container');
+        const cards = container.getElementsByClassName('usuario-card');
+        const noResults = document.getElementById('no-results');
+        let visibleCount = 0;
+
+        for (let i = 0; i < cards.length; i++) {
+            const nome = cards[i].getAttribute('data-nome').toLowerCase();
+
+            if (nome.includes(filter)) {
+                cards[i].style.display = '';
+                visibleCount++;
+            } else {
+                cards[i].style.display = 'none';
+            }
+        }
+
+        if (visibleCount === 0) {
+            noResults.style.display = 'block';
+        } else {
+            noResults.style.display = 'none';
+        }
+    }
+
+    // Animar cards conforme aparecem
+    const cards = document.querySelectorAll('.usuario-card');
+    cards.forEach((card, index) => {
+        card.style.animationDelay = `${index * 0.1}s`;
+    });
+</script>
+{% endblock %}
