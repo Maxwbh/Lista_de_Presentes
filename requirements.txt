@@ -1,9 +1,33 @@
+# Core Django
 Django==5.0
-mysqlclient==2.2.0
+
+# Database drivers
+mysqlclient==2.2.0  # MySQL/MariaDB
+psycopg2-binary==2.9.9  # PostgreSQL (usado no Render.com)
+
+# API & REST
 djangorestframework==3.14.0
-django-pwa==1.1.0
-anthropic==0.18.0
-openai==1.12.0
-requests==2.31.0
-Pillow==10.2.0
 django-cors-headers==4.3.1
+
+# PWA Support
+django-pwa==1.1.0
+
+# AI Integration
+anthropic==0.18.0  # Claude AI
+openai==1.12.0  # ChatGPT
+requests==2.31.0  # HTTP requests para APIs
+
+# Image processing
+Pillow==10.2.0
+
+# Production server
+gunicorn==21.2.0
+
+# Static files (produção)
+whitenoise==6.6.0
+
+# Environment variables
+python-dotenv==1.0.0
+
+# Database URL parser
+dj-database-url==2.1.0
