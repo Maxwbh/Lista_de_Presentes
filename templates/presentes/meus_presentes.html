@@ -1,0 +1,414 @@
+{% extends 'base.html' %}
+
+{% block title %}Meus Presentes - Lista de Presentes{% endblock %}
+
+{% block extra_css %}
+<style>
+    .page-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 40px 0;
+        margin: -20px -15px 30px;
+        border-radius: 0 0 30px 30px;
+    }
+
+    .presente-card {
+        border: none;
+        border-radius: 15px;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+        transition: transform 0.3s, box-shadow 0.3s;
+        margin-bottom: 25px;
+        overflow: hidden;
+        height: 100%;
+    }
+
+    .presente-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+    }
+
+    .presente-img {
+        height: 200px;
+        object-fit: cover;
+        width: 100%;
+    }
+
+    .presente-img-placeholder {
+        height: 200px;
+        background: linear-gradient(135deg, #667eea20 0%, #764ba220 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 4rem;
+        color: #667eea;
+    }
+
+    .badge-status {
+        position: absolute;
+        top: 15px;
+        right: 15px;
+        padding: 8px 15px;
+        border-radius: 20px;
+        font-weight: 600;
+        font-size: 0.8rem;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+    }
+
+    .badge-ativo {
+        background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+        color: white;
+    }
+
+    .badge-comprado {
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        color: white;
+    }
+
+    .presente-body {
+        padding: 20px;
+    }
+
+    .presente-descricao {
+        min-height: 60px;
+        margin-bottom: 15px;
+        color: #495057;
+    }
+
+    .presente-preco {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: #28a745;
+        margin-bottom: 15px;
+    }
+
+    .presente-actions {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+
+    .btn-action {
+        flex: 1;
+        min-width: 100px;
+        padding: 8px 12px;
+        border: none;
+        border-radius: 8px;
+        font-weight: 600;
+        font-size: 0.85rem;
+        transition: all 0.3s;
+    }
+
+    .btn-ia {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+    }
+
+    .btn-ia:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        color: white;
+    }
+
+    .btn-edit {
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        color: white;
+    }
+
+    .btn-edit:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 15px rgba(245, 87, 108, 0.4);
+        color: white;
+    }
+
+    .btn-delete {
+        background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
+        color: white;
+    }
+
+    .btn-delete:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 15px rgba(238, 90, 111, 0.4);
+        color: white;
+    }
+
+    .btn-add-presente {
+        background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+        border: none;
+        color: white;
+        padding: 15px 30px;
+        border-radius: 50px;
+        font-weight: 600;
+        font-size: 1.1rem;
+        box-shadow: 0 5px 20px rgba(17, 153, 142, 0.3);
+        transition: all 0.3s;
+    }
+
+    .btn-add-presente:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 8px 30px rgba(17, 153, 142, 0.5);
+        color: white;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 60px 20px;
+    }
+
+    .empty-state i {
+        font-size: 6rem;
+        color: #dee2e6;
+        margin-bottom: 20px;
+    }
+
+    .presente-url {
+        font-size: 0.85rem;
+        color: #6c757d;
+        text-decoration: none;
+        display: inline-block;
+        margin-bottom: 10px;
+    }
+
+    .presente-url:hover {
+        color: #667eea;
+    }
+
+    .presente-data {
+        font-size: 0.75rem;
+        color: #adb5bd;
+        margin-top: 10px;
+    }
+
+    .dropdown-ia {
+        position: relative;
+    }
+
+    .ia-options {
+        display: none;
+        position: absolute;
+        bottom: 100%;
+        left: 0;
+        right: 0;
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 -5px 20px rgba(0,0,0,0.15);
+        margin-bottom: 5px;
+        z-index: 10;
+    }
+
+    .ia-options.show {
+        display: block;
+        animation: slideDown 0.3s ease-out;
+    }
+
+    @keyframes slideDown {
+        from {
+            opacity: 0;
+            transform: translateY(10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .ia-option {
+        padding: 10px;
+        border-bottom: 1px solid #f0f0f0;
+        cursor: pointer;
+        transition: background 0.2s;
+        font-size: 0.85rem;
+    }
+
+    .ia-option:last-child {
+        border-bottom: none;
+    }
+
+    .ia-option:hover {
+        background: #f8f9fa;
+    }
+
+    .stats-row {
+        background: white;
+        border-radius: 15px;
+        padding: 20px;
+        margin-bottom: 30px;
+        box-shadow: 0 3px 10px rgba(0,0,0,0.05);
+    }
+
+    .stat-item {
+        text-align: center;
+    }
+
+    .stat-number {
+        font-size: 2rem;
+        font-weight: 700;
+        color: #667eea;
+    }
+
+    .stat-label {
+        color: #6c757d;
+        font-size: 0.9rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="container">
+        <h1 class="mb-0">
+            <i class="bi bi-gift-fill me-2"></i>
+            Meus Presentes
+        </h1>
+        <p class="mb-0 mt-2">Gerencie sua lista de desejos</p>
+    </div>
+</div>
+
+<div class="container">
+    <div class="stats-row">
+        <div class="row">
+            <div class="col-md-4 stat-item">
+                <div class="stat-number">{{ presentes|length }}</div>
+                <div class="stat-label">Total de Presentes</div>
+            </div>
+            <div class="col-md-4 stat-item">
+                <div class="stat-number">{{ presentes|selectattr:"status", "equalto", "ATIVO"|list|length }}</div>
+                <div class="stat-label">Ativos</div>
+            </div>
+            <div class="col-md-4 stat-item">
+                <div class="stat-number">{{ presentes|selectattr:"status", "equalto", "COMPRADO"|list|length }}</div>
+                <div class="stat-label">Comprados</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="text-center mb-4">
+        <a href="{% url 'adicionar_presente' %}" class="btn btn-add-presente">
+            <i class="bi bi-plus-circle me-2"></i>
+            Adicionar Novo Presente
+        </a>
+    </div>
+
+    {% if presentes %}
+        <div class="row">
+            {% for presente in presentes %}
+                <div class="col-md-6 col-lg-4">
+                    <div class="card presente-card">
+                        <div class="position-relative">
+                            {% if presente.imagem %}
+                                <img src="{{ presente.imagem.url }}" alt="{{ presente.descricao }}" class="presente-img">
+                            {% else %}
+                                <div class="presente-img-placeholder">
+                                    <i class="bi bi-gift"></i>
+                                </div>
+                            {% endif %}
+                            <span class="badge badge-status {% if presente.status == 'ATIVO' %}badge-ativo{% else %}badge-comprado{% endif %}">
+                                {% if presente.status == 'ATIVO' %}
+                                    <i class="bi bi-check-circle"></i> Ativo
+                                {% else %}
+                                    <i class="bi bi-bag-check"></i> Comprado
+                                {% endif %}
+                            </span>
+                        </div>
+
+                        <div class="presente-body">
+                            <h5 class="presente-descricao">{{ presente.descricao|truncatewords:15 }}</h5>
+
+                            {% if presente.preco %}
+                                <div class="presente-preco">
+                                    R$ {{ presente.preco }}
+                                </div>
+                            {% endif %}
+
+                            {% if presente.url %}
+                                <a href="{{ presente.url }}" target="_blank" class="presente-url">
+                                    <i class="bi bi-link-45deg"></i> Ver produto
+                                </a>
+                            {% endif %}
+
+                            <div class="presente-data">
+                                <i class="bi bi-calendar3"></i>
+                                Adicionado em {{ presente.data_cadastro|date:"d/m/Y" }}
+                            </div>
+
+                            {% if presente.status == 'ATIVO' %}
+                                <div class="presente-actions mt-3">
+                                    <div class="dropdown-ia" style="flex: 1;">
+                                        <button class="btn btn-action btn-ia w-100" onclick="toggleIAOptions({{ presente.id }})">
+                                            <i class="bi bi-robot"></i> IA
+                                        </button>
+                                        <div class="ia-options" id="ia-options-{{ presente.id }}">
+                                            <a href="{% url 'buscar_sugestoes_ia' presente.id %}?ia=claude" class="ia-option">
+                                                <i class="bi bi-stars"></i> Buscar com Claude
+                                            </a>
+                                            <a href="{% url 'buscar_sugestoes_ia' presente.id %}?ia=chatgpt" class="ia-option">
+                                                <i class="bi bi-chat-dots"></i> Buscar com ChatGPT
+                                            </a>
+                                            <a href="{% url 'buscar_sugestoes_ia' presente.id %}?ia=gemini" class="ia-option">
+                                                <i class="bi bi-gem"></i> Buscar com Gemini
+                                            </a>
+                                            <a href="{% url 'ver_sugestoes' presente.id %}" class="ia-option">
+                                                <i class="bi bi-eye"></i> Ver Sugestões
+                                            </a>
+                                        </div>
+                                    </div>
+
+                                    <a href="{% url 'editar_presente' presente.id %}" class="btn btn-action btn-edit">
+                                        <i class="bi bi-pencil"></i> Editar
+                                    </a>
+
+                                    <a href="{% url 'deletar_presente' presente.id %}" class="btn btn-action btn-delete">
+                                        <i class="bi bi-trash"></i>
+                                    </a>
+                                </div>
+                            {% else %}
+                                <div class="alert alert-info mt-3 mb-0" role="alert">
+                                    <i class="bi bi-info-circle"></i>
+                                    Este presente já foi comprado!
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="empty-state">
+            <i class="bi bi-gift"></i>
+            <h3>Nenhum presente cadastrado ainda</h3>
+            <p class="text-muted">Adicione seus primeiros presentes para começar!</p>
+            <a href="{% url 'adicionar_presente' %}" class="btn btn-add-presente mt-3">
+                <i class="bi bi-plus-circle me-2"></i>
+                Adicionar Meu Primeiro Presente
+            </a>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function toggleIAOptions(presenteId) {
+        const options = document.getElementById('ia-options-' + presenteId);
+        const allOptions = document.querySelectorAll('.ia-options');
+
+        // Fechar todos os outros dropdowns
+        allOptions.forEach(opt => {
+            if (opt !== options) {
+                opt.classList.remove('show');
+            }
+        });
+
+        // Toggle o dropdown atual
+        options.classList.toggle('show');
+    }
+
+    // Fechar dropdowns ao clicar fora
+    document.addEventListener('click', function(event) {
+        if (!event.target.closest('.dropdown-ia')) {
+            document.querySelectorAll('.ia-options').forEach(opt => {
+                opt.classList.remove('show');
+            });
+        }
+    });
+</script>
+{% endblock %}
