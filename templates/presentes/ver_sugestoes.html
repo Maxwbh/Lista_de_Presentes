@@ -1,0 +1,558 @@
+{% extends 'base.html' %}
+
+{% block title %}Sugestões de Compra - Lista de Presentes{% endblock %}
+
+{% block extra_css %}
+<style>
+    .page-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 40px 0;
+        margin: -20px -15px 30px;
+        border-radius: 0 0 30px 30px;
+    }
+
+    .presente-info-card {
+        background: white;
+        border-radius: 20px;
+        box-shadow: 0 5px 20px rgba(0,0,0,0.08);
+        padding: 30px;
+        margin-bottom: 30px;
+        animation: fadeIn 0.5s ease-out;
+    }
+
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .presente-details {
+        display: flex;
+        align-items: start;
+        gap: 25px;
+    }
+
+    .presente-img-container {
+        flex-shrink: 0;
+    }
+
+    .presente-thumbnail {
+        width: 150px;
+        height: 150px;
+        object-fit: cover;
+        border-radius: 15px;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    }
+
+    .presente-img-placeholder {
+        width: 150px;
+        height: 150px;
+        background: linear-gradient(135deg, #667eea20 0%, #764ba220 100%);
+        border-radius: 15px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 3rem;
+        color: #667eea;
+    }
+
+    .presente-content {
+        flex: 1;
+    }
+
+    .presente-title {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: #2c3e50;
+        margin-bottom: 15px;
+    }
+
+    .presente-meta {
+        display: flex;
+        gap: 20px;
+        flex-wrap: wrap;
+        margin-bottom: 15px;
+    }
+
+    .meta-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: #6c757d;
+        font-size: 0.95rem;
+    }
+
+    .meta-item i {
+        color: #667eea;
+    }
+
+    .meta-item .badge {
+        font-size: 0.85rem;
+    }
+
+    .search-actions {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        margin-top: 20px;
+    }
+
+    .btn-search-ia {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border: none;
+        color: white;
+        padding: 10px 25px;
+        border-radius: 25px;
+        font-weight: 600;
+        transition: all 0.3s;
+        font-size: 0.9rem;
+    }
+
+    .btn-search-ia:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        color: white;
+    }
+
+    .sugestoes-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 25px;
+    }
+
+    .sugestoes-title {
+        font-size: 1.8rem;
+        font-weight: 700;
+        color: #2c3e50;
+    }
+
+    .sugestoes-count {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 8px 20px;
+        border-radius: 25px;
+        font-weight: 600;
+        font-size: 0.9rem;
+    }
+
+    .sugestao-card {
+        background: white;
+        border-radius: 15px;
+        box-shadow: 0 3px 15px rgba(0,0,0,0.06);
+        padding: 25px;
+        margin-bottom: 20px;
+        transition: transform 0.3s, box-shadow 0.3s;
+        border-left: 5px solid transparent;
+        animation: slideIn 0.5s ease-out;
+    }
+
+    @keyframes slideIn {
+        from {
+            opacity: 0;
+            transform: translateX(-30px);
+        }
+        to {
+            opacity: 1;
+            transform: translateX(0);
+        }
+    }
+
+    .sugestao-card:hover {
+        transform: translateX(5px);
+        box-shadow: 0 5px 25px rgba(0,0,0,0.12);
+    }
+
+    .sugestao-card.melhor-preco {
+        border-left-color: #28a745;
+        background: linear-gradient(to right, #28a74510 0%, white 100%);
+    }
+
+    .sugestao-card.melhor-preco .melhor-badge {
+        background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+        color: white;
+        padding: 5px 15px;
+        border-radius: 20px;
+        font-size: 0.8rem;
+        font-weight: 600;
+        display: inline-block;
+        margin-bottom: 15px;
+    }
+
+    .sugestao-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: start;
+        margin-bottom: 15px;
+    }
+
+    .loja-info {
+        flex: 1;
+    }
+
+    .loja-nome {
+        font-size: 1.3rem;
+        font-weight: 700;
+        color: #2c3e50;
+        margin-bottom: 5px;
+    }
+
+    .preco-container {
+        text-align: right;
+    }
+
+    .preco-valor {
+        font-size: 2rem;
+        font-weight: 800;
+        color: #28a745;
+        line-height: 1;
+    }
+
+    .preco-label {
+        font-size: 0.75rem;
+        color: #6c757d;
+        text-transform: uppercase;
+    }
+
+    .economia-badge {
+        background: #fff3cd;
+        color: #856404;
+        padding: 5px 12px;
+        border-radius: 15px;
+        font-size: 0.8rem;
+        font-weight: 600;
+        margin-top: 5px;
+        display: inline-block;
+    }
+
+    .sugestao-footer {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-top: 15px;
+        padding-top: 15px;
+        border-top: 1px solid #f0f0f0;
+    }
+
+    .data-busca {
+        font-size: 0.85rem;
+        color: #adb5bd;
+    }
+
+    .btn-visitar {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border: none;
+        color: white;
+        padding: 10px 25px;
+        border-radius: 25px;
+        font-weight: 600;
+        text-decoration: none;
+        transition: all 0.3s;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .btn-visitar:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        color: white;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 80px 20px;
+        background: white;
+        border-radius: 20px;
+        box-shadow: 0 5px 20px rgba(0,0,0,0.08);
+    }
+
+    .empty-state i {
+        font-size: 6rem;
+        color: #dee2e6;
+        margin-bottom: 20px;
+    }
+
+    .empty-state h3 {
+        color: #495057;
+        margin-bottom: 15px;
+    }
+
+    .empty-state p {
+        color: #6c757d;
+        margin-bottom: 30px;
+    }
+
+    .comparacao-prices {
+        background: #f8f9fa;
+        border-radius: 15px;
+        padding: 20px;
+        margin-top: 30px;
+    }
+
+    .comparacao-title {
+        font-weight: 700;
+        color: #495057;
+        margin-bottom: 15px;
+        text-align: center;
+    }
+
+    .price-stats {
+        display: flex;
+        justify-content: space-around;
+        gap: 15px;
+        flex-wrap: wrap;
+    }
+
+    .price-stat {
+        text-align: center;
+    }
+
+    .price-stat-value {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: #667eea;
+    }
+
+    .price-stat-label {
+        font-size: 0.85rem;
+        color: #6c757d;
+    }
+
+    .ai-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        background: linear-gradient(135deg, #667eea20 0%, #764ba220 100%);
+        color: #667eea;
+        padding: 5px 15px;
+        border-radius: 20px;
+        font-size: 0.85rem;
+        font-weight: 600;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="container">
+        <h1 class="mb-0">
+            <i class="bi bi-robot me-2"></i>
+            Sugestões de Compra com IA
+        </h1>
+        <p class="mb-0 mt-2">Compare preços e encontre as melhores ofertas</p>
+    </div>
+</div>
+
+<div class="container">
+    <!-- Informações do Presente -->
+    <div class="presente-info-card">
+        <div class="presente-details">
+            <div class="presente-img-container">
+                {% if presente.imagem %}
+                    <img src="{{ presente.imagem.url }}" alt="{{ presente.descricao }}" class="presente-thumbnail">
+                {% else %}
+                    <div class="presente-img-placeholder">
+                        <i class="bi bi-gift"></i>
+                    </div>
+                {% endif %}
+            </div>
+
+            <div class="presente-content">
+                <h2 class="presente-title">{{ presente.descricao }}</h2>
+
+                <div class="presente-meta">
+                    {% if presente.preco %}
+                        <div class="meta-item">
+                            <i class="bi bi-cash-coin"></i>
+                            <strong>Preço estimado:</strong> R$ {{ presente.preco }}
+                        </div>
+                    {% endif %}
+
+                    <div class="meta-item">
+                        <i class="bi bi-flag-fill"></i>
+                        <span class="badge {% if presente.status == 'ATIVO' %}bg-success{% else %}bg-secondary{% endif %}">
+                            {{ presente.get_status_display }}
+                        </span>
+                    </div>
+
+                    {% if presente.url %}
+                        <div class="meta-item">
+                            <i class="bi bi-link-45deg"></i>
+                            <a href="{{ presente.url }}" target="_blank" class="text-primary">Ver link original</a>
+                        </div>
+                    {% endif %}
+                </div>
+
+                <div class="search-actions">
+                    <a href="{% url 'buscar_sugestoes_ia' presente.id %}?ia=claude" class="btn btn-search-ia">
+                        <i class="bi bi-stars"></i> Buscar com Claude
+                    </a>
+                    <a href="{% url 'buscar_sugestoes_ia' presente.id %}?ia=chatgpt" class="btn btn-search-ia">
+                        <i class="bi bi-chat-dots"></i> Buscar com ChatGPT
+                    </a>
+                    <a href="{% url 'buscar_sugestoes_ia' presente.id %}?ia=gemini" class="btn btn-search-ia">
+                        <i class="bi bi-gem"></i> Buscar com Gemini
+                    </a>
+                    <a href="{% url 'meus_presentes' %}" class="btn btn-search-ia" style="background: linear-gradient(135deg, #6c757d 0%, #495057 100%);">
+                        <i class="bi bi-arrow-left"></i> Voltar
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sugestões -->
+    {% if sugestoes %}
+        <div class="sugestoes-header">
+            <h2 class="sugestoes-title">
+                <i class="bi bi-shop"></i>
+                Lojas Encontradas
+            </h2>
+            <span class="sugestoes-count">
+                {{ sugestoes|length }} {% if sugestoes|length == 1 %}opção{% else %}opções{% endif %}
+            </span>
+        </div>
+
+        {% for sugestao in sugestoes %}
+            <div class="sugestao-card {% if forloop.first %}melhor-preco{% endif %}">
+                {% if forloop.first %}
+                    <span class="melhor-badge">
+                        <i class="bi bi-trophy-fill"></i> Melhor Preço
+                    </span>
+                {% endif %}
+
+                <div class="sugestao-header">
+                    <div class="loja-info">
+                        <h3 class="loja-nome">
+                            <i class="bi bi-shop-window"></i>
+                            {{ sugestao.local_compra }}
+                        </h3>
+                        <span class="ai-badge">
+                            <i class="bi bi-robot"></i>
+                            Encontrado por IA
+                        </span>
+                    </div>
+
+                    <div class="preco-container">
+                        {% if sugestao.preco_sugerido %}
+                            <div class="preco-label">Preço</div>
+                            <div class="preco-valor">R$ {{ sugestao.preco_sugerido }}</div>
+
+                            {% if presente.preco and sugestao.preco_sugerido < presente.preco %}
+                                {% with economia=presente.preco|add:"-"|add:sugestao.preco_sugerido %}
+                                    <span class="economia-badge">
+                                        <i class="bi bi-piggy-bank"></i>
+                                        Economize R$ {{ economia|floatformat:2 }}
+                                    </span>
+                                {% endwith %}
+                            {% endif %}
+                        {% else %}
+                            <div class="preco-label">Preço</div>
+                            <div class="preco-valor" style="font-size: 1.2rem; color: #6c757d;">
+                                Consultar
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="sugestao-footer">
+                    <span class="data-busca">
+                        <i class="bi bi-clock"></i>
+                        Atualizado em {{ sugestao.data_busca|date:"d/m/Y às H:i" }}
+                    </span>
+
+                    <a href="{{ sugestao.url_compra }}" target="_blank" class="btn-visitar" rel="noopener noreferrer">
+                        Visitar Loja
+                        <i class="bi bi-box-arrow-up-right"></i>
+                    </a>
+                </div>
+            </div>
+        {% endfor %}
+
+        <!-- Estatísticas de Comparação -->
+        {% if sugestoes|length > 1 %}
+            <div class="comparacao-prices">
+                <h4 class="comparacao-title">
+                    <i class="bi bi-bar-chart-fill"></i>
+                    Análise de Preços
+                </h4>
+                <div class="price-stats">
+                    <div class="price-stat">
+                        <div class="price-stat-value">
+                            R$ {{ sugestoes|first|attr:"preco_sugerido"|default:"--" }}
+                        </div>
+                        <div class="price-stat-label">Menor Preço</div>
+                    </div>
+                    <div class="price-stat">
+                        <div class="price-stat-value">
+                            R$ {{ sugestoes|last|attr:"preco_sugerido"|default:"--" }}
+                        </div>
+                        <div class="price-stat-label">Maior Preço</div>
+                    </div>
+                    <div class="price-stat">
+                        <div class="price-stat-value">{{ sugestoes|length }}</div>
+                        <div class="price-stat-label">Lojas</div>
+                    </div>
+                </div>
+            </div>
+        {% endif %}
+
+    {% else %}
+        <div class="empty-state">
+            <i class="bi bi-search"></i>
+            <h3>Nenhuma sugestão encontrada ainda</h3>
+            <p>Use os botões acima para buscar opções de compra com inteligência artificial</p>
+
+            <div class="d-flex gap-3 justify-content-center flex-wrap">
+                <a href="{% url 'buscar_sugestoes_ia' presente.id %}?ia=claude" class="btn btn-search-ia">
+                    <i class="bi bi-stars"></i> Buscar com Claude
+                </a>
+                <a href="{% url 'buscar_sugestoes_ia' presente.id %}?ia=chatgpt" class="btn btn-search-ia">
+                    <i class="bi bi-chat-dots"></i> Buscar com ChatGPT
+                </a>
+                <a href="{% url 'buscar_sugestoes_ia' presente.id %}?ia=gemini" class="btn btn-search-ia">
+                    <i class="bi bi-gem"></i> Buscar com Gemini
+                </a>
+            </div>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Animar cards conforme aparecem na tela
+    const cards = document.querySelectorAll('.sugestao-card');
+
+    cards.forEach((card, index) => {
+        card.style.animationDelay = `${index * 0.1}s`;
+    });
+
+    // Adicionar indicador de carregamento ao clicar em buscar
+    document.querySelectorAll('.btn-search-ia').forEach(btn => {
+        if (btn.href.includes('buscar_sugestoes_ia')) {
+            btn.addEventListener('click', function(e) {
+                const icon = this.querySelector('i');
+                const originalIcon = icon.className;
+
+                icon.className = 'bi bi-hourglass-split';
+                this.style.opacity = '0.7';
+                this.style.pointerEvents = 'none';
+
+                setTimeout(() => {
+                    icon.className = originalIcon;
+                    this.style.opacity = '1';
+                    this.style.pointerEvents = 'auto';
+                }, 5000);
+            });
+        }
+    });
+</script>
+{% endblock %}
