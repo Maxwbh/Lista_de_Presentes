@@ -3,7 +3,9 @@ from django.contrib.auth import login, logout, authenticate
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.db.models import Count, Q
+from django.db import transaction
 from django.http import JsonResponse
+from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from .models import Usuario, Presente, Compra, Notificacao, SugestaoCompra
 from .forms import UsuarioRegistroForm, PresenteForm, LoginForm
 from .services import IAService
@@ -71,7 +73,20 @@ def dashboard_view(request):
 
 @login_required
 def meus_presentes_view(request):
-    presentes = Presente.objects.filter(usuario=request.user)
+    # Otimizar query com select_related para evitar N+1
+    presentes_list = Presente.objects.filter(usuario=request.user).select_related('usuario').prefetch_related('sugestoes')
+
+    # Paginação (20 presentes por página)
+    paginator = Paginator(presentes_list, 20)
+    page = request.GET.get('page', 1)
+
+    try:
+        presentes = paginator.page(page)
+    except PageNotAnInteger:
+        presentes = paginator.page(1)
+    except EmptyPage:
+        presentes = paginator.page(paginator.num_pages)
+
     return render(request, 'presentes/meus_presentes.html', {'presentes': presentes})
 
 @login_required
@@ -135,8 +150,12 @@ def buscar_sugestoes_ia_view(request, pk):
 
 @login_required
 def ver_sugestoes_view(request, pk):
-    presente = get_object_or_404(Presente, pk=pk, usuario=request.user)
-    sugestoes = SugestaoCompra.objects.filter(presente=presente)
+    # Otimizar query com select_related
+    presente = get_object_or_404(Presente.objects.select_related('usuario'), pk=pk, usuario=request.user)
+
+    # Sugestões já vem ordenadas por preço (definido no model)
+    sugestoes = SugestaoCompra.objects.filter(presente=presente).select_related('presente')
+
     return render(request, 'presentes/ver_sugestoes.html', {
         'presente': presente,
         'sugestoes': sugestoes
@@ -144,58 +163,104 @@ def ver_sugestoes_view(request, pk):
 
 @login_required
 def lista_usuarios_view(request):
-    usuarios = Usuario.objects.filter(ativo=True).exclude(id=request.user.id)
+    # Otimizar query com prefetch_related para pegar presentes
+    usuarios_list = Usuario.objects.filter(ativo=True).exclude(id=request.user.id).prefetch_related('presentes')
+
+    # Paginação (20 usuários por página)
+    paginator = Paginator(usuarios_list, 20)
+    page = request.GET.get('page', 1)
+
+    try:
+        usuarios = paginator.page(page)
+    except PageNotAnInteger:
+        usuarios = paginator.page(1)
+    except EmptyPage:
+        usuarios = paginator.page(paginator.num_pages)
+
     return render(request, 'presentes/lista_usuarios.html', {'usuarios': usuarios})
 
 @login_required
 def presentes_usuario_view(request, user_id):
     usuario = get_object_or_404(Usuario, pk=user_id)
-    presentes = Presente.objects.filter(usuario=usuario)
+
+    # Otimizar query com select_related e prefetch_related
+    presentes_list = Presente.objects.filter(usuario=usuario).select_related('usuario').prefetch_related('sugestoes', 'compra')
+
+    # Paginação (20 presentes por página)
+    paginator = Paginator(presentes_list, 20)
+    page = request.GET.get('page', 1)
+
+    try:
+        presentes = paginator.page(page)
+    except PageNotAnInteger:
+        presentes = paginator.page(1)
+    except EmptyPage:
+        presentes = paginator.page(paginator.num_pages)
+
     return render(request, 'presentes/presentes_usuario.html', {
         'usuario_presente': usuario,
         'presentes': presentes
     })
 
 @login_required
+@transaction.atomic
 def marcar_comprado_view(request, pk):
-    presente = get_object_or_404(Presente, pk=pk)
-    
+    # Usar select_for_update para criar um lock no banco de dados
+    # Isso previne race condition quando dois usuários tentam comprar o mesmo presente
+    try:
+        presente = Presente.objects.select_for_update().get(pk=pk)
+    except Presente.DoesNotExist:
+        messages.error(request, 'Presente não encontrado!')
+        return redirect('lista_usuarios')
+
     # Não pode comprar seu próprio presente
     if presente.usuario == request.user:
         messages.error(request, 'Você não pode marcar seu próprio presente como comprado!')
         return redirect('presentes_usuario', user_id=presente.usuario.id)
-    
+
     # Verificar se já foi comprado
     if presente.status == 'COMPRADO':
-        messages.warning(request, 'Este presente já foi comprado!')
+        messages.warning(request, 'Este presente já foi comprado por outra pessoa!')
         return redirect('presentes_usuario', user_id=presente.usuario.id)
-    
+
     # Marcar como comprado
     presente.status = 'COMPRADO'
     presente.save()
-    
+
     # Registrar compra
     Compra.objects.create(
         presente=presente,
         comprador=request.user
     )
-    
+
     # Criar notificação
     Notificacao.objects.create(
         usuario=presente.usuario,
         mensagem=f'🎁 Um dos seus presentes foi comprado: {presente.descricao[:50]}!'
     )
-    
+
     messages.success(request, 'Presente marcado como comprado!')
     return redirect('presentes_usuario', user_id=presente.usuario.id)
 
 @login_required
 def notificacoes_view(request):
-    notificacoes = Notificacao.objects.filter(usuario=request.user)
-    
+    # Otimizar query com select_related
+    notificacoes_list = Notificacao.objects.filter(usuario=request.user).select_related('usuario')
+
     # Marcar todas como lidas
-    notificacoes.filter(lida=False).update(lida=True)
-    
+    notificacoes_list.filter(lida=False).update(lida=True)
+
+    # Paginação (30 notificações por página)
+    paginator = Paginator(notificacoes_list, 30)
+    page = request.GET.get('page', 1)
+
+    try:
+        notificacoes = paginator.page(page)
+    except PageNotAnInteger:
+        notificacoes = paginator.page(1)
+    except EmptyPage:
+        notificacoes = paginator.page(paginator.num_pages)
+
     return render(request, 'presentes/notificacoes.html', {'notificacoes': notificacoes})
 
 @login_required
