@@ -28,8 +28,8 @@ python manage.py collectstatic --noinput
 echo "🗄️  Running migrations..."
 python manage.py migrate --noinput
 
-# Create admin user automatically
-echo "👤 Creating admin user..."
-python create_admin.py || echo "⚠️  Admin user may already exist"
+# Create/fix admin user automatically
+echo "👤 Creating/fixing admin user..."
+python manage.py fix_admin || echo "⚠️  Could not fix admin user"
 
 echo "✅ Build completed successfully!"
