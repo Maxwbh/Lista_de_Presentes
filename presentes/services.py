@@ -157,13 +157,13 @@ class IAService:
             soup = BeautifulSoup(response.content, 'html.parser')
             produtos = []
 
-            # Tentar múltiplos seletores
+            # Buscapé usa a mesma estrutura que Zoom (data-testid)
+            # Primeiro tentar encontrar pelo link <a data-testid="product-card::card">
             cards = (
+                soup.find_all('a', attrs={'data-testid': 'product-card::card'}) or
+                soup.find_all('div', {'data-testid': 'product-card'}) or
                 soup.find_all('div', class_=lambda x: x and 'ProductCard' in x if x else False) or
-                soup.find_all('div', class_=lambda x: x and 'SearchCard' in x if x else False) or
-                soup.find_all('article', class_=lambda x: x and 'product' in x.lower() if x else False) or
-                soup.find_all('div', {'data-component': lambda x: x and 'product' in x.lower() if x else False}) or
-                soup.find_all('div', class_=lambda x: x and 'card' in x.lower() if x else False)
+                soup.find_all('article', class_=lambda x: x and 'product' in x.lower() if x else False)
             )
 
             logger.info(f"Buscapé: Encontrados {len(cards)} cards no HTML")
@@ -177,21 +177,24 @@ class IAService:
                 try:
                     logger.debug(f"Processando card {i+1} do Buscapé")
 
-                    # Extrair nome da loja (múltiplos seletores)
+                    # Extrair nome da loja
+                    # Real HTML: <p class="BestOfferMerchant_ProductCard_BestOfferMerchant__KI8oj">Menor preço via Amazon</p>
                     loja_elem = (
+                        card.find(attrs={'data-testid': 'product-card::store-name'}) or
+                        card.find(class_=lambda x: x and 'BestOfferMerchant' in x if x else False) or
                         card.find(class_=lambda x: x and 'store' in x.lower() if x else False) or
-                        card.find(class_=lambda x: x and 'seller' in x.lower() if x else False) or
-                        card.find(class_=lambda x: x and 'merchant' in x.lower() if x else False) or
-                        card.find(class_=lambda x: x and 'shop' in x.lower() if x else False)
+                        card.find(class_=lambda x: x and 'merchant' in x.lower() if x else False)
                     )
 
                     if loja_elem:
                         loja_text = loja_elem.text.strip()
-                        # Extrair nome da loja de textos como "Compre em: Loja X"
-                        if ':' in loja_text:
-                            loja = loja_text.split(':')[-1].strip()
-                        elif 'via' in loja_text.lower():
+                        # Extrair nome da loja de textos como "Menor preço via Amazon"
+                        if 'via' in loja_text.lower():
                             loja = loja_text.split('via')[-1].strip()
+                        elif 'por' in loja_text.lower():
+                            loja = loja_text.split('por')[-1].strip()
+                        elif ':' in loja_text:
+                            loja = loja_text.split(':')[-1].strip()
                         else:
                             loja = loja_text
                     else:
@@ -199,11 +202,12 @@ class IAService:
 
                     logger.debug(f"Buscapé: Loja encontrada: {loja}")
 
-                    # Extrair preço (múltiplos seletores - tentar qualquer tag)
+                    # Extrair preço
+                    # Real HTML: <strong data-testid="product-card::price">R$ 4.749,00</strong>
                     preco_elem = (
-                        card.find(class_=lambda x: x and 'price' in x.lower() if x else False) or
-                        card.find('strong', class_=lambda x: x and 'value' in x.lower() if x else False) or
-                        card.find('span', class_=lambda x: x and 'value' in x.lower() if x else False)
+                        card.find(attrs={'data-testid': 'product-card::price'}) or
+                        card.find('strong', class_=lambda x: x and 'price' in x.lower() if x else False) or
+                        card.find('p', class_=lambda x: x and 'price' in x.lower() if x else False)
                     )
 
                     if preco_elem:
@@ -211,7 +215,7 @@ class IAService:
                         logger.debug(f"Buscapé: Preço encontrado: {preco_text}")
                         # Remover "R$" e converter para float
                         preco_text = preco_text.replace('R$', '').replace('.', '').replace(',', '.').strip()
-                        # Remover espaços e outros caracteres
+                        # Remover espaços e outros caracteres não numéricos
                         preco_text = ''.join(c for c in preco_text if c.isdigit() or c == '.')
                         try:
                             preco = float(preco_text)
@@ -223,12 +227,22 @@ class IAService:
                         continue
 
                     # Extrair URL
-                    link_elem = card.find('a', href=True)
-                    if link_elem and link_elem.get('href'):
-                        href = link_elem.get('href')
+                    # Real HTML: <a data-testid="product-card::card" href="/celular/...">
+                    # Se o card já é o link <a>, usar ele mesmo
+                    if card.name == 'a' and card.get('href'):
+                        href = card.get('href')
                         url_produto = f"https://www.buscape.com.br{href}" if not href.startswith('http') else href
                     else:
-                        url_produto = url  # URL de busca como fallback
+                        # Se não, procurar link dentro do card
+                        link_elem = (
+                            card.find('a', attrs={'data-testid': 'product-card::card'}) or
+                            card.find('a', href=True)
+                        )
+                        if link_elem and link_elem.get('href'):
+                            href = link_elem.get('href')
+                            url_produto = f"https://www.buscape.com.br{href}" if not href.startswith('http') else href
+                        else:
+                            url_produto = url  # URL de busca como fallback
 
                     produtos.append({
                         'loja': loja,
