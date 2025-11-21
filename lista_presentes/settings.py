@@ -128,6 +128,15 @@ STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
+# IMPORTANTE: Criar diretório media se não existir
+import os
+os.makedirs(MEDIA_ROOT, exist_ok=True)
+
+# WhiteNoise também pode servir arquivos de mídia (não é ideal, mas funciona para free tier)
+# Nota: Em produção real, use S3, Cloudinary ou similar
+WHITENOISE_USE_FINDERS = True
+WHITENOISE_AUTOREFRESH = True if DEBUG else False
+
 # PWA Settings
 PWA_APP_NAME = 'Lista de Presentes'
 PWA_APP_DESCRIPTION = "Sistema de Lista de Presentes"
