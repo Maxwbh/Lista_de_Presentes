@@ -338,9 +338,10 @@ As senhas são hasheadas com SHA-256. Certifique-se de:
 
 ### Erro: Presente já comprado
 
-Race condition resolvida com `SELECT FOR UPDATE`. Se ocorrer:
+O sistema valida automaticamente o status do presente. Se ocorrer:
 - Verifique se presente já está COMPRADO
-- Use `PKG_COMPRA.IS_COMPRADO(id_presente)`
+- Use `PKG_COMPRA.IS_COMPRADO(id_presente)` para verificar antes
+- Constraints do banco garantem integridade (UK_COMPRA_PRESENTE)
 
 ---
 

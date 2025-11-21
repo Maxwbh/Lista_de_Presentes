@@ -250,8 +250,8 @@ Gerenciamento de compras de presentes
 **Validações e Regras de Negócio:**
 - ✅ Não pode comprar próprio presente
 - ✅ Presente deve estar ATIVO
-- ✅ Lock de linha (FOR UPDATE) para evitar race condition
 - ✅ Relacionamento 1:1 (presente só pode ser comprado uma vez)
+- ✅ Validação de status e duplicidade antes de criar compra
 - ✅ Criação automática de notificação para dono do presente
 - ✅ Cancelamento com notificação
 
@@ -416,10 +416,10 @@ v_hash := DBMS_CRYPTO.HASH(
 - Duplicidade: Email e Username únicos
 - Status: Apenas usuários ativos podem operar
 
-### Controle de Concorrência
-- **SELECT FOR UPDATE** em operações críticas (marcar comprado)
+### Controle de Transações
 - Transações ACID completas
 - Rollback automático em caso de erro
+- Validações de integridade referencial via constraints
 
 ## 📱 Integração com Oracle APEX 24
 
@@ -600,7 +600,7 @@ END;
 4. Package valida:
    - Não é o próprio presente
    - Presente está ATIVO
-   - Não foi comprado ainda (lock na linha)
+   - Não foi comprado ainda (verificação de duplicidade)
 5. Atualiza status do presente
 6. Cria registro de compra
 7. Cria notificação para dono do presente
@@ -645,7 +645,7 @@ END;
 
 ### Otimizações
 
-1. **SELECT FOR UPDATE** em operações críticas
+1. **Índices otimizados** para todas operações comuns
 2. **BULK COLLECT** para operações em lote (futuro)
 3. **Views materializadas** para dashboard (opcional)
 4. **Particionamento** de tabelas grandes (opcional)
@@ -853,7 +853,7 @@ END;
 
 ➕ Views consolidadas para performance
 ➕ Auditoria de operações (TB_LOG_AUDITORIA)
-➕ Lock de concorrência em compras
+➕ Validações robustas de integridade via constraints
 ➕ Separação clara em packages (modularização)
 ➕ Documentação inline (comentários SQL)
 
