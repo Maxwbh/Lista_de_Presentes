@@ -332,11 +332,17 @@ class IAService:
 
             # Salvar até 10 melhores sugestões
             for produto in todos_produtos[:10]:
+                loja = f"{produto['loja']} ({produto['fonte']})"
+                url = produto['url']
+                preco = produto.get('preco') if produto.get('preco', 0) > 0 else None
+
+                logger.info(f"Salvando sugestão: loja='{loja}', url='{url}', preco={preco}")
+
                 SugestaoCompra.objects.create(
                     presente=presente,
-                    local_compra=f"{produto['loja']} ({produto['fonte']})",
-                    url_compra=produto['url'],
-                    preco_sugerido=produto.get('preco') if produto.get('preco', 0) > 0 else None
+                    local_compra=loja,
+                    url_compra=url,
+                    preco_sugerido=preco
                 )
 
             return True, f"Encontradas {len(todos_produtos[:10])} sugestões de IA + Zoom + Buscapé!"
