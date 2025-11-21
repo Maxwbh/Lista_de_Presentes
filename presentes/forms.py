@@ -58,7 +58,7 @@ class PresenteForm(forms.ModelForm):
             }),
             'url': forms.URLInput(attrs={
                 'class': 'form-control',
-                'placeholder': 'https://...'
+                'placeholder': 'https://... (opcional)'
             }),
             'preco': forms.NumberInput(attrs={
                 'class': 'form-control',
@@ -73,5 +73,7 @@ class PresenteForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        # Garantir que URL não seja obrigatória
+        self.fields['url'].required = False
         # Reordenar campos
         self.order_fields(['descricao', 'url_imagem', 'imagem', 'url', 'preco'])

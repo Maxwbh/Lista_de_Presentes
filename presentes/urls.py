@@ -33,4 +33,7 @@ urlpatterns = [
 
     # Dados de teste (apenas superusuários)
     path('gerar-dados-teste/', views.gerar_dados_teste_view, name='gerar_dados_teste'),
+
+    # API para extrair informações de produto via URL
+    path('api/extrair-info-produto/', views.extrair_info_produto_view, name='extrair_info_produto'),
 ]
