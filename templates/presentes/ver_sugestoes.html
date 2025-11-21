@@ -355,8 +355,8 @@
     <div class="presente-info-card">
         <div class="presente-details">
             <div class="presente-img-container">
-                {% if presente.imagem %}
-                    <img src="{{ presente.imagem.url }}" alt="{{ presente.descricao }}" class="presente-thumbnail">
+                {% if presente.tem_imagem %}
+                    <img src="{{ presente.get_imagem_url }}" alt="{{ presente.descricao }}" class="presente-thumbnail">
                 {% else %}
                     <div class="presente-img-placeholder">
                         <i class="bi bi-gift"></i>

@@ -229,9 +229,9 @@
                     <i class="bi bi-image"></i> Imagem do Presente
                 </label>
 
-                {% if presente.imagem %}
+                {% if presente.tem_imagem %}
                     <div class="current-image-container" id="current-image-container">
-                        <img src="{{ presente.imagem.url }}" alt="{{ presente.descricao }}" class="current-image">
+                        <img src="{{ presente.get_imagem_url }}" alt="{{ presente.descricao }}" class="current-image">
                         <div>
                             <button type="button" class="btn change-image-btn" onclick="showImageUpload()">
                                 <i class="bi bi-arrow-repeat"></i> Alterar Imagem
@@ -240,7 +240,7 @@
                     </div>
                 {% endif %}
 
-                <div id="image-upload-section" {% if presente.imagem %}style="display: none;"{% endif %}>
+                <div id="image-upload-section" {% if presente.tem_imagem %}style="display: none;"{% endif %}>
                     <!-- Campo para URL da imagem -->
                     <div class="input-group mb-3">
                         {{ form.url_imagem }}

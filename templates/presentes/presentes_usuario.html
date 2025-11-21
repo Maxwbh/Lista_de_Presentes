@@ -383,8 +383,8 @@
                 <div class="col-md-6 col-lg-4 presente-item" data-status="{{ presente.status }}">
                     <div class="card presente-card {% if presente.status == 'COMPRADO' %}comprado{% endif %}">
                         <div class="position-relative">
-                            {% if presente.imagem %}
-                                <img src="{{ presente.imagem.url }}" alt="{{ presente.descricao }}" class="presente-img">
+                            {% if presente.tem_imagem %}
+                                <img src="{{ presente.get_imagem_url }}" alt="{{ presente.descricao }}" class="presente-img">
                             {% else %}
                                 <div class="presente-img-placeholder">
                                     <i class="bi bi-gift"></i>

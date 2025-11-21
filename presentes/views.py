@@ -9,6 +9,30 @@ from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from .models import Usuario, Presente, Compra, Notificacao, SugestaoCompra
 from .forms import UsuarioRegistroForm, PresenteForm, LoginForm
 from .services import IAService
+import base64
+import logging
+
+logger = logging.getLogger(__name__)
+
+def converter_imagem_para_base64(imagem_file):
+    """Converte um arquivo de imagem para base64"""
+    try:
+        # Ler o conteúdo do arquivo
+        imagem_data = imagem_file.read()
+
+        # Converter para base64
+        imagem_base64 = base64.b64encode(imagem_data).decode('utf-8')
+
+        # Obter o tipo MIME
+        content_type = imagem_file.content_type
+
+        # Obter o nome do arquivo
+        nome_arquivo = imagem_file.name
+
+        return imagem_base64, nome_arquivo, content_type
+    except Exception as e:
+        logger.error(f"Erro ao converter imagem para base64: {str(e)}")
+        return None, None, None
 
 def health_check(request):
     """Health check endpoint para Render.com e outros serviços"""
@@ -112,12 +136,24 @@ def adicionar_presente_view(request):
         if form.is_valid():
             presente = form.save(commit=False)
             presente.usuario = request.user
+
+            # Converter imagem para base64 se foi enviada
+            if 'imagem' in request.FILES:
+                imagem_file = request.FILES['imagem']
+                imagem_base64, nome_arquivo, content_type = converter_imagem_para_base64(imagem_file)
+
+                if imagem_base64:
+                    presente.imagem_base64 = imagem_base64
+                    presente.imagem_nome = nome_arquivo
+                    presente.imagem_tipo = content_type
+                    # Limpar o campo antigo para economizar espaço
+                    presente.imagem = None
+                    logger.info(f"Imagem convertida para base64: {nome_arquivo}")
+
             presente.save()
 
             # Buscar preços REAIS automaticamente (Zoom + Buscapé)
             try:
-                import logging
-                logger = logging.getLogger(__name__)
                 logger.info(f"Buscando preços reais para presente {presente.id}")
 
                 # Buscar preços reais no Zoom e Buscapé
@@ -130,8 +166,6 @@ def adicionar_presente_view(request):
                     messages.info(request, f'Preços: {mensagem}')
 
             except Exception as e:
-                import logging
-                logger = logging.getLogger(__name__)
                 logger.error(f"Erro ao buscar preços reais: {str(e)}")
                 messages.success(request, 'Presente adicionado com sucesso!')
                 messages.warning(request, 'Não foi possível buscar preços automaticamente.')
@@ -147,7 +181,22 @@ def editar_presente_view(request, pk):
     if request.method == 'POST':
         form = PresenteForm(request.POST, request.FILES, instance=presente)
         if form.is_valid():
-            form.save()
+            presente = form.save(commit=False)
+
+            # Converter imagem para base64 se foi enviada uma nova
+            if 'imagem' in request.FILES:
+                imagem_file = request.FILES['imagem']
+                imagem_base64, nome_arquivo, content_type = converter_imagem_para_base64(imagem_file)
+
+                if imagem_base64:
+                    presente.imagem_base64 = imagem_base64
+                    presente.imagem_nome = nome_arquivo
+                    presente.imagem_tipo = content_type
+                    # Limpar o campo antigo para economizar espaço
+                    presente.imagem = None
+                    logger.info(f"Imagem atualizada e convertida para base64: {nome_arquivo}")
+
+            presente.save()
             messages.success(request, 'Presente atualizado com sucesso!')
             return redirect('meus_presentes')
     else:
@@ -162,6 +211,27 @@ def deletar_presente_view(request, pk):
         messages.success(request, 'Presente excluído com sucesso!')
         return redirect('meus_presentes')
     return render(request, 'presentes/deletar_presente.html', {'presente': presente})
+
+def servir_imagem_view(request, pk):
+    """Serve imagem armazenada em base64 no banco de dados"""
+    presente = get_object_or_404(Presente, pk=pk)
+
+    if not presente.imagem_base64:
+        # Se não há imagem base64, retornar 404
+        return HttpResponse('Imagem não encontrada', status=404)
+
+    try:
+        # Decodificar base64
+        imagem_data = base64.b64decode(presente.imagem_base64)
+
+        # Determinar content type (padrão image/jpeg se não especificado)
+        content_type = presente.imagem_tipo or 'image/jpeg'
+
+        # Retornar a imagem
+        return HttpResponse(imagem_data, content_type=content_type)
+    except Exception as e:
+        logger.error(f"Erro ao servir imagem do presente {pk}: {str(e)}")
+        return HttpResponse('Erro ao carregar imagem', status=500)
 
 @login_required
 def buscar_sugestoes_ia_view(request, pk):
