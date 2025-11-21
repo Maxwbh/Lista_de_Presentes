@@ -267,15 +267,15 @@
     <div class="stats-row">
         <div class="row">
             <div class="col-md-4 stat-item">
-                <div class="stat-number">{{ presentes|length }}</div>
+                <div class="stat-number">{{ total_presentes }}</div>
                 <div class="stat-label">Total de Presentes</div>
             </div>
             <div class="col-md-4 stat-item">
-                <div class="stat-number">{{ presentes|selectattr:"status", "equalto", "ATIVO"|list|length }}</div>
+                <div class="stat-number">{{ presentes_ativos }}</div>
                 <div class="stat-label">Ativos</div>
             </div>
             <div class="col-md-4 stat-item">
-                <div class="stat-number">{{ presentes|selectattr:"status", "equalto", "COMPRADO"|list|length }}</div>
+                <div class="stat-number">{{ presentes_comprados }}</div>
                 <div class="stat-label">Comprados</div>
             </div>
         </div>
