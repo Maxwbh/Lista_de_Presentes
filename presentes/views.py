@@ -359,6 +359,13 @@ def atualizar_todos_precos_view(request):
 
 @login_required
 def lista_usuarios_view(request):
+    from django.db.models import Min, Q
+
+    # Pegar parâmetros de filtro e ordenação
+    ordenar_por = request.GET.get('ordenar', '-data_cadastro')
+    preco_min = request.GET.get('preco_min', '')
+    preco_max = request.GET.get('preco_max', '')
+
     # Otimizar query com prefetch_related para pegar presentes e sugestões
     usuarios_list = Usuario.objects.filter(ativo=True).exclude(id=request.user.id).prefetch_related(
         'presentes',
@@ -381,7 +388,48 @@ def lista_usuarios_view(request):
         status='ATIVO'
     ).exclude(
         usuario=request.user
-    ).select_related('usuario').prefetch_related('sugestoes').order_by('-data_cadastro')
+    ).select_related('usuario').prefetch_related('sugestoes')
+
+    # Adicionar melhor preço (menor preço das sugestões) para cada presente
+    todos_presentes = todos_presentes.annotate(
+        melhor_preco=Min('sugestoes__preco_sugerido')
+    )
+
+    # Aplicar filtros de preço
+    if preco_min:
+        try:
+            preco_min_valor = float(preco_min)
+            todos_presentes = todos_presentes.filter(
+                Q(preco__gte=preco_min_valor) | Q(melhor_preco__gte=preco_min_valor)
+            )
+        except ValueError:
+            pass
+
+    if preco_max:
+        try:
+            preco_max_valor = float(preco_max)
+            todos_presentes = todos_presentes.filter(
+                Q(preco__lte=preco_max_valor) | Q(melhor_preco__lte=preco_max_valor)
+            )
+        except ValueError:
+            pass
+
+    # Aplicar ordenação
+    mapeamento_ordenacao = {
+        'produto': 'descricao',
+        '-produto': '-descricao',
+        'usuario': 'usuario__first_name',
+        '-usuario': '-usuario__first_name',
+        'preco': 'preco',
+        '-preco': '-preco',
+        'melhor_preco': 'melhor_preco',
+        '-melhor_preco': '-melhor_preco',
+        'data': 'data_cadastro',
+        '-data': '-data_cadastro',
+    }
+
+    ordem_final = mapeamento_ordenacao.get(ordenar_por, '-data_cadastro')
+    todos_presentes = todos_presentes.order_by(ordem_final)
 
     # Paginação (20 usuários por página)
     paginator = Paginator(usuarios_com_stats, 20)
@@ -397,6 +445,9 @@ def lista_usuarios_view(request):
     return render(request, 'presentes/lista_usuarios.html', {
         'usuarios': usuarios,
         'todos_presentes': todos_presentes,
+        'ordenar_por': ordenar_por,
+        'preco_min': preco_min,
+        'preco_max': preco_max,
     })
 
 @login_required
@@ -444,11 +495,19 @@ def marcar_comprado_view(request, pk):
     # Não pode comprar seu próprio presente
     if presente.usuario == request.user:
         messages.error(request, 'Você não pode marcar seu próprio presente como comprado!')
+        # Retornar para a página anterior ou lista_usuarios
+        referer = request.META.get('HTTP_REFERER')
+        if referer and 'usuarios' in referer:
+            return redirect('lista_usuarios')
         return redirect('presentes_usuario', user_id=presente.usuario.id)
 
     # Verificar se já foi comprado
     if presente.status == 'COMPRADO':
         messages.warning(request, 'Este presente já foi comprado por outra pessoa!')
+        # Retornar para a página anterior ou lista_usuarios
+        referer = request.META.get('HTTP_REFERER')
+        if referer and 'usuarios' in referer:
+            return redirect('lista_usuarios')
         return redirect('presentes_usuario', user_id=presente.usuario.id)
 
     # Marcar como comprado
@@ -468,12 +527,21 @@ def marcar_comprado_view(request, pk):
     )
 
     messages.success(request, 'Presente marcado como comprado!')
+
+    # Retornar para a página anterior (lista_usuarios se veio de lá)
+    referer = request.META.get('HTTP_REFERER')
+    if referer and 'usuarios' in referer:
+        return redirect('lista_usuarios')
     return redirect('presentes_usuario', user_id=presente.usuario.id)
 
 @login_required
 def notificacoes_view(request):
     # Otimizar query com select_related
-    notificacoes_list = Notificacao.objects.filter(usuario=request.user).select_related('usuario')
+    notificacoes_list = Notificacao.objects.filter(usuario=request.user).select_related('usuario').order_by('-data_notificacao')
+
+    # Contar notificações não lidas antes de marcar como lidas
+    total_nao_lidas = notificacoes_list.filter(lida=False).count()
+    total_lidas = notificacoes_list.filter(lida=True).count()
 
     # Marcar todas como lidas
     notificacoes_list.filter(lida=False).update(lida=True)
@@ -489,7 +557,11 @@ def notificacoes_view(request):
     except EmptyPage:
         notificacoes = paginator.page(paginator.num_pages)
 
-    return render(request, 'presentes/notificacoes.html', {'notificacoes': notificacoes})
+    return render(request, 'presentes/notificacoes.html', {
+        'notificacoes': notificacoes,
+        'total_nao_lidas': total_nao_lidas,
+        'total_lidas': total_lidas,
+    })
 
 @login_required
 def notificacoes_nao_lidas_json(request):
@@ -504,6 +576,60 @@ def notificacoes_nao_lidas_json(request):
         'count': count,
         'notificacoes': list(notificacoes)
     })
+
+@login_required
+def extrair_info_produto_view(request):
+    """
+    Extrai informações de um produto a partir de uma URL.
+    Retorna JSON com título, imagem e preço do produto.
+    """
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Método não permitido'}, status=405)
+
+    url = request.POST.get('url', '').strip()
+
+    if not url:
+        return JsonResponse({'error': 'URL não fornecida'}, status=400)
+
+    # Validar URL
+    if not url.startswith('http'):
+        url = 'https://' + url
+
+    try:
+        from .scrapers import ScraperFactory
+
+        logger.info(f"Extraindo informações de: {url}")
+
+        # Usar o factory para obter o scraper apropriado
+        result = ScraperFactory.extract_product_info(url)
+
+        if result:
+            titulo, preco, imagem_url = result
+
+            response_data = {
+                'success': True,
+                'titulo': titulo or '',
+                'imagem_url': imagem_url or '',
+                'preco': preco if preco else '',
+            }
+
+            logger.info(f"Extração bem-sucedida: título={bool(titulo)}, imagem={bool(imagem_url)}, preco={preco}")
+            return JsonResponse(response_data)
+        else:
+            logger.warning(f"Não foi possível extrair informações de {url}")
+            return JsonResponse({
+                'error': 'Não foi possível extrair informações desta página.',
+                'success': False
+            }, status=400)
+
+    except Exception as e:
+        logger.error(f"Erro ao extrair informações de {url}: {str(e)}")
+        import traceback
+        logger.error(traceback.format_exc())
+        return JsonResponse({
+            'error': 'Erro ao processar a página. Tente preencher os campos manualmente.',
+            'details': str(e)
+        }, status=500)
 
 @login_required
 def gerar_dados_teste_view(request):

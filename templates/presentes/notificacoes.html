@@ -277,15 +277,15 @@
 
         <div class="header-stats">
             <div class="header-stat">
-                <div class="header-stat-number">{{ notificacoes|length }}</div>
+                <div class="header-stat-number">{{ notificacoes.paginator.count }}</div>
                 <div class="header-stat-label">Total</div>
             </div>
             <div class="header-stat">
-                <div class="header-stat-number">{{ notificacoes|rejectattr:"lida"|list|length }}</div>
+                <div class="header-stat-number">{{ total_nao_lidas }}</div>
                 <div class="header-stat-label">Novas</div>
             </div>
             <div class="header-stat">
-                <div class="header-stat-number">{{ notificacoes|selectattr:"lida"|list|length }}</div>
+                <div class="header-stat-number">{{ total_lidas }}</div>
                 <div class="header-stat-label">Lidas</div>
             </div>
         </div>
@@ -314,10 +314,11 @@
             {% regroup notificacoes by data_notificacao|date:"Y-m-d" as notificacoes_por_dia %}
 
             {% for dia in notificacoes_por_dia %}
+                {% now "Y-m-d" as hoje %}
                 <div class="timeline-date">
                     <span>
                         <i class="bi bi-calendar3"></i>
-                        {% if dia.grouper == request.META.SERVER_NAME|default:"hoje"|date:"Y-m-d" %}
+                        {% if dia.grouper == hoje %}
                             Hoje
                         {% else %}
                             {{ dia.list.0.data_notificacao|date:"d/m/Y" }}
