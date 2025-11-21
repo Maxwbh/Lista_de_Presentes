@@ -11,7 +11,7 @@
 -- TRIGGER: Enviar push quando criar notificacao
 -- ==============================================================================
 CREATE OR REPLACE TRIGGER TRG_NOTIFICACAO_PUSH
-AFTER INSERT ON TB_NOTIFICACAO
+AFTER INSERT ON LCP_NOTIFICACAO
 FOR EACH ROW
 DECLARE
     v_count NUMBER;
@@ -24,7 +24,7 @@ BEGIN
                 p_id_usuario => :NEW.ID_USUARIO,
                 p_titulo => 'Nova Notificacao',
                 p_mensagem => SUBSTR(:NEW.MENSAGEM, 1, 200),
-                p_id_notificacao => :NEW.ID_NOTIFICACAO
+                p_id_notificacao => :NEW.ID
             );
         EXCEPTION
             WHEN OTHERS THEN
@@ -50,9 +50,9 @@ BEGIN
     SELECT p.DESCRICAO, p.ID_USUARIO,
            comp.PRIMEIRO_NOME || ' ' || comp.ULTIMO_NOME
     INTO v_descricao, v_id_usuario_dono, v_nome_comprador
-    FROM TB_PRESENTE p
-    INNER JOIN TB_USUARIO comp ON comp.ID_USUARIO = p_id_comprador
-    WHERE p.ID_PRESENTE = p_id_presente;
+    FROM LCP_PRESENTE p
+    INNER JOIN LCP_USUARIO comp ON comp.ID = p_id_comprador
+    WHERE p.ID = p_id_presente;
 
     -- Enviar push notification
     IF PKG_PUSH_NOTIFICATION.TEM_SUBSCRIPTION_ATIVA(v_id_usuario_dono) THEN
@@ -85,9 +85,9 @@ BEGIN
     SELECT p.DESCRICAO, p.PRECO,
            u.PRIMEIRO_NOME || ' ' || u.ULTIMO_NOME
     INTO v_descricao, v_preco, v_nome_usuario
-    FROM TB_PRESENTE p
-    INNER JOIN TB_USUARIO u ON p.ID_USUARIO = u.ID_USUARIO
-    WHERE p.ID_PRESENTE = p_id_presente;
+    FROM LCP_PRESENTE p
+    INNER JOIN LCP_USUARIO u ON p.ID_USUARIO = u.ID
+    WHERE p.ID = p_id_presente;
 
     -- Enviar broadcast (opcional - pode ser muito volume)
     -- Apenas se for presente de valor alto
@@ -110,10 +110,10 @@ END;
 -- ==============================================================================
 CREATE OR REPLACE VIEW VW_PUSH_ESTATISTICAS AS
 SELECT
-    u.ID_USUARIO,
+    u.ID,
     u.PRIMEIRO_NOME || ' ' || u.ULTIMO_NOME AS NOME_USUARIO,
     u.EMAIL,
-    COUNT(ps.ID_SUBSCRIPTION) AS TOTAL_SUBSCRIPTIONS,
+    COUNT(ps.ID) AS TOTAL_SUBSCRIPTIONS,
     SUM(CASE WHEN ps.ATIVO = 'S' THEN 1 ELSE 0 END) AS SUBSCRIPTIONS_ATIVAS,
     MAX(ps.DATA_ULTIMO_ENVIO) AS ULTIMO_PUSH_ENVIADO,
     SUM(ps.TOTAL_ENVIADOS) AS TOTAL_PUSH_ENVIADOS,
@@ -126,10 +126,10 @@ SELECT
         END,
         2
     ) AS TAXA_SUCESSO_PCT
-FROM TB_USUARIO u
-LEFT JOIN TB_PUSH_SUBSCRIPTION ps ON u.ID_USUARIO = ps.ID_USUARIO
+FROM LCP_USUARIO u
+LEFT JOIN LCP_PUSH_SUBSCRIPTION ps ON u.ID = ps.ID_USUARIO
 WHERE u.ATIVO = 'S'
-GROUP BY u.ID_USUARIO, u.PRIMEIRO_NOME, u.ULTIMO_NOME, u.EMAIL;
+GROUP BY u.ID, u.PRIMEIRO_NOME, u.ULTIMO_NOME, u.EMAIL;
 
 COMMENT ON VIEW VW_PUSH_ESTATISTICAS IS 'Estatisticas de push notifications por usuario';
 
@@ -198,15 +198,15 @@ END;
 CREATE OR REPLACE PROCEDURE APEX_PROCESSAR_PUSH_PENDENTES IS
     CURSOR c_pendentes IS
         SELECT
-            l.ID_LOG,
+            l.ID,
             l.ID_SUBSCRIPTION,
             l.TITULO,
             l.MENSAGEM,
             s.ENDPOINT,
             s.P256DH_KEY,
             s.AUTH_KEY
-        FROM TB_PUSH_LOG l
-        INNER JOIN TB_PUSH_SUBSCRIPTION s ON l.ID_SUBSCRIPTION = s.ID_SUBSCRIPTION
+        FROM LCP_PUSH_LOG l
+        INNER JOIN LCP_PUSH_SUBSCRIPTION s ON l.ID_SUBSCRIPTION = s.ID
         WHERE l.STATUS = 'PENDENTE'
           AND s.ATIVO = 'S'
         ORDER BY l.DATA_ENVIO
@@ -228,19 +228,19 @@ BEGIN
             */
 
             -- Por enquanto, apenas marcar como enviado
-            UPDATE TB_PUSH_LOG
+            UPDATE LCP_PUSH_LOG
             SET STATUS = 'ENVIADO'
-            WHERE ID_LOG = rec.ID_LOG;
+            WHERE ID = rec.ID;
 
             COMMIT;
 
         EXCEPTION
             WHEN OTHERS THEN
                 -- Marcar como erro
-                UPDATE TB_PUSH_LOG
+                UPDATE LCP_PUSH_LOG
                 SET STATUS = 'ERRO',
                     ERRO_MENSAGEM = SQLERRM
-                WHERE ID_LOG = rec.ID_LOG;
+                WHERE ID = rec.ID;
 
                 -- Registrar erro na subscription
                 PKG_PUSH_NOTIFICATION.REGISTRAR_ERRO_ENVIO(

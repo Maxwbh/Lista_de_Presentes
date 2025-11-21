@@ -8,11 +8,11 @@
 -- ==============================================================================
 
 -- ==============================================================================
--- TABELA: TB_PUSH_SUBSCRIPTION
+-- TABELA: LCP_PUSH_SUBSCRIPTION
 -- Descricao: Armazena subscricoes de push notification dos usuarios
 -- ==============================================================================
-CREATE TABLE TB_PUSH_SUBSCRIPTION (
-    ID_SUBSCRIPTION     NUMBER(10)      NOT NULL,
+CREATE TABLE LCP_PUSH_SUBSCRIPTION (
+    ID                  NUMBER(10)      NOT NULL,
     ID_USUARIO          NUMBER(10)      NOT NULL,
     ENDPOINT            VARCHAR2(1000)  NOT NULL,
     P256DH_KEY          VARCHAR2(500),
@@ -24,34 +24,29 @@ CREATE TABLE TB_PUSH_SUBSCRIPTION (
     DATA_ULTIMO_ENVIO   DATE,
     TOTAL_ENVIADOS      NUMBER(10)      DEFAULT 0,
     TOTAL_ERROS         NUMBER(10)      DEFAULT 0,
-    CONSTRAINT PK_PUSH_SUBSCRIPTION PRIMARY KEY (ID_SUBSCRIPTION),
+    CONSTRAINT PK_PUSH_SUBSCRIPTION PRIMARY KEY (ID),
     CONSTRAINT FK_PUSH_SUBSCRIPTION_USR FOREIGN KEY (ID_USUARIO)
-        REFERENCES TB_USUARIO(ID_USUARIO) ON DELETE CASCADE,
+        REFERENCES LCP_USUARIO(ID) ON DELETE CASCADE,
     CONSTRAINT UK_PUSH_ENDPOINT UNIQUE (ENDPOINT),
     CONSTRAINT CK_PUSH_ATIVO CHECK (ATIVO IN ('S', 'N'))
 );
 
 -- Comentarios
-COMMENT ON TABLE TB_PUSH_SUBSCRIPTION IS 'Tabela de subscricoes de push notifications';
-COMMENT ON COLUMN TB_PUSH_SUBSCRIPTION.ENDPOINT IS 'URL do endpoint da subscription (FCM, APNS, etc)';
-COMMENT ON COLUMN TB_PUSH_SUBSCRIPTION.P256DH_KEY IS 'Chave publica P256DH para criptografia';
-COMMENT ON COLUMN TB_PUSH_SUBSCRIPTION.AUTH_KEY IS 'Chave de autenticacao';
-
--- Indices
-CREATE INDEX IDX_PUSH_USUARIO ON TB_PUSH_SUBSCRIPTION(ID_USUARIO);
-CREATE INDEX IDX_PUSH_ATIVO ON TB_PUSH_SUBSCRIPTION(ATIVO);
-CREATE INDEX IDX_PUSH_DATA ON TB_PUSH_SUBSCRIPTION(DATA_SUBSCRIPTION DESC);
+COMMENT ON TABLE LCP_PUSH_SUBSCRIPTION IS 'Tabela de subscricoes de push notifications';
+COMMENT ON COLUMN LCP_PUSH_SUBSCRIPTION.ENDPOINT IS 'URL do endpoint da subscription (FCM, APNS, etc)';
+COMMENT ON COLUMN LCP_PUSH_SUBSCRIPTION.P256DH_KEY IS 'Chave publica P256DH para criptografia';
+COMMENT ON COLUMN LCP_PUSH_SUBSCRIPTION.AUTH_KEY IS 'Chave de autenticacao';
 
 -- Sequence
-CREATE SEQUENCE SEQ_PUSH_SUBSCRIPTION START WITH 1 INCREMENT BY 1 NOCACHE;
+CREATE SEQUENCE SEQ_LCP_PUSH_SUBSCRIPTION START WITH 1 INCREMENT BY 1 NOCACHE;
 
 
 -- ==============================================================================
--- TABELA: TB_PUSH_LOG
+-- TABELA: LCP_PUSH_LOG
 -- Descricao: Log de envios de push notifications
 -- ==============================================================================
-CREATE TABLE TB_PUSH_LOG (
-    ID_LOG              NUMBER(10)      NOT NULL,
+CREATE TABLE LCP_PUSH_LOG (
+    ID                  NUMBER(10)      NOT NULL,
     ID_SUBSCRIPTION     NUMBER(10)      NOT NULL,
     ID_NOTIFICACAO      NUMBER(10),
     TITULO              VARCHAR2(200),
@@ -59,25 +54,20 @@ CREATE TABLE TB_PUSH_LOG (
     STATUS              VARCHAR2(20)    NOT NULL,
     ERRO_MENSAGEM       CLOB,
     DATA_ENVIO          DATE            DEFAULT SYSDATE NOT NULL,
-    CONSTRAINT PK_PUSH_LOG PRIMARY KEY (ID_LOG),
+    CONSTRAINT PK_PUSH_LOG PRIMARY KEY (ID),
     CONSTRAINT FK_PUSH_LOG_SUBSCRIPTION FOREIGN KEY (ID_SUBSCRIPTION)
-        REFERENCES TB_PUSH_SUBSCRIPTION(ID_SUBSCRIPTION) ON DELETE CASCADE,
+        REFERENCES LCP_PUSH_SUBSCRIPTION(ID) ON DELETE CASCADE,
     CONSTRAINT FK_PUSH_LOG_NOTIFICACAO FOREIGN KEY (ID_NOTIFICACAO)
-        REFERENCES TB_NOTIFICACAO(ID_NOTIFICACAO) ON DELETE SET NULL,
+        REFERENCES LCP_NOTIFICACAO(ID) ON DELETE SET NULL,
     CONSTRAINT CK_PUSH_LOG_STATUS CHECK (STATUS IN ('ENVIADO', 'ERRO', 'PENDENTE'))
 );
 
 -- Comentarios
-COMMENT ON TABLE TB_PUSH_LOG IS 'Log de envios de push notifications';
-COMMENT ON COLUMN TB_PUSH_LOG.STATUS IS 'Status do envio (ENVIADO/ERRO/PENDENTE)';
-
--- Indices
-CREATE INDEX IDX_PUSH_LOG_SUBSCRIPTION ON TB_PUSH_LOG(ID_SUBSCRIPTION);
-CREATE INDEX IDX_PUSH_LOG_STATUS ON TB_PUSH_LOG(STATUS);
-CREATE INDEX IDX_PUSH_LOG_DATA ON TB_PUSH_LOG(DATA_ENVIO DESC);
+COMMENT ON TABLE LCP_PUSH_LOG IS 'Log de envios de push notifications';
+COMMENT ON COLUMN LCP_PUSH_LOG.STATUS IS 'Status do envio (ENVIADO/ERRO/PENDENTE)';
 
 -- Sequence
-CREATE SEQUENCE SEQ_PUSH_LOG START WITH 1 INCREMENT BY 1 NOCACHE;
+CREATE SEQUENCE SEQ_LCP_PUSH_LOG START WITH 1 INCREMENT BY 1 NOCACHE;
 
 
 -- ==============================================================================
@@ -254,8 +244,8 @@ CREATE OR REPLACE PACKAGE BODY PKG_PUSH_NOTIFICATION AS
     BEGIN
         -- Validar se usuario existe
         SELECT COUNT(*) INTO v_count
-        FROM TB_USUARIO
-        WHERE ID_USUARIO = p_id_usuario
+        FROM LCP_USUARIO
+        WHERE ID = p_id_usuario
           AND ATIVO = 'S';
 
         IF v_count = 0 THEN
@@ -264,12 +254,12 @@ CREATE OR REPLACE PACKAGE BODY PKG_PUSH_NOTIFICATION AS
 
         -- Verificar se endpoint ja existe
         BEGIN
-            SELECT ID_SUBSCRIPTION INTO v_id_subscription
-            FROM TB_PUSH_SUBSCRIPTION
+            SELECT ID INTO v_id_subscription
+            FROM LCP_PUSH_SUBSCRIPTION
             WHERE ENDPOINT = p_endpoint;
 
             -- Endpoint existe - atualizar usuario e reativar se necessario
-            UPDATE TB_PUSH_SUBSCRIPTION
+            UPDATE LCP_PUSH_SUBSCRIPTION
             SET ID_USUARIO = p_id_usuario,
                 P256DH_KEY = NVL(p_p256dh_key, P256DH_KEY),
                 AUTH_KEY = NVL(p_auth_key, AUTH_KEY),
@@ -277,7 +267,7 @@ CREATE OR REPLACE PACKAGE BODY PKG_PUSH_NOTIFICATION AS
                 IP_ADDRESS = NVL(p_ip_address, IP_ADDRESS),
                 ATIVO = 'S',
                 DATA_SUBSCRIPTION = SYSDATE
-            WHERE ID_SUBSCRIPTION = v_id_subscription;
+            WHERE ID = v_id_subscription;
 
             COMMIT;
             RETURN v_id_subscription;
@@ -289,8 +279,8 @@ CREATE OR REPLACE PACKAGE BODY PKG_PUSH_NOTIFICATION AS
         END;
 
         -- Inserir nova subscription
-        INSERT INTO TB_PUSH_SUBSCRIPTION (
-            ID_SUBSCRIPTION,
+        INSERT INTO LCP_PUSH_SUBSCRIPTION (
+            ID,
             ID_USUARIO,
             ENDPOINT,
             P256DH_KEY,
@@ -302,7 +292,7 @@ CREATE OR REPLACE PACKAGE BODY PKG_PUSH_NOTIFICATION AS
             TOTAL_ENVIADOS,
             TOTAL_ERROS
         ) VALUES (
-            SEQ_PUSH_SUBSCRIPTION.NEXTVAL,
+            SEQ_LCP_PUSH_SUBSCRIPTION.NEXTVAL,
             p_id_usuario,
             p_endpoint,
             p_p256dh_key,
@@ -313,7 +303,7 @@ CREATE OR REPLACE PACKAGE BODY PKG_PUSH_NOTIFICATION AS
             SYSDATE,
             0,
             0
-        ) RETURNING ID_SUBSCRIPTION INTO v_id_subscription;
+        ) RETURNING ID INTO v_id_subscription;
 
         COMMIT;
 
@@ -331,8 +321,8 @@ CREATE OR REPLACE PACKAGE BODY PKG_PUSH_NOTIFICATION AS
         p_id_subscription   IN NUMBER
     ) IS
     BEGIN
-        DELETE FROM TB_PUSH_SUBSCRIPTION
-        WHERE ID_SUBSCRIPTION = p_id_subscription;
+        DELETE FROM LCP_PUSH_SUBSCRIPTION
+        WHERE ID = p_id_subscription;
 
         IF SQL%ROWCOUNT = 0 THEN
             RAISE EX_SUBSCRIPTION_NAO_ENCONTRADA;
@@ -354,7 +344,7 @@ CREATE OR REPLACE PACKAGE BODY PKG_PUSH_NOTIFICATION AS
         p_endpoint          IN VARCHAR2
     ) IS
     BEGIN
-        DELETE FROM TB_PUSH_SUBSCRIPTION
+        DELETE FROM LCP_PUSH_SUBSCRIPTION
         WHERE ENDPOINT = p_endpoint;
 
         IF SQL%ROWCOUNT = 0 THEN
@@ -381,8 +371,8 @@ CREATE OR REPLACE PACKAGE BODY PKG_PUSH_NOTIFICATION AS
     ) RETURN NUMBER IS
         v_count             NUMBER := 0;
         CURSOR c_subscriptions IS
-            SELECT ID_SUBSCRIPTION
-            FROM TB_PUSH_SUBSCRIPTION
+            SELECT ID AS ID_SUBSCRIPTION
+            FROM LCP_PUSH_SUBSCRIPTION
             WHERE ID_USUARIO = p_id_usuario
               AND ATIVO = 'S';
     BEGIN
@@ -426,8 +416,8 @@ CREATE OR REPLACE PACKAGE BODY PKG_PUSH_NOTIFICATION AS
         -- Buscar dados da subscription
         SELECT ENDPOINT, P256DH_KEY, AUTH_KEY
         INTO v_endpoint, v_p256dh_key, v_auth_key
-        FROM TB_PUSH_SUBSCRIPTION
-        WHERE ID_SUBSCRIPTION = p_id_subscription
+        FROM LCP_PUSH_SUBSCRIPTION
+        WHERE ID = p_id_subscription
           AND ATIVO = 'S';
 
         -- IMPORTANTE: Esta e a parte que integra com o servico externo
@@ -444,8 +434,8 @@ CREATE OR REPLACE PACKAGE BODY PKG_PUSH_NOTIFICATION AS
 
         -- Por enquanto, apenas registrar no log como PENDENTE
         -- O APEX ira processar em background
-        INSERT INTO TB_PUSH_LOG (
-            ID_LOG,
+        INSERT INTO LCP_PUSH_LOG (
+            ID,
             ID_SUBSCRIPTION,
             ID_NOTIFICACAO,
             TITULO,
@@ -453,20 +443,20 @@ CREATE OR REPLACE PACKAGE BODY PKG_PUSH_NOTIFICATION AS
             STATUS,
             DATA_ENVIO
         ) VALUES (
-            SEQ_PUSH_LOG.NEXTVAL,
+            SEQ_LCP_PUSH_LOG.NEXTVAL,
             p_id_subscription,
             p_id_notificacao,
             p_titulo,
             p_mensagem,
             'PENDENTE',
             SYSDATE
-        ) RETURNING ID_LOG INTO v_id_log;
+        ) RETURNING ID INTO v_id_log;
 
         -- Atualizar estatisticas da subscription
-        UPDATE TB_PUSH_SUBSCRIPTION
+        UPDATE LCP_PUSH_SUBSCRIPTION
         SET DATA_ULTIMO_ENVIO = SYSDATE,
             TOTAL_ENVIADOS = TOTAL_ENVIADOS + 1
-        WHERE ID_SUBSCRIPTION = p_id_subscription;
+        WHERE ID = p_id_subscription;
 
         COMMIT;
 
@@ -493,7 +483,7 @@ CREATE OR REPLACE PACKAGE BODY PKG_PUSH_NOTIFICATION AS
         v_count             NUMBER := 0;
         CURSOR c_usuarios IS
             SELECT DISTINCT ID_USUARIO
-            FROM TB_PUSH_SUBSCRIPTION
+            FROM LCP_PUSH_SUBSCRIPTION
             WHERE ATIVO = 'S';
     BEGIN
         -- Enviar para todos usuarios com subscription ativa
@@ -526,7 +516,7 @@ CREATE OR REPLACE PACKAGE BODY PKG_PUSH_NOTIFICATION AS
         IF p_apenas_ativas THEN
             OPEN v_cursor FOR
                 SELECT
-                    ID_SUBSCRIPTION,
+                    ID AS ID_SUBSCRIPTION,
                     ID_USUARIO,
                     ENDPOINT,
                     USER_AGENT,
@@ -536,14 +526,14 @@ CREATE OR REPLACE PACKAGE BODY PKG_PUSH_NOTIFICATION AS
                     DATA_ULTIMO_ENVIO,
                     TOTAL_ENVIADOS,
                     TOTAL_ERROS
-                FROM TB_PUSH_SUBSCRIPTION
+                FROM LCP_PUSH_SUBSCRIPTION
                 WHERE ID_USUARIO = p_id_usuario
                   AND ATIVO = 'S'
                 ORDER BY DATA_SUBSCRIPTION DESC;
         ELSE
             OPEN v_cursor FOR
                 SELECT
-                    ID_SUBSCRIPTION,
+                    ID AS ID_SUBSCRIPTION,
                     ID_USUARIO,
                     ENDPOINT,
                     USER_AGENT,
@@ -553,7 +543,7 @@ CREATE OR REPLACE PACKAGE BODY PKG_PUSH_NOTIFICATION AS
                     DATA_ULTIMO_ENVIO,
                     TOTAL_ENVIADOS,
                     TOTAL_ERROS
-                FROM TB_PUSH_SUBSCRIPTION
+                FROM LCP_PUSH_SUBSCRIPTION
                 WHERE ID_USUARIO = p_id_usuario
                 ORDER BY DATA_SUBSCRIPTION DESC;
         END IF;
@@ -570,7 +560,7 @@ CREATE OR REPLACE PACKAGE BODY PKG_PUSH_NOTIFICATION AS
         v_count NUMBER;
     BEGIN
         SELECT COUNT(*) INTO v_count
-        FROM TB_PUSH_SUBSCRIPTION
+        FROM LCP_PUSH_SUBSCRIPTION
         WHERE ID_USUARIO = p_id_usuario
           AND ATIVO = 'S';
 
@@ -585,9 +575,9 @@ CREATE OR REPLACE PACKAGE BODY PKG_PUSH_NOTIFICATION AS
         p_ativo             IN CHAR
     ) IS
     BEGIN
-        UPDATE TB_PUSH_SUBSCRIPTION
+        UPDATE LCP_PUSH_SUBSCRIPTION
         SET ATIVO = p_ativo
-        WHERE ID_SUBSCRIPTION = p_id_subscription;
+        WHERE ID = p_id_subscription;
 
         IF SQL%ROWCOUNT = 0 THEN
             RAISE EX_SUBSCRIPTION_NAO_ENCONTRADA;
@@ -612,21 +602,21 @@ CREATE OR REPLACE PACKAGE BODY PKG_PUSH_NOTIFICATION AS
         v_total_erros NUMBER;
     BEGIN
         -- Incrementar contador de erros
-        UPDATE TB_PUSH_SUBSCRIPTION
+        UPDATE LCP_PUSH_SUBSCRIPTION
         SET TOTAL_ERROS = TOTAL_ERROS + 1
-        WHERE ID_SUBSCRIPTION = p_id_subscription
+        WHERE ID = p_id_subscription
         RETURNING TOTAL_ERROS INTO v_total_erros;
 
         -- Se muitos erros consecutivos, desativar subscription
         IF v_total_erros >= 10 THEN
-            UPDATE TB_PUSH_SUBSCRIPTION
+            UPDATE LCP_PUSH_SUBSCRIPTION
             SET ATIVO = 'N'
-            WHERE ID_SUBSCRIPTION = p_id_subscription;
+            WHERE ID = p_id_subscription;
         END IF;
 
         -- Registrar no log
-        INSERT INTO TB_PUSH_LOG (
-            ID_LOG,
+        INSERT INTO LCP_PUSH_LOG (
+            ID,
             ID_SUBSCRIPTION,
             TITULO,
             MENSAGEM,
@@ -634,7 +624,7 @@ CREATE OR REPLACE PACKAGE BODY PKG_PUSH_NOTIFICATION AS
             ERRO_MENSAGEM,
             DATA_ENVIO
         ) VALUES (
-            SEQ_PUSH_LOG.NEXTVAL,
+            SEQ_LCP_PUSH_LOG.NEXTVAL,
             p_id_subscription,
             'ERRO',
             'Erro ao enviar push notification',
@@ -659,7 +649,7 @@ CREATE OR REPLACE PACKAGE BODY PKG_PUSH_NOTIFICATION AS
     ) RETURN NUMBER IS
         v_count NUMBER;
     BEGIN
-        DELETE FROM TB_PUSH_SUBSCRIPTION
+        DELETE FROM LCP_PUSH_SUBSCRIPTION
         WHERE ATIVO = 'N'
           AND DATA_SUBSCRIPTION < SYSDATE - p_dias_inatividade;
 
@@ -681,14 +671,14 @@ CREATE OR REPLACE PACKAGE BODY PKG_PUSH_NOTIFICATION AS
     BEGIN
         OPEN v_cursor FOR
             SELECT
-                (SELECT COUNT(*) FROM TB_PUSH_SUBSCRIPTION WHERE ATIVO = 'S') AS TOTAL_SUBSCRIPTIONS_ATIVAS,
-                (SELECT COUNT(*) FROM TB_PUSH_SUBSCRIPTION WHERE ATIVO = 'N') AS TOTAL_SUBSCRIPTIONS_INATIVAS,
-                (SELECT COUNT(DISTINCT ID_USUARIO) FROM TB_PUSH_SUBSCRIPTION WHERE ATIVO = 'S') AS TOTAL_USUARIOS_COM_PUSH,
-                (SELECT SUM(TOTAL_ENVIADOS) FROM TB_PUSH_SUBSCRIPTION) AS TOTAL_PUSH_ENVIADOS,
-                (SELECT SUM(TOTAL_ERROS) FROM TB_PUSH_SUBSCRIPTION) AS TOTAL_PUSH_ERROS,
-                (SELECT COUNT(*) FROM TB_PUSH_LOG WHERE STATUS = 'ENVIADO') AS TOTAL_LOG_ENVIADOS,
-                (SELECT COUNT(*) FROM TB_PUSH_LOG WHERE STATUS = 'ERRO') AS TOTAL_LOG_ERROS,
-                (SELECT COUNT(*) FROM TB_PUSH_LOG WHERE STATUS = 'PENDENTE') AS TOTAL_LOG_PENDENTES
+                (SELECT COUNT(*) FROM LCP_PUSH_SUBSCRIPTION WHERE ATIVO = 'S') AS TOTAL_SUBSCRIPTIONS_ATIVAS,
+                (SELECT COUNT(*) FROM LCP_PUSH_SUBSCRIPTION WHERE ATIVO = 'N') AS TOTAL_SUBSCRIPTIONS_INATIVAS,
+                (SELECT COUNT(DISTINCT ID_USUARIO) FROM LCP_PUSH_SUBSCRIPTION WHERE ATIVO = 'S') AS TOTAL_USUARIOS_COM_PUSH,
+                (SELECT SUM(TOTAL_ENVIADOS) FROM LCP_PUSH_SUBSCRIPTION) AS TOTAL_PUSH_ENVIADOS,
+                (SELECT SUM(TOTAL_ERROS) FROM LCP_PUSH_SUBSCRIPTION) AS TOTAL_PUSH_ERROS,
+                (SELECT COUNT(*) FROM LCP_PUSH_LOG WHERE STATUS = 'ENVIADO') AS TOTAL_LOG_ENVIADOS,
+                (SELECT COUNT(*) FROM LCP_PUSH_LOG WHERE STATUS = 'ERRO') AS TOTAL_LOG_ERROS,
+                (SELECT COUNT(*) FROM LCP_PUSH_LOG WHERE STATUS = 'PENDENTE') AS TOTAL_LOG_PENDENTES
             FROM DUAL;
 
         RETURN v_cursor;
