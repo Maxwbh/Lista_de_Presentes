@@ -541,6 +541,61 @@
                 <input type="text" class="form-control search-input" id="search-produtos" placeholder="🔍 Buscar produto..." onkeyup="filterProdutos()">
             </div>
 
+            <!-- Filtros e Ordenação -->
+            <div class="filters-bar" style="background: white; padding: 20px; border-radius: 15px; box-shadow: 0 3px 15px rgba(0,0,0,0.08); margin-bottom: 25px;">
+                <form method="get" action="{% url 'lista_usuarios' %}" id="filtros-form">
+                    <div class="row g-3">
+                        <!-- Ordenação -->
+                        <div class="col-md-4">
+                            <label class="form-label" style="font-weight: 600; color: var(--christmas-green); display: flex; align-items: center; gap: 5px;">
+                                <i class="bi bi-sort-down"></i>
+                                Ordenar por
+                            </label>
+                            <select name="ordenar" class="form-select" onchange="this.form.submit()">
+                                <option value="-data" {% if ordenar_por == '-data' or ordenar_por == '-data_cadastro' %}selected{% endif %}>Mais Recentes</option>
+                                <option value="data" {% if ordenar_por == 'data' or ordenar_por == 'data_cadastro' %}selected{% endif %}>Mais Antigos</option>
+                                <option value="produto" {% if ordenar_por == 'produto' %}selected{% endif %}>Produto (A-Z)</option>
+                                <option value="-produto" {% if ordenar_por == '-produto' %}selected{% endif %}>Produto (Z-A)</option>
+                                <option value="usuario" {% if ordenar_por == 'usuario' %}selected{% endif %}>Usuário (A-Z)</option>
+                                <option value="-usuario" {% if ordenar_por == '-usuario' %}selected{% endif %}>Usuário (Z-A)</option>
+                                <option value="preco" {% if ordenar_por == 'preco' %}selected{% endif %}>Menor Preço</option>
+                                <option value="-preco" {% if ordenar_por == '-preco' %}selected{% endif %}>Maior Preço</option>
+                                <option value="melhor_preco" {% if ordenar_por == 'melhor_preco' %}selected{% endif %}>Melhor Oferta</option>
+                                <option value="-melhor_preco" {% if ordenar_por == '-melhor_preco' %}selected{% endif %}>Pior Oferta</option>
+                            </select>
+                        </div>
+
+                        <!-- Preço Mínimo -->
+                        <div class="col-md-3">
+                            <label class="form-label" style="font-weight: 600; color: var(--christmas-green); display: flex; align-items: center; gap: 5px;">
+                                <i class="bi bi-currency-dollar"></i>
+                                Preço Mínimo
+                            </label>
+                            <input type="number" name="preco_min" class="form-control" placeholder="R$ 0,00" step="0.01" value="{{ preco_min }}">
+                        </div>
+
+                        <!-- Preço Máximo -->
+                        <div class="col-md-3">
+                            <label class="form-label" style="font-weight: 600; color: var(--christmas-green); display: flex; align-items: center; gap: 5px;">
+                                <i class="bi bi-currency-dollar"></i>
+                                Preço Máximo
+                            </label>
+                            <input type="number" name="preco_max" class="form-control" placeholder="R$ 999,99" step="0.01" value="{{ preco_max }}">
+                        </div>
+
+                        <!-- Botões -->
+                        <div class="col-md-2" style="display: flex; align-items: flex-end; gap: 5px;">
+                            <button type="submit" class="btn btn-success flex-fill" style="border-radius: 8px; font-weight: 600;">
+                                <i class="bi bi-funnel-fill"></i> Filtrar
+                            </button>
+                            <a href="{% url 'lista_usuarios' %}" class="btn btn-outline-secondary" style="border-radius: 8px;" title="Limpar filtros">
+                                <i class="bi bi-x-lg"></i>
+                            </a>
+                        </div>
+                    </div>
+                </form>
+            </div>
+
             <div class="produtos-grid" id="produtos-container">
                 {% for presente in todos_presentes %}
                     <div class="produto-card" data-descricao="{{ presente.descricao|lower }}" data-usuario="{{ presente.usuario.first_name }} {{ presente.usuario.last_name }}">
@@ -562,16 +617,18 @@
                         <div class="produto-body">
                             <h5 class="produto-descricao">{{ presente.descricao }}</h5>
 
-                            {% if presente.preco %}
-                                <div class="produto-preco">R$ {{ presente.preco }}</div>
-                            {% endif %}
+                            <div style="display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; margin-bottom: 10px;">
+                                {% if presente.preco %}
+                                    <div class="produto-preco">R$ {{ presente.preco }}</div>
+                                {% endif %}
 
-                            {% if presente.sugestoes.count > 0 %}
-                                <div class="produto-sugestoes-info">
-                                    <i class="bi bi-shop"></i>
-                                    {{ presente.sugestoes.count }} opções de compra encontradas
-                                </div>
-                            {% endif %}
+                                {% if presente.melhor_preco %}
+                                    <div style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%); color: white; padding: 6px 12px; border-radius: 8px; font-weight: 700; font-size: 0.9rem; display: inline-flex; align-items: center; gap: 5px;">
+                                        <i class="bi bi-star-fill"></i>
+                                        Melhor: R$ {{ presente.melhor_preco }}
+                                    </div>
+                                {% endif %}
+                            </div>
 
                             <div class="produto-actions">
                                 {% if presente.sugestoes.count > 0 %}
