@@ -206,8 +206,8 @@
                     </span>
                 </div>
 
-                {% if presente.imagem %}
-                    <img src="{{ presente.imagem.url }}" alt="{{ presente.descricao }}" class="presente-thumbnail">
+                {% if presente.tem_imagem %}
+                    <img src="{{ presente.get_imagem_url }}" alt="{{ presente.descricao }}" class="presente-thumbnail">
                 {% endif %}
             </div>
 
