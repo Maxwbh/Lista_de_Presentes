@@ -17,15 +17,15 @@ CREATE OR REPLACE PACKAGE PKG_USUARIO AS
 
     -- Record type para usuario
     TYPE t_usuario IS RECORD (
-        id_usuario          TB_USUARIO.ID_USUARIO%TYPE,
-        username            TB_USUARIO.USERNAME%TYPE,
-        email               TB_USUARIO.EMAIL%TYPE,
-        primeiro_nome       TB_USUARIO.PRIMEIRO_NOME%TYPE,
-        ultimo_nome         TB_USUARIO.ULTIMO_NOME%TYPE,
-        telefone            TB_USUARIO.TELEFONE%TYPE,
-        ativo               TB_USUARIO.ATIVO%TYPE,
-        is_superuser        TB_USUARIO.IS_SUPERUSER%TYPE,
-        data_cadastro       TB_USUARIO.DATA_CADASTRO%TYPE
+        id_usuario          LCP_USUARIO.ID%TYPE,
+        username            LCP_USUARIO.USERNAME%TYPE,
+        email               LCP_USUARIO.EMAIL%TYPE,
+        primeiro_nome       LCP_USUARIO.PRIMEIRO_NOME%TYPE,
+        ultimo_nome         LCP_USUARIO.ULTIMO_NOME%TYPE,
+        telefone            LCP_USUARIO.TELEFONE%TYPE,
+        ativo               LCP_USUARIO.ATIVO%TYPE,
+        is_superuser        LCP_USUARIO.IS_SUPERUSER%TYPE,
+        data_cadastro       LCP_USUARIO.DATA_CADASTRO%TYPE
     );
 
     -- Excecoes customizadas
@@ -235,7 +235,7 @@ CREATE OR REPLACE PACKAGE BODY PKG_USUARIO AS
 
         -- Verificar email duplicado
         SELECT COUNT(*) INTO v_count
-        FROM TB_USUARIO
+        FROM LCP_USUARIO
         WHERE UPPER(EMAIL) = UPPER(p_email);
 
         IF v_count > 0 THEN
@@ -244,7 +244,7 @@ CREATE OR REPLACE PACKAGE BODY PKG_USUARIO AS
 
         -- Verificar username duplicado
         SELECT COUNT(*) INTO v_count
-        FROM TB_USUARIO
+        FROM LCP_USUARIO
         WHERE UPPER(USERNAME) = UPPER(p_username);
 
         IF v_count > 0 THEN
@@ -255,8 +255,8 @@ CREATE OR REPLACE PACKAGE BODY PKG_USUARIO AS
         v_senha_hash := HASH_SENHA(p_senha);
 
         -- Inserir usuario
-        INSERT INTO TB_USUARIO (
-            ID_USUARIO,
+        INSERT INTO LCP_USUARIO (
+            ID,
             USERNAME,
             EMAIL,
             SENHA_HASH,
@@ -268,7 +268,7 @@ CREATE OR REPLACE PACKAGE BODY PKG_USUARIO AS
             IS_STAFF,
             DATA_CADASTRO
         ) VALUES (
-            SEQ_USUARIO.NEXTVAL,
+            SEQ_LCP_USUARIO.NEXTVAL,
             p_username,
             LOWER(p_email),
             v_senha_hash,
@@ -279,7 +279,7 @@ CREATE OR REPLACE PACKAGE BODY PKG_USUARIO AS
             'N',
             'N',
             SYSDATE
-        ) RETURNING ID_USUARIO INTO v_id_usuario;
+        ) RETURNING ID INTO v_id_usuario;
 
         COMMIT;
 
@@ -311,9 +311,9 @@ CREATE OR REPLACE PACKAGE BODY PKG_USUARIO AS
 
         -- Buscar usuario
         BEGIN
-            SELECT ID_USUARIO, SENHA_HASH, ATIVO
+            SELECT ID, SENHA_HASH, ATIVO
             INTO v_id_usuario, v_senha_hash, v_ativo
-            FROM TB_USUARIO
+            FROM LCP_USUARIO
             WHERE UPPER(EMAIL) = UPPER(p_email);
         EXCEPTION
             WHEN NO_DATA_FOUND THEN
@@ -357,8 +357,8 @@ CREATE OR REPLACE PACKAGE BODY PKG_USUARIO AS
     BEGIN
         -- Buscar hash armazenado
         SELECT SENHA_HASH INTO v_senha_hash
-        FROM TB_USUARIO
-        WHERE ID_USUARIO = p_id_usuario;
+        FROM LCP_USUARIO
+        WHERE ID = p_id_usuario;
 
         -- Gerar hash da senha informada
         v_senha_hash_input := HASH_SENHA(p_senha);
@@ -384,21 +384,21 @@ CREATE OR REPLACE PACKAGE BODY PKG_USUARIO AS
     BEGIN
         -- Verificar se usuario existe
         SELECT COUNT(*) INTO v_count
-        FROM TB_USUARIO
-        WHERE ID_USUARIO = p_id_usuario;
+        FROM LCP_USUARIO
+        WHERE ID = p_id_usuario;
 
         IF v_count = 0 THEN
             RAISE EX_USUARIO_NAO_ENCONTRADO;
         END IF;
 
         -- Atualizar campos informados
-        UPDATE TB_USUARIO
+        UPDATE LCP_USUARIO
         SET PRIMEIRO_NOME = NVL(p_primeiro_nome, PRIMEIRO_NOME),
             ULTIMO_NOME = NVL(p_ultimo_nome, ULTIMO_NOME),
             TELEFONE = NVL(p_telefone, TELEFONE),
             EMAIL = NVL(LOWER(p_email), EMAIL),
             DATA_ALTERACAO = SYSDATE
-        WHERE ID_USUARIO = p_id_usuario;
+        WHERE ID = p_id_usuario;
 
         COMMIT;
     EXCEPTION
@@ -431,10 +431,10 @@ CREATE OR REPLACE PACKAGE BODY PKG_USUARIO AS
         v_senha_hash_nova := HASH_SENHA(p_senha_nova);
 
         -- Atualizar senha
-        UPDATE TB_USUARIO
+        UPDATE LCP_USUARIO
         SET SENHA_HASH = v_senha_hash_nova,
             DATA_ALTERACAO = SYSDATE
-        WHERE ID_USUARIO = p_id_usuario;
+        WHERE ID = p_id_usuario;
 
         COMMIT;
     EXCEPTION
@@ -453,10 +453,10 @@ CREATE OR REPLACE PACKAGE BODY PKG_USUARIO AS
         p_ativo             IN CHAR
     ) IS
     BEGIN
-        UPDATE TB_USUARIO
+        UPDATE LCP_USUARIO
         SET ATIVO = p_ativo,
             DATA_ALTERACAO = SYSDATE
-        WHERE ID_USUARIO = p_id_usuario;
+        WHERE ID = p_id_usuario;
 
         IF SQL%ROWCOUNT = 0 THEN
             RAISE EX_USUARIO_NAO_ENCONTRADO;
@@ -479,11 +479,11 @@ CREATE OR REPLACE PACKAGE BODY PKG_USUARIO AS
     ) RETURN t_usuario IS
         v_usuario t_usuario;
     BEGIN
-        SELECT ID_USUARIO, USERNAME, EMAIL, PRIMEIRO_NOME, ULTIMO_NOME,
+        SELECT ID, USERNAME, EMAIL, PRIMEIRO_NOME, ULTIMO_NOME,
                TELEFONE, ATIVO, IS_SUPERUSER, DATA_CADASTRO
         INTO v_usuario
-        FROM TB_USUARIO
-        WHERE ID_USUARIO = p_id_usuario;
+        FROM LCP_USUARIO
+        WHERE ID = p_id_usuario;
 
         RETURN v_usuario;
     EXCEPTION
@@ -499,10 +499,10 @@ CREATE OR REPLACE PACKAGE BODY PKG_USUARIO AS
     ) RETURN t_usuario IS
         v_usuario t_usuario;
     BEGIN
-        SELECT ID_USUARIO, USERNAME, EMAIL, PRIMEIRO_NOME, ULTIMO_NOME,
+        SELECT ID, USERNAME, EMAIL, PRIMEIRO_NOME, ULTIMO_NOME,
                TELEFONE, ATIVO, IS_SUPERUSER, DATA_CADASTRO
         INTO v_usuario
-        FROM TB_USUARIO
+        FROM LCP_USUARIO
         WHERE UPPER(EMAIL) = UPPER(p_email);
 
         RETURN v_usuario;
@@ -518,9 +518,9 @@ CREATE OR REPLACE PACKAGE BODY PKG_USUARIO AS
         v_cursor t_cursor;
     BEGIN
         OPEN v_cursor FOR
-            SELECT ID_USUARIO, USERNAME, EMAIL, PRIMEIRO_NOME, ULTIMO_NOME,
+            SELECT ID, USERNAME, EMAIL, PRIMEIRO_NOME, ULTIMO_NOME,
                    TELEFONE, ATIVO, IS_SUPERUSER, DATA_CADASTRO
-            FROM TB_USUARIO
+            FROM LCP_USUARIO
             WHERE ATIVO = 'S'
             ORDER BY PRIMEIRO_NOME, ULTIMO_NOME;
 
@@ -536,11 +536,11 @@ CREATE OR REPLACE PACKAGE BODY PKG_USUARIO AS
         v_cursor t_cursor;
     BEGIN
         OPEN v_cursor FOR
-            SELECT ID_USUARIO, USERNAME, EMAIL, PRIMEIRO_NOME, ULTIMO_NOME,
+            SELECT ID, USERNAME, EMAIL, PRIMEIRO_NOME, ULTIMO_NOME,
                    TELEFONE, ATIVO, IS_SUPERUSER, DATA_CADASTRO
-            FROM TB_USUARIO
+            FROM LCP_USUARIO
             WHERE ATIVO = 'S'
-              AND ID_USUARIO != p_id_usuario_excluir
+              AND ID != p_id_usuario_excluir
             ORDER BY PRIMEIRO_NOME, ULTIMO_NOME;
 
         RETURN v_cursor;
@@ -555,8 +555,8 @@ CREATE OR REPLACE PACKAGE BODY PKG_USUARIO AS
         v_is_superuser CHAR(1);
     BEGIN
         SELECT IS_SUPERUSER INTO v_is_superuser
-        FROM TB_USUARIO
-        WHERE ID_USUARIO = p_id_usuario;
+        FROM LCP_USUARIO
+        WHERE ID = p_id_usuario;
 
         RETURN v_is_superuser = 'S';
     EXCEPTION
@@ -571,9 +571,9 @@ CREATE OR REPLACE PACKAGE BODY PKG_USUARIO AS
         p_id_usuario        IN NUMBER
     ) IS
     BEGIN
-        UPDATE TB_USUARIO
+        UPDATE LCP_USUARIO
         SET DATA_LOGIN = SYSDATE
-        WHERE ID_USUARIO = p_id_usuario;
+        WHERE ID = p_id_usuario;
 
         COMMIT;
     END REGISTRAR_LOGIN;

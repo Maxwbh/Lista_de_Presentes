@@ -17,13 +17,13 @@ CREATE OR REPLACE PACKAGE PKG_PRESENTE AS
 
     -- Record type para presente
     TYPE t_presente IS RECORD (
-        id_presente         TB_PRESENTE.ID_PRESENTE%TYPE,
-        id_usuario          TB_PRESENTE.ID_USUARIO%TYPE,
-        descricao           TB_PRESENTE.DESCRICAO%TYPE,
-        url                 TB_PRESENTE.URL%TYPE,
-        preco               TB_PRESENTE.PRECO%TYPE,
-        status              TB_PRESENTE.STATUS%TYPE,
-        data_cadastro       TB_PRESENTE.DATA_CADASTRO%TYPE
+        id_presente         LCP_PRESENTE.ID%TYPE,
+        id_usuario          LCP_PRESENTE.ID_USUARIO%TYPE,
+        descricao           LCP_PRESENTE.DESCRICAO%TYPE,
+        url                 LCP_PRESENTE.URL%TYPE,
+        preco               LCP_PRESENTE.PRECO%TYPE,
+        status              LCP_PRESENTE.STATUS%TYPE,
+        data_cadastro       LCP_PRESENTE.DATA_CADASTRO%TYPE
     );
 
     -- Excecoes customizadas
@@ -209,8 +209,8 @@ CREATE OR REPLACE PACKAGE BODY PKG_PRESENTE AS
             v_ativo CHAR(1);
         BEGIN
             SELECT ATIVO INTO v_ativo
-            FROM TB_USUARIO
-            WHERE ID_USUARIO = p_id_usuario;
+            FROM LCP_USUARIO
+            WHERE ID = p_id_usuario;
 
             IF v_ativo = 'N' THEN
                 RAISE_APPLICATION_ERROR(-20105, 'Usuario inativo');
@@ -221,8 +221,8 @@ CREATE OR REPLACE PACKAGE BODY PKG_PRESENTE AS
         END;
 
         -- Inserir presente
-        INSERT INTO TB_PRESENTE (
-            ID_PRESENTE,
+        INSERT INTO LCP_PRESENTE (
+            ID,
             ID_USUARIO,
             DESCRICAO,
             URL,
@@ -234,7 +234,7 @@ CREATE OR REPLACE PACKAGE BODY PKG_PRESENTE AS
             DATA_CADASTRO,
             DATA_ALTERACAO
         ) VALUES (
-            SEQ_PRESENTE.NEXTVAL,
+            SEQ_LCP_PRESENTE.NEXTVAL,
             p_id_usuario,
             p_descricao,
             p_url,
@@ -245,7 +245,7 @@ CREATE OR REPLACE PACKAGE BODY PKG_PRESENTE AS
             p_imagem_tipo,
             SYSDATE,
             SYSDATE
-        ) RETURNING ID_PRESENTE INTO v_id_presente;
+        ) RETURNING ID INTO v_id_presente;
 
         COMMIT;
 
@@ -274,8 +274,8 @@ CREATE OR REPLACE PACKAGE BODY PKG_PRESENTE AS
         -- Verificar se presente existe e se usuario e dono
         BEGIN
             SELECT ID_USUARIO INTO v_id_usuario_dono
-            FROM TB_PRESENTE
-            WHERE ID_PRESENTE = p_id_presente;
+            FROM LCP_PRESENTE
+            WHERE ID = p_id_presente;
         EXCEPTION
             WHEN NO_DATA_FOUND THEN
                 RAISE EX_PRESENTE_NAO_ENCONTRADO;
@@ -287,7 +287,7 @@ CREATE OR REPLACE PACKAGE BODY PKG_PRESENTE AS
         END IF;
 
         -- Atualizar apenas campos informados (não nulos)
-        UPDATE TB_PRESENTE
+        UPDATE LCP_PRESENTE
         SET DESCRICAO = CASE WHEN p_descricao IS NOT NULL THEN p_descricao ELSE DESCRICAO END,
             URL = CASE WHEN p_url IS NOT NULL THEN p_url ELSE URL END,
             PRECO = CASE WHEN p_preco IS NOT NULL THEN p_preco ELSE PRECO END,
@@ -295,7 +295,7 @@ CREATE OR REPLACE PACKAGE BODY PKG_PRESENTE AS
             IMAGEM_NOME = CASE WHEN p_imagem_nome IS NOT NULL THEN p_imagem_nome ELSE IMAGEM_NOME END,
             IMAGEM_TIPO = CASE WHEN p_imagem_tipo IS NOT NULL THEN p_imagem_tipo ELSE IMAGEM_TIPO END,
             DATA_ALTERACAO = SYSDATE
-        WHERE ID_PRESENTE = p_id_presente;
+        WHERE ID = p_id_presente;
 
         COMMIT;
     EXCEPTION
@@ -320,8 +320,8 @@ CREATE OR REPLACE PACKAGE BODY PKG_PRESENTE AS
         -- Verificar propriedade
         BEGIN
             SELECT ID_USUARIO INTO v_id_usuario_dono
-            FROM TB_PRESENTE
-            WHERE ID_PRESENTE = p_id_presente;
+            FROM LCP_PRESENTE
+            WHERE ID = p_id_presente;
         EXCEPTION
             WHEN NO_DATA_FOUND THEN
                 RAISE EX_PRESENTE_NAO_ENCONTRADO;
@@ -332,8 +332,8 @@ CREATE OR REPLACE PACKAGE BODY PKG_PRESENTE AS
         END IF;
 
         -- Excluir presente (CASCADE vai excluir sugestoes e compras)
-        DELETE FROM TB_PRESENTE
-        WHERE ID_PRESENTE = p_id_presente;
+        DELETE FROM LCP_PRESENTE
+        WHERE ID = p_id_presente;
 
         COMMIT;
     EXCEPTION
@@ -356,7 +356,7 @@ CREATE OR REPLACE PACKAGE BODY PKG_PRESENTE AS
     BEGIN
         OPEN v_cursor FOR
             SELECT
-                p.ID_PRESENTE,
+                p.ID AS ID_PRESENTE,
                 p.ID_USUARIO,
                 p.DESCRICAO,
                 p.URL,
@@ -372,15 +372,15 @@ CREATE OR REPLACE PACKAGE BODY PKG_PRESENTE AS
                 p.IMAGEM_NOME,
                 p.IMAGEM_TIPO,
                 -- Dados da compra (se houver)
-                c.ID_COMPRA,
+                c.ID AS ID_COMPRA,
                 c.DATA_COMPRA,
                 c.ID_COMPRADOR,
                 comp.PRIMEIRO_NOME || ' ' || comp.ULTIMO_NOME AS COMPRADOR_NOME
-            FROM TB_PRESENTE p
-            INNER JOIN TB_USUARIO u ON p.ID_USUARIO = u.ID_USUARIO
-            LEFT JOIN TB_COMPRA c ON p.ID_PRESENTE = c.ID_PRESENTE
-            LEFT JOIN TB_USUARIO comp ON c.ID_COMPRADOR = comp.ID_USUARIO
-            WHERE p.ID_PRESENTE = p_id_presente;
+            FROM LCP_PRESENTE p
+            INNER JOIN LCP_USUARIO u ON p.ID_USUARIO = u.ID
+            LEFT JOIN LCP_COMPRA c ON p.ID = c.ID_PRESENTE
+            LEFT JOIN LCP_USUARIO comp ON c.ID_COMPRADOR = comp.ID
+            WHERE p.ID = p_id_presente;
 
         RETURN v_cursor;
     END BUSCAR_POR_ID;
@@ -396,7 +396,7 @@ CREATE OR REPLACE PACKAGE BODY PKG_PRESENTE AS
     BEGIN
         OPEN v_cursor FOR
             SELECT
-                p.ID_PRESENTE,
+                p.ID AS ID_PRESENTE,
                 p.DESCRICAO,
                 p.URL,
                 p.PRECO,
@@ -405,18 +405,18 @@ CREATE OR REPLACE PACKAGE BODY PKG_PRESENTE AS
                 CASE WHEN p.IMAGEM_BASE64 IS NOT NULL THEN 'S' ELSE 'N' END AS TEM_IMAGEM,
                 -- Estatisticas
                 (SELECT COUNT(*)
-                 FROM TB_SUGESTAO_COMPRA s
-                 WHERE s.ID_PRESENTE = p.ID_PRESENTE) AS TOTAL_SUGESTOES,
+                 FROM LCP_SUGESTAO_COMPRA s
+                 WHERE s.ID_PRESENTE = p.ID) AS TOTAL_SUGESTOES,
                 (SELECT MIN(PRECO_SUGERIDO)
-                 FROM TB_SUGESTAO_COMPRA s
-                 WHERE s.ID_PRESENTE = p.ID_PRESENTE
+                 FROM LCP_SUGESTAO_COMPRA s
+                 WHERE s.ID_PRESENTE = p.ID
                    AND PRECO_SUGERIDO IS NOT NULL) AS MELHOR_PRECO,
                 -- Dados da compra
                 c.DATA_COMPRA,
                 comp.PRIMEIRO_NOME || ' ' || comp.ULTIMO_NOME AS COMPRADOR_NOME
-            FROM TB_PRESENTE p
-            LEFT JOIN TB_COMPRA c ON p.ID_PRESENTE = c.ID_PRESENTE
-            LEFT JOIN TB_USUARIO comp ON c.ID_COMPRADOR = comp.ID_USUARIO
+            FROM LCP_PRESENTE p
+            LEFT JOIN LCP_COMPRA c ON p.ID = c.ID_PRESENTE
+            LEFT JOIN LCP_USUARIO comp ON c.ID_COMPRADOR = comp.ID
             WHERE p.ID_USUARIO = p_id_usuario
               AND (p_status IS NULL OR p.STATUS = p_status)
             ORDER BY p.DATA_CADASTRO DESC;
@@ -436,38 +436,38 @@ CREATE OR REPLACE PACKAGE BODY PKG_PRESENTE AS
     BEGIN
         OPEN v_cursor FOR
             SELECT
-                p.ID_PRESENTE,
+                p.ID AS ID_PRESENTE,
                 p.DESCRICAO,
                 p.URL,
                 p.PRECO,
                 p.DATA_CADASTRO,
                 -- Usuario dono
-                u.ID_USUARIO,
+                u.ID AS ID_USUARIO,
                 u.PRIMEIRO_NOME || ' ' || u.ULTIMO_NOME AS USUARIO_NOME,
                 u.EMAIL AS USUARIO_EMAIL,
                 -- Imagem
                 CASE WHEN p.IMAGEM_BASE64 IS NOT NULL THEN 'S' ELSE 'N' END AS TEM_IMAGEM,
                 -- Estatisticas
                 (SELECT COUNT(*)
-                 FROM TB_SUGESTAO_COMPRA s
-                 WHERE s.ID_PRESENTE = p.ID_PRESENTE) AS TOTAL_SUGESTOES,
+                 FROM LCP_SUGESTAO_COMPRA s
+                 WHERE s.ID_PRESENTE = p.ID) AS TOTAL_SUGESTOES,
                 (SELECT MIN(PRECO_SUGERIDO)
-                 FROM TB_SUGESTAO_COMPRA s
-                 WHERE s.ID_PRESENTE = p.ID_PRESENTE
+                 FROM LCP_SUGESTAO_COMPRA s
+                 WHERE s.ID_PRESENTE = p.ID
                    AND PRECO_SUGERIDO IS NOT NULL) AS MELHOR_PRECO
-            FROM TB_PRESENTE p
-            INNER JOIN TB_USUARIO u ON p.ID_USUARIO = u.ID_USUARIO
+            FROM LCP_PRESENTE p
+            INNER JOIN LCP_USUARIO u ON p.ID_USUARIO = u.ID
             WHERE p.STATUS = 'ATIVO'
               AND u.ATIVO = 'S'
               AND p.ID_USUARIO != p_id_usuario_excluir
               AND (p_preco_min IS NULL OR p.PRECO >= p_preco_min OR
                    (SELECT MIN(PRECO_SUGERIDO)
-                    FROM TB_SUGESTAO_COMPRA s
-                    WHERE s.ID_PRESENTE = p.ID_PRESENTE) >= p_preco_min)
+                    FROM LCP_SUGESTAO_COMPRA s
+                    WHERE s.ID_PRESENTE = p.ID) >= p_preco_min)
               AND (p_preco_max IS NULL OR p.PRECO <= p_preco_max OR
                    (SELECT MIN(PRECO_SUGERIDO)
-                    FROM TB_SUGESTAO_COMPRA s
-                    WHERE s.ID_PRESENTE = p.ID_PRESENTE) <= p_preco_max)
+                    FROM LCP_SUGESTAO_COMPRA s
+                    WHERE s.ID_PRESENTE = p.ID) <= p_preco_max)
             ORDER BY p.DATA_CADASTRO DESC;
 
         RETURN v_cursor;
@@ -484,7 +484,7 @@ CREATE OR REPLACE PACKAGE BODY PKG_PRESENTE AS
     BEGIN
         OPEN v_cursor FOR
             SELECT
-                p.ID_PRESENTE,
+                p.ID AS ID_PRESENTE,
                 p.DESCRICAO,
                 p.URL,
                 p.PRECO,
@@ -496,11 +496,11 @@ CREATE OR REPLACE PACKAGE BODY PKG_PRESENTE AS
                 CASE WHEN p.IMAGEM_BASE64 IS NOT NULL THEN 'S' ELSE 'N' END AS TEM_IMAGEM,
                 -- Estatisticas
                 (SELECT COUNT(*)
-                 FROM TB_SUGESTAO_COMPRA s
-                 WHERE s.ID_PRESENTE = p.ID_PRESENTE) AS TOTAL_SUGESTOES,
+                 FROM LCP_SUGESTAO_COMPRA s
+                 WHERE s.ID_PRESENTE = p.ID) AS TOTAL_SUGESTOES,
                 (SELECT MIN(PRECO_SUGERIDO)
-                 FROM TB_SUGESTAO_COMPRA s
-                 WHERE s.ID_PRESENTE = p.ID_PRESENTE
+                 FROM LCP_SUGESTAO_COMPRA s
+                 WHERE s.ID_PRESENTE = p.ID
                    AND PRECO_SUGERIDO IS NOT NULL) AS MELHOR_PRECO,
                 -- Compra
                 c.DATA_COMPRA,
@@ -508,9 +508,9 @@ CREATE OR REPLACE PACKAGE BODY PKG_PRESENTE AS
                     WHEN c.ID_COMPRADOR = p_id_usuario_visualizador THEN 'S'
                     ELSE 'N'
                 END AS COMPRADO_POR_MIM
-            FROM TB_PRESENTE p
-            INNER JOIN TB_USUARIO u ON p.ID_USUARIO = u.ID_USUARIO
-            LEFT JOIN TB_COMPRA c ON p.ID_PRESENTE = c.ID_PRESENTE
+            FROM LCP_PRESENTE p
+            INNER JOIN LCP_USUARIO u ON p.ID_USUARIO = u.ID
+            LEFT JOIN LCP_COMPRA c ON p.ID = c.ID_PRESENTE
             WHERE p.ID_USUARIO = p_id_usuario_dono
             ORDER BY p.DATA_CADASTRO DESC;
 
@@ -526,8 +526,8 @@ CREATE OR REPLACE PACKAGE BODY PKG_PRESENTE AS
         v_imagem CLOB;
     BEGIN
         SELECT IMAGEM_BASE64 INTO v_imagem
-        FROM TB_PRESENTE
-        WHERE ID_PRESENTE = p_id_presente;
+        FROM LCP_PRESENTE
+        WHERE ID = p_id_presente;
 
         RETURN v_imagem;
     EXCEPTION
@@ -546,7 +546,7 @@ CREATE OR REPLACE PACKAGE BODY PKG_PRESENTE AS
     BEGIN
         SELECT COUNT(*)
         INTO v_count
-        FROM TB_PRESENTE
+        FROM LCP_PRESENTE
         WHERE ID_USUARIO = p_id_usuario
           AND (p_status IS NULL OR STATUS = p_status);
 
@@ -563,8 +563,8 @@ CREATE OR REPLACE PACKAGE BODY PKG_PRESENTE AS
         v_id_dono NUMBER;
     BEGIN
         SELECT ID_USUARIO INTO v_id_dono
-        FROM TB_PRESENTE
-        WHERE ID_PRESENTE = p_id_presente;
+        FROM LCP_PRESENTE
+        WHERE ID = p_id_presente;
 
         RETURN v_id_dono = p_id_usuario;
     EXCEPTION
@@ -582,25 +582,25 @@ CREATE OR REPLACE PACKAGE BODY PKG_PRESENTE AS
     BEGIN
         OPEN v_cursor FOR
             SELECT
-                p.ID_PRESENTE,
+                p.ID AS ID_PRESENTE,
                 p.STATUS,
                 (SELECT COUNT(*)
-                 FROM TB_SUGESTAO_COMPRA s
-                 WHERE s.ID_PRESENTE = p.ID_PRESENTE) AS TOTAL_SUGESTOES,
+                 FROM LCP_SUGESTAO_COMPRA s
+                 WHERE s.ID_PRESENTE = p.ID) AS TOTAL_SUGESTOES,
                 (SELECT MIN(PRECO_SUGERIDO)
-                 FROM TB_SUGESTAO_COMPRA s
-                 WHERE s.ID_PRESENTE = p.ID_PRESENTE
+                 FROM LCP_SUGESTAO_COMPRA s
+                 WHERE s.ID_PRESENTE = p.ID
                    AND PRECO_SUGERIDO IS NOT NULL) AS MELHOR_PRECO,
                 (SELECT MAX(PRECO_SUGERIDO)
-                 FROM TB_SUGESTAO_COMPRA s
-                 WHERE s.ID_PRESENTE = p.ID_PRESENTE
+                 FROM LCP_SUGESTAO_COMPRA s
+                 WHERE s.ID_PRESENTE = p.ID
                    AND PRECO_SUGERIDO IS NOT NULL) AS PIOR_PRECO,
                 (SELECT AVG(PRECO_SUGERIDO)
-                 FROM TB_SUGESTAO_COMPRA s
-                 WHERE s.ID_PRESENTE = p.ID_PRESENTE
+                 FROM LCP_SUGESTAO_COMPRA s
+                 WHERE s.ID_PRESENTE = p.ID
                    AND PRECO_SUGERIDO IS NOT NULL) AS PRECO_MEDIO
-            FROM TB_PRESENTE p
-            WHERE ID_PRESENTE = p_id_presente;
+            FROM LCP_PRESENTE p
+            WHERE ID = p_id_presente;
 
         RETURN v_cursor;
     END OBTER_ESTATISTICAS;
