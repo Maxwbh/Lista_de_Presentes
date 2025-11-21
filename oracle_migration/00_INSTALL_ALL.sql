@@ -34,7 +34,7 @@ PROMPT
 -- ==============================================================================
 
 PROMPT ========================================
-PROMPT PASSO 1/8: Criando Tabelas, Indices e Views
+PROMPT PASSO 1/9: Criando Tabelas, Indices e Views
 PROMPT ========================================
 
 @@01_DDL_TABELAS.sql
@@ -48,7 +48,7 @@ PROMPT
 -- ==============================================================================
 
 PROMPT ========================================
-PROMPT PASSO 2/8: Criando Package PKG_USUARIO
+PROMPT PASSO 2/9: Criando Package PKG_USUARIO
 PROMPT ========================================
 
 @@02_PKG_USUARIO.sql
@@ -62,7 +62,7 @@ PROMPT
 -- ==============================================================================
 
 PROMPT ========================================
-PROMPT PASSO 3/8: Criando Package PKG_NOTIFICACAO
+PROMPT PASSO 3/9: Criando Package PKG_NOTIFICACAO
 PROMPT ========================================
 
 @@05_PKG_NOTIFICACAO.sql
@@ -76,7 +76,7 @@ PROMPT
 -- ==============================================================================
 
 PROMPT ========================================
-PROMPT PASSO 4/8: Criando Package PKG_PRESENTE
+PROMPT PASSO 4/9: Criando Package PKG_PRESENTE
 PROMPT ========================================
 
 @@03_PKG_PRESENTE.sql
@@ -90,7 +90,7 @@ PROMPT
 -- ==============================================================================
 
 PROMPT ========================================
-PROMPT PASSO 5/8: Criando Package PKG_SUGESTAO
+PROMPT PASSO 5/9: Criando Package PKG_SUGESTAO
 PROMPT ========================================
 
 @@06_PKG_SUGESTAO.sql
@@ -104,7 +104,7 @@ PROMPT
 -- ==============================================================================
 
 PROMPT ========================================
-PROMPT PASSO 6/8: Criando Package PKG_COMPRA
+PROMPT PASSO 6/9: Criando Package PKG_COMPRA
 PROMPT ========================================
 
 @@04_PKG_COMPRA.sql
@@ -118,7 +118,7 @@ PROMPT
 -- ==============================================================================
 
 PROMPT ========================================
-PROMPT PASSO 7/8: Criando Package PKG_PUSH_NOTIFICATION
+PROMPT PASSO 7/9: Criando Package PKG_PUSH_NOTIFICATION
 PROMPT ========================================
 
 @@07_PKG_PUSH_NOTIFICATION.sql
@@ -132,13 +132,27 @@ PROMPT
 -- ==============================================================================
 
 PROMPT ========================================
-PROMPT PASSO 8/8: Criando Integracao Push Notifications
+PROMPT PASSO 8/9: Criando Integracao Push Notifications
 PROMPT ========================================
 
 @@08_INTEGRACAO_PUSH_APEX.sql
 
 PROMPT
 PROMPT ✓ Integracao Push Notifications criada com sucesso!
+PROMPT
+
+-- ==============================================================================
+-- PASSO 9: CRIAR TRIGGERS DE AUDITORIA E SEQUENCES
+-- ==============================================================================
+
+PROMPT ========================================
+PROMPT PASSO 9/9: Criando Triggers de Auditoria
+PROMPT ========================================
+
+@@09_TRIGGERS_AUDITORIA.sql
+
+PROMPT
+PROMPT ✓ Triggers de Auditoria criados com sucesso!
 PROMPT
 
 -- ==============================================================================
@@ -155,21 +169,21 @@ PROMPT
 PROMPT Tabelas criadas:
 SELECT table_name
 FROM user_tables
-WHERE table_name LIKE 'TB_%'
+WHERE table_name LIKE 'LCP_%'
 ORDER BY table_name;
 
 PROMPT
 PROMPT Sequences criadas:
 SELECT sequence_name
 FROM user_sequences
-WHERE sequence_name LIKE 'SEQ_%'
+WHERE sequence_name LIKE 'SEQ_LCP_%'
 ORDER BY sequence_name;
 
 PROMPT
 PROMPT Views criadas:
 SELECT view_name
 FROM user_views
-WHERE view_name LIKE 'VW_%'
+WHERE view_name LIKE 'VW_LCP_%'
 ORDER BY view_name;
 
 PROMPT
@@ -191,10 +205,19 @@ PROMPT Objetos invalidos (nao deve haver nenhum):
 SELECT object_type, object_name, status
 FROM user_objects
 WHERE status != 'VALID'
-  AND (object_name LIKE 'TB_%'
+  AND (object_name LIKE 'LCP_%'
    OR object_name LIKE 'PKG_%'
-   OR object_name LIKE 'VW_%')
+   OR object_name LIKE 'VW_LCP_%'
+   OR object_name LIKE 'TRG_LCP_%'
+   OR object_name LIKE 'TRG_AUDIT_%')
 ORDER BY object_type, object_name;
+
+PROMPT
+PROMPT Triggers criados:
+SELECT trigger_name, table_name, status
+FROM user_triggers
+WHERE trigger_name LIKE 'TRG_LCP_%' OR trigger_name LIKE 'TRG_AUDIT_%'
+ORDER BY trigger_name;
 
 PROMPT
 PROMPT ========================================
@@ -221,9 +244,9 @@ PROMPT         p_primeiro_nome => 'Administrador',
 PROMPT         p_ultimo_nome => 'Sistema'
 PROMPT     );
 PROMPT
-PROMPT     UPDATE TB_USUARIO
+PROMPT     UPDATE LCP_USUARIO
 PROMPT     SET IS_SUPERUSER = 'S', IS_STAFF = 'S'
-PROMPT     WHERE ID_USUARIO = v_id;
+PROMPT     WHERE ID = v_id;
 PROMPT
 PROMPT     COMMIT;
 PROMPT
