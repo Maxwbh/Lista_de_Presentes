@@ -495,11 +495,19 @@ def marcar_comprado_view(request, pk):
     # Não pode comprar seu próprio presente
     if presente.usuario == request.user:
         messages.error(request, 'Você não pode marcar seu próprio presente como comprado!')
+        # Retornar para a página anterior ou lista_usuarios
+        referer = request.META.get('HTTP_REFERER')
+        if referer and 'usuarios' in referer:
+            return redirect('lista_usuarios')
         return redirect('presentes_usuario', user_id=presente.usuario.id)
 
     # Verificar se já foi comprado
     if presente.status == 'COMPRADO':
         messages.warning(request, 'Este presente já foi comprado por outra pessoa!')
+        # Retornar para a página anterior ou lista_usuarios
+        referer = request.META.get('HTTP_REFERER')
+        if referer and 'usuarios' in referer:
+            return redirect('lista_usuarios')
         return redirect('presentes_usuario', user_id=presente.usuario.id)
 
     # Marcar como comprado
@@ -519,12 +527,21 @@ def marcar_comprado_view(request, pk):
     )
 
     messages.success(request, 'Presente marcado como comprado!')
+
+    # Retornar para a página anterior (lista_usuarios se veio de lá)
+    referer = request.META.get('HTTP_REFERER')
+    if referer and 'usuarios' in referer:
+        return redirect('lista_usuarios')
     return redirect('presentes_usuario', user_id=presente.usuario.id)
 
 @login_required
 def notificacoes_view(request):
     # Otimizar query com select_related
-    notificacoes_list = Notificacao.objects.filter(usuario=request.user).select_related('usuario')
+    notificacoes_list = Notificacao.objects.filter(usuario=request.user).select_related('usuario').order_by('-data_notificacao')
+
+    # Contar notificações não lidas antes de marcar como lidas
+    total_nao_lidas = notificacoes_list.filter(lida=False).count()
+    total_lidas = notificacoes_list.filter(lida=True).count()
 
     # Marcar todas como lidas
     notificacoes_list.filter(lida=False).update(lida=True)
@@ -540,7 +557,11 @@ def notificacoes_view(request):
     except EmptyPage:
         notificacoes = paginator.page(paginator.num_pages)
 
-    return render(request, 'presentes/notificacoes.html', {'notificacoes': notificacoes})
+    return render(request, 'presentes/notificacoes.html', {
+        'notificacoes': notificacoes,
+        'total_nao_lidas': total_nao_lidas,
+        'total_lidas': total_lidas,
+    })
 
 @login_required
 def notificacoes_nao_lidas_json(request):
