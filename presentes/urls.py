@@ -17,6 +17,7 @@ urlpatterns = [
     path('adicionar-presente/', views.adicionar_presente_view, name='adicionar_presente'),
     path('editar-presente/<int:pk>/', views.editar_presente_view, name='editar_presente'),
     path('deletar-presente/<int:pk>/', views.deletar_presente_view, name='deletar_presente'),
+    path('presente/<int:pk>/imagem/', views.servir_imagem_view, name='servir_imagem'),
     path('buscar-sugestoes/<int:pk>/', views.buscar_sugestoes_ia_view, name='buscar_sugestoes'),
     path('ver-sugestoes/<int:pk>/', views.ver_sugestoes_view, name='ver_sugestoes'),
     
