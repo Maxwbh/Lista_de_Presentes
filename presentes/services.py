@@ -58,18 +58,35 @@ class IAService:
                     logger.debug(f"Processando card {i+1} do Zoom")
 
                     # Extrair nome da loja (múltiplos seletores)
+                    # No HTML real: <p>Menor preço via Amazon</p>
                     loja_elem = (
-                        card.find('span', {'data-testid': 'product-card::store-name'}) or
-                        card.find('span', class_=lambda x: x and 'store' in x.lower() if x else False) or
-                        card.find('p', class_=lambda x: x and 'seller' in x.lower() if x else False)
+                        card.find(attrs={'data-testid': 'product-card::store-name'}) or
+                        card.find(class_=lambda x: x and 'BestOfferMerchant' in x if x else False) or
+                        card.find(class_=lambda x: x and 'store' in x.lower() if x else False) or
+                        card.find(class_=lambda x: x and 'seller' in x.lower() if x else False)
                     )
-                    loja = loja_elem.text.strip() if loja_elem else "Zoom"
+
+                    if loja_elem:
+                        loja_text = loja_elem.text.strip()
+                        # Extrair nome da loja de textos como "Menor preço via Amazon"
+                        if 'via' in loja_text.lower():
+                            loja = loja_text.split('via')[-1].strip()
+                        elif 'por' in loja_text.lower():
+                            loja = loja_text.split('por')[-1].strip()
+                        else:
+                            loja = loja_text
+                    else:
+                        loja = "Zoom"
+
+                    logger.debug(f"Zoom: Loja encontrada: {loja}")
 
                     # Extrair preço (múltiplos seletores)
+                    # No HTML real: <strong data-testid="product-card::price">R$ 4.749,00</strong>
                     preco_elem = (
-                        card.find('p', {'data-testid': 'product-card::price'}) or
-                        card.find('span', class_=lambda x: x and 'price' in x.lower() if x else False) or
-                        card.find('div', class_=lambda x: x and 'price' in x.lower() if x else False)
+                        card.find(attrs={'data-testid': 'product-card::price'}) or
+                        card.find('strong', class_=lambda x: x and 'price' in x.lower() if x else False) or
+                        card.find('p', class_=lambda x: x and 'price' in x.lower() if x else False) or
+                        card.find('span', class_=lambda x: x and 'price' in x.lower() if x else False)
                     )
 
                     if preco_elem:
@@ -83,12 +100,14 @@ class IAService:
                             logger.warning(f"Zoom: Não foi possível converter preço: {preco_text}")
                             continue
                     else:
-                        logger.debug("Zoom: Preço não encontrado")
+                        logger.debug("Zoom: Preço não encontrado no card")
                         continue
 
                     # Extrair URL
+                    # No HTML real: <a data-testid="product-card::card" href="/celular/...">
                     link_elem = (
-                        card.find('a', {'data-testid': 'product-card::product'}) or
+                        card.find('a', attrs={'data-testid': 'product-card::card'}) or
+                        card.find('a', attrs={'data-testid': 'product-card::product'}) or
                         card.find('a', href=True)
                     )
 
@@ -108,6 +127,8 @@ class IAService:
 
                 except Exception as e:
                     logger.warning(f"Erro ao processar produto {i+1} do Zoom: {str(e)}")
+                    import traceback
+                    logger.debug(f"Traceback: {traceback.format_exc()}")
                     continue
 
             logger.info(f"Zoom: Total de {len(produtos)} produtos válidos encontrados")
@@ -158,17 +179,31 @@ class IAService:
 
                     # Extrair nome da loja (múltiplos seletores)
                     loja_elem = (
-                        card.find('span', class_=lambda x: x and 'store' in x.lower() if x else False) or
-                        card.find('p', class_=lambda x: x and 'seller' in x.lower() if x else False) or
-                        card.find('div', class_=lambda x: x and 'merchant' in x.lower() if x else False)
+                        card.find(class_=lambda x: x and 'store' in x.lower() if x else False) or
+                        card.find(class_=lambda x: x and 'seller' in x.lower() if x else False) or
+                        card.find(class_=lambda x: x and 'merchant' in x.lower() if x else False) or
+                        card.find(class_=lambda x: x and 'shop' in x.lower() if x else False)
                     )
-                    loja = loja_elem.text.strip() if loja_elem else "Buscapé"
 
-                    # Extrair preço (múltiplos seletores)
+                    if loja_elem:
+                        loja_text = loja_elem.text.strip()
+                        # Extrair nome da loja de textos como "Compre em: Loja X"
+                        if ':' in loja_text:
+                            loja = loja_text.split(':')[-1].strip()
+                        elif 'via' in loja_text.lower():
+                            loja = loja_text.split('via')[-1].strip()
+                        else:
+                            loja = loja_text
+                    else:
+                        loja = "Buscapé"
+
+                    logger.debug(f"Buscapé: Loja encontrada: {loja}")
+
+                    # Extrair preço (múltiplos seletores - tentar qualquer tag)
                     preco_elem = (
-                        card.find('p', class_=lambda x: x and 'price' in x.lower() if x else False) or
-                        card.find('span', class_=lambda x: x and 'price' in x.lower() if x else False) or
-                        card.find('div', class_=lambda x: x and 'price' in x.lower() if x else False)
+                        card.find(class_=lambda x: x and 'price' in x.lower() if x else False) or
+                        card.find('strong', class_=lambda x: x and 'value' in x.lower() if x else False) or
+                        card.find('span', class_=lambda x: x and 'value' in x.lower() if x else False)
                     )
 
                     if preco_elem:
@@ -176,13 +211,15 @@ class IAService:
                         logger.debug(f"Buscapé: Preço encontrado: {preco_text}")
                         # Remover "R$" e converter para float
                         preco_text = preco_text.replace('R$', '').replace('.', '').replace(',', '.').strip()
+                        # Remover espaços e outros caracteres
+                        preco_text = ''.join(c for c in preco_text if c.isdigit() or c == '.')
                         try:
                             preco = float(preco_text)
                         except ValueError:
                             logger.warning(f"Buscapé: Não foi possível converter preço: {preco_text}")
                             continue
                     else:
-                        logger.debug("Buscapé: Preço não encontrado")
+                        logger.debug("Buscapé: Preço não encontrado no card")
                         continue
 
                     # Extrair URL
@@ -203,6 +240,8 @@ class IAService:
 
                 except Exception as e:
                     logger.warning(f"Erro ao processar produto {i+1} do Buscapé: {str(e)}")
+                    import traceback
+                    logger.debug(f"Traceback: {traceback.format_exc()}")
                     continue
 
             logger.info(f"Buscapé: Total de {len(produtos)} produtos válidos encontrados")
@@ -297,7 +336,18 @@ class IAService:
     @staticmethod
     def buscar_sugestoes_claude(presente):
         """Busca sugestões usando Claude AI"""
-        client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
+        try:
+            client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
+        except TypeError as e:
+            logger.error(f"Erro ao inicializar cliente Anthropic: {str(e)}")
+            # Tentar com configuração básica sem argumentos extras
+            try:
+                import os
+                os.environ['ANTHROPIC_API_KEY'] = settings.ANTHROPIC_API_KEY
+                client = anthropic.Anthropic()
+            except Exception as e2:
+                logger.error(f"Erro ao inicializar cliente Anthropic (tentativa 2): {str(e2)}")
+                return False, f"Erro ao configurar IA Claude: {str(e2)}"
         
         prompt = f"""
         Encontre 5 lojas online no Brasil que vendem o seguinte produto: {presente.descricao}
