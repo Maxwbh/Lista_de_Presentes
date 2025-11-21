@@ -113,7 +113,29 @@ def adicionar_presente_view(request):
             presente = form.save(commit=False)
             presente.usuario = request.user
             presente.save()
-            messages.success(request, 'Presente adicionado com sucesso!')
+
+            # Buscar sugestões da IA automaticamente
+            try:
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.info(f"Buscando sugestões de IA para presente {presente.id}")
+
+                # Usar Claude por padrão
+                sucesso, mensagem = IAService.buscar_sugestoes_claude(presente)
+
+                if sucesso:
+                    messages.success(request, f'Presente adicionado! {mensagem}')
+                else:
+                    messages.success(request, 'Presente adicionado com sucesso!')
+                    messages.info(request, f'Sugestões de IA: {mensagem}')
+
+            except Exception as e:
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.error(f"Erro ao buscar sugestões de IA: {str(e)}")
+                messages.success(request, 'Presente adicionado com sucesso!')
+                messages.warning(request, 'Não foi possível buscar sugestões de lojas automaticamente.')
+
             return redirect('meus_presentes')
     else:
         form = PresenteForm()
