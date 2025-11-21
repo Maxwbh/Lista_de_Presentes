@@ -359,6 +359,13 @@ def atualizar_todos_precos_view(request):
 
 @login_required
 def lista_usuarios_view(request):
+    from django.db.models import Min, Q
+
+    # Pegar parâmetros de filtro e ordenação
+    ordenar_por = request.GET.get('ordenar', '-data_cadastro')
+    preco_min = request.GET.get('preco_min', '')
+    preco_max = request.GET.get('preco_max', '')
+
     # Otimizar query com prefetch_related para pegar presentes e sugestões
     usuarios_list = Usuario.objects.filter(ativo=True).exclude(id=request.user.id).prefetch_related(
         'presentes',
@@ -381,7 +388,48 @@ def lista_usuarios_view(request):
         status='ATIVO'
     ).exclude(
         usuario=request.user
-    ).select_related('usuario').prefetch_related('sugestoes').order_by('-data_cadastro')
+    ).select_related('usuario').prefetch_related('sugestoes')
+
+    # Adicionar melhor preço (menor preço das sugestões) para cada presente
+    todos_presentes = todos_presentes.annotate(
+        melhor_preco=Min('sugestoes__preco_sugerido')
+    )
+
+    # Aplicar filtros de preço
+    if preco_min:
+        try:
+            preco_min_valor = float(preco_min)
+            todos_presentes = todos_presentes.filter(
+                Q(preco__gte=preco_min_valor) | Q(melhor_preco__gte=preco_min_valor)
+            )
+        except ValueError:
+            pass
+
+    if preco_max:
+        try:
+            preco_max_valor = float(preco_max)
+            todos_presentes = todos_presentes.filter(
+                Q(preco__lte=preco_max_valor) | Q(melhor_preco__lte=preco_max_valor)
+            )
+        except ValueError:
+            pass
+
+    # Aplicar ordenação
+    mapeamento_ordenacao = {
+        'produto': 'descricao',
+        '-produto': '-descricao',
+        'usuario': 'usuario__first_name',
+        '-usuario': '-usuario__first_name',
+        'preco': 'preco',
+        '-preco': '-preco',
+        'melhor_preco': 'melhor_preco',
+        '-melhor_preco': '-melhor_preco',
+        'data': 'data_cadastro',
+        '-data': '-data_cadastro',
+    }
+
+    ordem_final = mapeamento_ordenacao.get(ordenar_por, '-data_cadastro')
+    todos_presentes = todos_presentes.order_by(ordem_final)
 
     # Paginação (20 usuários por página)
     paginator = Paginator(usuarios_com_stats, 20)
@@ -397,6 +445,9 @@ def lista_usuarios_view(request):
     return render(request, 'presentes/lista_usuarios.html', {
         'usuarios': usuarios,
         'todos_presentes': todos_presentes,
+        'ordenar_por': ordenar_por,
+        'preco_min': preco_min,
+        'preco_max': preco_max,
     })
 
 @login_required
