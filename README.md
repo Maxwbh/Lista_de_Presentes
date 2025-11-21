@@ -4,10 +4,13 @@
 ![Django](https://img.shields.io/badge/django-5.0-green.svg)
 ![PostgreSQL](https://img.shields.io/badge/postgresql-15+-blue.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
+![Status](https://img.shields.io/badge/status-active-success.svg)
 
 **Lista de Presentes de Natal** é um aplicativo web completo para organizar listas de presentes em família. Nunca mais erre no presente de Natal!
 
 🌐 **Demo ao vivo**: [https://lista-presentes-0hbp.onrender.com](https://lista-presentes-0hbp.onrender.com)
+
+👨‍💻 **Desenvolvido por**: [Maxwell da Silva Oliveira](https://github.com/Maxwbh) - [M&S do Brasil LTDA](http://msbrasil.inf.br)
 
 ---
 
@@ -98,7 +101,7 @@
 ### 1. Clone o Repositório
 
 ```bash
-git clone https://github.com/seu-usuario/Lista_de_Presentes.git
+git clone https://github.com/Maxwbh/Lista_de_Presentes.git
 cd Lista_de_Presentes
 ```
 
@@ -577,9 +580,15 @@ Este projeto está licenciado sob a Licença MIT - veja o arquivo [LICENSE](LICE
 
 ---
 
-## 👥 Autores
+## 👥 Autor
 
-- **Seu Nome** - *Desenvolvimento inicial* - [Seu GitHub](https://github.com/seu-usuario)
+**Maxwell da Silva Oliveira**
+
+- 💼 Empresa: **M&S do Brasil LTDA**
+- 🌐 Site: [msbrasil.inf.br](http://msbrasil.inf.br)
+- 📧 Email: [maxwbh@gmail.com](mailto:maxwbh@gmail.com)
+- 💻 GitHub: [@Maxwbh](https://github.com/Maxwbh/)
+- 💼 LinkedIn: [linkedin.com/in/maxwbh](https://www.linkedin.com/in/maxwbh/)
 
 ---
 
@@ -594,9 +603,10 @@ Este projeto está licenciado sob a Licença MIT - veja o arquivo [LICENSE](LICE
 
 ## 📞 Suporte
 
-- **Issues**: [GitHub Issues](https://github.com/seu-usuario/Lista_de_Presentes/issues)
-- **Email**: seu-email@example.com
-- **Documentação**: Ver pasta de documentação
+- **Issues**: [GitHub Issues](https://github.com/Maxwbh/Lista_de_Presentes/issues)
+- **Email**: [maxwbh@gmail.com](mailto:maxwbh@gmail.com)
+- **LinkedIn**: [Maxwell da Silva Oliveira](https://www.linkedin.com/in/maxwbh/)
+- **Documentação**: Ver seção "Documentação Adicional" abaixo
 
 ---
 
@@ -609,22 +619,26 @@ Este projeto está licenciado sob a Licença MIT - veja o arquivo [LICENSE](LICE
 - [x] Notificações
 - [x] Busca de preços
 - [x] Filtros e ordenação
-- [x] PWA
+- [x] PWA (Progressive Web App)
+- [x] Temas personalizáveis (claro/escuro)
+- [x] Integração com lojas (Amazon, Mercado Livre, Kabum)
+- [x] Keep-Alive (GitHub Actions)
+- [x] Auto-extração de produtos via URL
 
 ### Versão 2.0 (Planejada)
 - [ ] Sistema de grupos/famílias
 - [ ] Chat entre usuários
 - [ ] Compartilhamento em redes sociais
-- [ ] Temas personalizáveis
 - [ ] Notificações push (WebPush)
 - [ ] Gamificação
 - [ ] Relatórios e estatísticas
-- [ ] Integração com mais lojas
+- [ ] Integração com mais lojas (Magazine Luiza, Americanas)
 
 ---
 
 ## 📚 Documentação Adicional
 
+- [KEEP_ALIVE.md](KEEP_ALIVE.md) - Manter Render sempre ativo (Keep-Alive)
 - [README_DOCKER.md](README_DOCKER.md) - Deploy com Docker
 - [INSTALL_UBUNTU_SERVER.md](INSTALL_UBUNTU_SERVER.md) - Instalação em Ubuntu Server
 - [VERIFICACAO_RENDER.md](VERIFICACAO_RENDER.md) - Deploy no Render.com

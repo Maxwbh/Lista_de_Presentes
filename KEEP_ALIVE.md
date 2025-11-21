@@ -329,10 +329,20 @@ Se quiser estatísticas detalhadas, use **Better Stack** (ex-Logtail):
 
 ## 📞 Suporte
 
+### Documentação Oficial:
 - **GitHub Actions Docs**: https://docs.github.com/en/actions
 - **Render Docs**: https://render.com/docs/free#free-web-services
 - **UptimeRobot Docs**: https://blog.uptimerobot.com/what-is-monitoring-interval/
 
+### Contato do Desenvolvedor:
+- **Desenvolvedor**: Maxwell da Silva Oliveira
+- **Email**: [maxwbh@gmail.com](mailto:maxwbh@gmail.com)
+- **GitHub**: [@Maxwbh](https://github.com/Maxwbh/)
+- **LinkedIn**: [linkedin.com/in/maxwbh](https://www.linkedin.com/in/maxwbh/)
+- **Empresa**: M&S do Brasil LTDA
+- **Site**: [msbrasil.inf.br](http://msbrasil.inf.br)
+
 ---
 
+**Desenvolvido por**: Maxwell da Silva Oliveira - M&S do Brasil LTDA
 **Última atualização**: 2025-11-21
