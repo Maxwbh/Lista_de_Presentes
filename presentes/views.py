@@ -285,47 +285,72 @@ def ver_sugestoes_view(request, pk):
         'sugestoes': sugestoes
     })
 
-@login_required
-def atualizar_todos_precos_view(request):
-    """Atualiza os preços de todos os presentes ativos do usuário"""
-    if request.method == 'POST':
-        # Buscar todos os presentes ativos do usuário
-        presentes = Presente.objects.filter(usuario=request.user, status='ATIVO')
+def _atualizar_precos_background():
+    """Função para atualizar preços em background"""
+    try:
+        # Buscar TODOS os presentes ativos de TODOS os usuários
+        presentes = Presente.objects.filter(status='ATIVO').select_related('usuario')
 
         total_presentes = presentes.count()
         sucesso_count = 0
         erro_count = 0
 
-        logger.info(f"Iniciando atualização de preços para {total_presentes} presentes do usuário {request.user}")
+        logger.info(f"[BACKGROUND] Iniciando atualização de preços para {total_presentes} presentes ativos do sistema")
 
         for presente in presentes:
             try:
                 sucesso, mensagem = IAService.buscar_sugestoes_reais(presente)
                 if sucesso:
                     sucesso_count += 1
-                    logger.info(f"Presente {presente.id}: {mensagem}")
+                    logger.info(f"[BACKGROUND] Presente {presente.id} ({presente.usuario.first_name}): {mensagem}")
                 else:
                     erro_count += 1
-                    logger.warning(f"Presente {presente.id}: {mensagem}")
+                    logger.warning(f"[BACKGROUND] Presente {presente.id}: {mensagem}")
             except Exception as e:
                 erro_count += 1
-                logger.error(f"Erro ao atualizar presente {presente.id}: {str(e)}")
+                logger.error(f"[BACKGROUND] Erro ao atualizar presente {presente.id}: {str(e)}")
 
-        # Mensagens de feedback
-        if sucesso_count > 0:
-            messages.success(
-                request,
-                f'Preços atualizados com sucesso para {sucesso_count} de {total_presentes} presentes!'
-            )
+        logger.info(f"[BACKGROUND] Atualização concluída: {sucesso_count} sucessos, {erro_count} erros de {total_presentes} presentes")
 
-        if erro_count > 0:
-            messages.warning(
-                request,
-                f'Não foi possível atualizar {erro_count} presentes. Verifique os logs para detalhes.'
-            )
+    except Exception as e:
+        logger.error(f"[BACKGROUND] Erro fatal na atualização de preços: {str(e)}")
+        import traceback
+        logger.error(f"[BACKGROUND] Traceback: {traceback.format_exc()}")
 
-        if sucesso_count == 0 and erro_count == 0:
-            messages.info(request, 'Nenhum presente ativo encontrado para atualizar.')
+@login_required
+def atualizar_todos_precos_view(request):
+    """Inicia atualização de preços de TODOS os presentes ativos em background"""
+    if request.method == 'POST':
+        # Verificar se usuário é admin (apenas admins podem atualizar todos)
+        if not request.user.is_superuser:
+            messages.error(request, 'Apenas administradores podem atualizar todos os preços do sistema.')
+            return redirect('meus_presentes')
+
+        # Contar quantos presentes serão atualizados
+        total_presentes = Presente.objects.filter(status='ATIVO').count()
+
+        if total_presentes == 0:
+            messages.warning(request, 'Não há presentes ativos para atualizar.')
+            return redirect('meus_presentes')
+
+        logger.info(f"Usuário {request.user.email} iniciou atualização em background de {total_presentes} presentes")
+
+        # Iniciar thread em background
+        import threading
+        thread = threading.Thread(target=_atualizar_precos_background, daemon=True)
+        thread.start()
+
+        # Mensagem de feedback imediato
+        messages.success(
+            request,
+            f'✓ Atualização de preços iniciada em background para {total_presentes} presentes! '
+            f'O processo continuará executando e você pode acompanhar o progresso nos logs. '
+            f'As sugestões serão atualizadas automaticamente.'
+        )
+        messages.info(
+            request,
+            '💡 Dica: Aguarde alguns minutos e recarregue a página para ver as atualizações.'
+        )
 
         return redirect('meus_presentes')
 
