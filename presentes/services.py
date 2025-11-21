@@ -32,6 +32,9 @@ class IAService:
             response = requests.get(url, headers=IAService.HEADERS, timeout=10)
             response.raise_for_status()
 
+            # Log do status e tamanho da resposta
+            logger.info(f"Zoom: Status {response.status_code}, Tamanho: {len(response.content)} bytes")
+
             soup = BeautifulSoup(response.content, 'html.parser')
             produtos = []
 
@@ -39,10 +42,16 @@ class IAService:
             cards = (
                 soup.find_all('div', {'data-testid': 'product-card'}) or
                 soup.find_all('div', class_=lambda x: x and 'product-card' in x.lower() if x else False) or
-                soup.find_all('article', class_=lambda x: x and 'product' in x.lower() if x else False)
+                soup.find_all('article', class_=lambda x: x and 'product' in x.lower() if x else False) or
+                soup.find_all('div', class_=lambda x: x and 'card' in x.lower() if x else False)
             )
 
             logger.info(f"Zoom: Encontrados {len(cards)} cards no HTML")
+
+            # Se não encontrou cards, log debug
+            if len(cards) == 0:
+                logger.warning("Zoom: Nenhum card encontrado, salvando HTML para debug...")
+                logger.debug(f"Zoom HTML (primeiros 1000 chars): {str(soup)[:1000]}")
 
             for i, card in enumerate(cards[:max_results]):
                 try:
@@ -121,6 +130,9 @@ class IAService:
             response = requests.get(url, headers=IAService.HEADERS, timeout=10)
             response.raise_for_status()
 
+            # Log do status e tamanho da resposta
+            logger.info(f"Buscapé: Status {response.status_code}, Tamanho: {len(response.content)} bytes")
+
             soup = BeautifulSoup(response.content, 'html.parser')
             produtos = []
 
@@ -129,10 +141,16 @@ class IAService:
                 soup.find_all('div', class_=lambda x: x and 'ProductCard' in x if x else False) or
                 soup.find_all('div', class_=lambda x: x and 'SearchCard' in x if x else False) or
                 soup.find_all('article', class_=lambda x: x and 'product' in x.lower() if x else False) or
-                soup.find_all('div', {'data-component': lambda x: x and 'product' in x.lower() if x else False})
+                soup.find_all('div', {'data-component': lambda x: x and 'product' in x.lower() if x else False}) or
+                soup.find_all('div', class_=lambda x: x and 'card' in x.lower() if x else False)
             )
 
             logger.info(f"Buscapé: Encontrados {len(cards)} cards no HTML")
+
+            # Se não encontrou cards, log debug
+            if len(cards) == 0:
+                logger.warning("Buscapé: Nenhum card encontrado, salvando HTML para debug...")
+                logger.debug(f"Buscapé HTML (primeiros 1000 chars): {str(soup)[:1000]}")
 
             for i, card in enumerate(cards[:max_results]):
                 try:
