@@ -2,9 +2,6 @@ from django.core.management.base import BaseCommand
 from presentes.models import Usuario, Presente
 from django.contrib.auth.hashers import make_password
 import random
-import requests
-from bs4 import BeautifulSoup
-import re
 import logging
 import time
 
@@ -12,93 +9,7 @@ logger = logging.getLogger(__name__)
 
 
 class Command(BaseCommand):
-    help = 'Cria usuários e presentes de teste para desenvolvimento'
-
-    def extrair_info_produto(self, url):
-        """
-        Extrai informações reais de um produto a partir de uma URL.
-        Retorna tupla (titulo, preco, imagem_url) ou None se falhar.
-        """
-        try:
-            headers = {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-            }
-
-            response = requests.get(url, headers=headers, timeout=10)
-            response.raise_for_status()
-            soup = BeautifulSoup(response.content, 'html.parser')
-
-            # Extrair título
-            titulo = None
-            og_title = soup.find('meta', property='og:title')
-            if og_title and og_title.get('content'):
-                titulo = og_title.get('content')
-            if not titulo:
-                twitter_title = soup.find('meta', attrs={'name': 'twitter:title'})
-                if twitter_title and twitter_title.get('content'):
-                    titulo = twitter_title.get('content')
-            if not titulo and soup.title:
-                titulo = soup.title.string
-            if not titulo:
-                h1 = soup.find('h1')
-                if h1:
-                    titulo = h1.get_text(strip=True)
-
-            if titulo:
-                titulo = re.sub(r'\s*[\|\-]\s*[A-Za-z0-9\s]+$', '', titulo)
-                titulo = titulo.strip()[:200]
-
-            # Extrair preço
-            preco = None
-            price_patterns = [
-                r'R\$?\s*(\d+(?:[.,]\d{3})*(?:[.,]\d{2}))',
-                r'(\d+(?:[.,]\d{3})*(?:[.,]\d{2}))\s*reais?',
-            ]
-
-            price_meta = soup.find('meta', property='product:price:amount') or soup.find('meta', attrs={'itemprop': 'price'})
-            if price_meta and price_meta.get('content'):
-                try:
-                    preco_str = price_meta.get('content')
-                    preco = float(preco_str.replace(',', '.'))
-                except:
-                    pass
-
-            if not preco:
-                price_elements = soup.find_all(['span', 'div', 'strong', 'p'], class_=re.compile(r'price|preco|valor|value', re.I))
-                for elem in price_elements:
-                    text = elem.get_text(strip=True)
-                    for pattern in price_patterns:
-                        match = re.search(pattern, text, re.I)
-                        if match:
-                            preco_str = match.group(1).replace('.', '').replace(',', '.')
-                            try:
-                                preco = float(preco_str)
-                                break
-                            except:
-                                continue
-                    if preco:
-                        break
-
-            # Extrair imagem
-            imagem_url = None
-            og_image = soup.find('meta', property='og:image')
-            if og_image and og_image.get('content'):
-                imagem_url = og_image.get('content')
-            if not imagem_url:
-                twitter_image = soup.find('meta', attrs={'name': 'twitter:image'})
-                if twitter_image and twitter_image.get('content'):
-                    imagem_url = twitter_image.get('content')
-
-            if imagem_url and not imagem_url.startswith('http'):
-                from urllib.parse import urljoin
-                imagem_url = urljoin(url, imagem_url)
-
-            return (titulo, preco, imagem_url) if titulo else None
-
-        except Exception as e:
-            logger.warning(f"Erro ao extrair informações de {url}: {str(e)}")
-            return None
+    help = 'Cria usuários e presentes de teste para desenvolvimento com dados reais de lojas'
 
     def add_arguments(self, parser):
         parser.add_argument(
@@ -210,13 +121,15 @@ class Command(BaseCommand):
             presentes_usuario = random.sample(presentes_exemplos, min(gifts_per_user, len(presentes_exemplos)))
 
             for descricao_fallback, url, preco_fallback in presentes_usuario:
-                # Tentar extrair informações reais do produto
+                # Tentar extrair informações reais do produto usando scrapers específicos
+                from presentes.scrapers import ScraperFactory
+
                 descricao = descricao_fallback
                 preco = preco_fallback
                 imagem_url = None
 
                 self.stdout.write(f'  → Buscando informações de: {url[:50]}...')
-                info_extraida = self.extrair_info_produto(url)
+                info_extraida = ScraperFactory.extract_product_info(url)
 
                 if info_extraida:
                     titulo_extraido, preco_extraido, img_extraida = info_extraida
