@@ -11,7 +11,8 @@
 --
 -- Este script executa todos os scripts de criacao na ordem correta:
 -- 1. DDL (Tabelas, Indices, Views, Sequences)
--- 2. Packages (Usuario, Notificacao, Presente, Sugestao, Compra)
+-- 2. Packages (Usuario, Notificacao, Presente, Sugestao, Compra, Push)
+-- 3. Integracao Push Notifications com APEX
 --
 -- ==============================================================================
 
@@ -33,7 +34,7 @@ PROMPT
 -- ==============================================================================
 
 PROMPT ========================================
-PROMPT PASSO 1/6: Criando Tabelas, Indices e Views
+PROMPT PASSO 1/8: Criando Tabelas, Indices e Views
 PROMPT ========================================
 
 @@01_DDL_TABELAS.sql
@@ -47,7 +48,7 @@ PROMPT
 -- ==============================================================================
 
 PROMPT ========================================
-PROMPT PASSO 2/6: Criando Package PKG_USUARIO
+PROMPT PASSO 2/8: Criando Package PKG_USUARIO
 PROMPT ========================================
 
 @@02_PKG_USUARIO.sql
@@ -61,7 +62,7 @@ PROMPT
 -- ==============================================================================
 
 PROMPT ========================================
-PROMPT PASSO 3/6: Criando Package PKG_NOTIFICACAO
+PROMPT PASSO 3/8: Criando Package PKG_NOTIFICACAO
 PROMPT ========================================
 
 @@05_PKG_NOTIFICACAO.sql
@@ -75,7 +76,7 @@ PROMPT
 -- ==============================================================================
 
 PROMPT ========================================
-PROMPT PASSO 4/6: Criando Package PKG_PRESENTE
+PROMPT PASSO 4/8: Criando Package PKG_PRESENTE
 PROMPT ========================================
 
 @@03_PKG_PRESENTE.sql
@@ -89,7 +90,7 @@ PROMPT
 -- ==============================================================================
 
 PROMPT ========================================
-PROMPT PASSO 5/6: Criando Package PKG_SUGESTAO
+PROMPT PASSO 5/8: Criando Package PKG_SUGESTAO
 PROMPT ========================================
 
 @@06_PKG_SUGESTAO.sql
@@ -103,13 +104,41 @@ PROMPT
 -- ==============================================================================
 
 PROMPT ========================================
-PROMPT PASSO 6/6: Criando Package PKG_COMPRA
+PROMPT PASSO 6/8: Criando Package PKG_COMPRA
 PROMPT ========================================
 
 @@04_PKG_COMPRA.sql
 
 PROMPT
 PROMPT ✓ Package PKG_COMPRA criado com sucesso!
+PROMPT
+
+-- ==============================================================================
+-- PASSO 7: CRIAR PACKAGE PKG_PUSH_NOTIFICATION
+-- ==============================================================================
+
+PROMPT ========================================
+PROMPT PASSO 7/8: Criando Package PKG_PUSH_NOTIFICATION
+PROMPT ========================================
+
+@@07_PKG_PUSH_NOTIFICATION.sql
+
+PROMPT
+PROMPT ✓ Package PKG_PUSH_NOTIFICATION criado com sucesso!
+PROMPT
+
+-- ==============================================================================
+-- PASSO 8: CRIAR INTEGRACAO PUSH COM APEX
+-- ==============================================================================
+
+PROMPT ========================================
+PROMPT PASSO 8/8: Criando Integracao Push Notifications
+PROMPT ========================================
+
+@@08_INTEGRACAO_PUSH_APEX.sql
+
+PROMPT
+PROMPT ✓ Integracao Push Notifications criada com sucesso!
 PROMPT
 
 -- ==============================================================================
