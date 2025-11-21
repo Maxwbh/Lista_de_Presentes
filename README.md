@@ -44,6 +44,17 @@
 - ✅ Service Worker para cache
 - ✅ Ícones otimizados
 
+### 🎨 Personalização
+- ✅ Tema claro/escuro
+- ✅ Persistência de preferências
+- ✅ Transições suaves
+
+### 🛒 Integração com Lojas
+- ✅ Amazon Brasil
+- ✅ Mercado Livre
+- ✅ Kabum
+- ✅ Auto-extração de produtos
+
 ### 🔔 Notificações
 - ✅ Notificação quando alguém comprar seu presente
 - ✅ Badge no navbar
@@ -340,6 +351,22 @@ heroku run python manage.py createsuperuser
 ### VPS/Ubuntu Server
 
 Ver guia completo em [INSTALL_UBUNTU_SERVER.md](INSTALL_UBUNTU_SERVER.md).
+
+---
+
+## 🔥 Keep-Alive (Render Free Tier)
+
+O plano gratuito do Render coloca o app em "sleep" após 15 minutos de inatividade. Para manter o app sempre ativo:
+
+✅ **GitHub Actions** - Já configurado! Faz ping automático a cada 10 minutos
+- Veja execuções: [GitHub Actions](https://github.com/Maxwbh/Lista_de_Presentes/actions)
+- Workflow: `.github/workflows/keep-alive.yml`
+
+📚 **Alternativas e configurações avançadas**: Ver [KEEP_ALIVE.md](KEEP_ALIVE.md)
+
+**Serviços alternativos recomendados:**
+- [UptimeRobot](https://uptimerobot.com) - Check a cada 5 min (grátis)
+- [Cron-job.org](https://cron-job.org) - Check a cada 1 min (grátis)
 
 ---
 
