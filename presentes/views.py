@@ -80,6 +80,11 @@ def meus_presentes_view(request):
     # Otimizar query com select_related para evitar N+1
     presentes_list = Presente.objects.filter(usuario=request.user).select_related('usuario').prefetch_related('sugestoes')
 
+    # Estatísticas
+    total_presentes = presentes_list.count()
+    presentes_ativos = presentes_list.filter(status='ATIVO').count()
+    presentes_comprados = presentes_list.filter(status='COMPRADO').count()
+
     # Paginação (20 presentes por página)
     paginator = Paginator(presentes_list, 20)
     page = request.GET.get('page', 1)
@@ -91,7 +96,14 @@ def meus_presentes_view(request):
     except EmptyPage:
         presentes = paginator.page(paginator.num_pages)
 
-    return render(request, 'presentes/meus_presentes.html', {'presentes': presentes})
+    context = {
+        'presentes': presentes,
+        'total_presentes': total_presentes,
+        'presentes_ativos': presentes_ativos,
+        'presentes_comprados': presentes_comprados,
+    }
+
+    return render(request, 'presentes/meus_presentes.html', context)
 
 @login_required
 def adicionar_presente_view(request):
