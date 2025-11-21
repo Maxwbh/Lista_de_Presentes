@@ -506,6 +506,157 @@ def notificacoes_nao_lidas_json(request):
     })
 
 @login_required
+def extrair_info_produto_view(request):
+    """
+    Extrai informações de um produto a partir de uma URL.
+    Retorna JSON com título, imagem e preço do produto.
+    """
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Método não permitido'}, status=405)
+
+    url = request.POST.get('url', '').strip()
+
+    if not url:
+        return JsonResponse({'error': 'URL não fornecida'}, status=400)
+
+    # Validar URL
+    if not url.startswith('http'):
+        url = 'https://' + url
+
+    try:
+        import requests
+        from bs4 import BeautifulSoup
+        import re
+
+        logger.info(f"Extraindo informações de: {url}")
+
+        # Headers para simular navegador
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        }
+
+        response = requests.get(url, headers=headers, timeout=10)
+        response.raise_for_status()
+
+        soup = BeautifulSoup(response.content, 'html.parser')
+
+        # Extrair título
+        titulo = None
+        # Tentar og:title primeiro
+        og_title = soup.find('meta', property='og:title')
+        if og_title and og_title.get('content'):
+            titulo = og_title.get('content')
+        # Tentar twitter:title
+        if not titulo:
+            twitter_title = soup.find('meta', attrs={'name': 'twitter:title'})
+            if twitter_title and twitter_title.get('content'):
+                titulo = twitter_title.get('content')
+        # Tentar title tag
+        if not titulo and soup.title:
+            titulo = soup.title.string
+        # Tentar h1
+        if not titulo:
+            h1 = soup.find('h1')
+            if h1:
+                titulo = h1.get_text(strip=True)
+
+        # Limpar título
+        if titulo:
+            # Remover partes comuns do título
+            titulo = re.sub(r'\s*[\|\-]\s*[A-Za-z0-9\s]+$', '', titulo)
+            titulo = titulo.strip()[:200]  # Limitar a 200 caracteres
+
+        # Extrair imagem
+        imagem_url = None
+        # Tentar og:image
+        og_image = soup.find('meta', property='og:image')
+        if og_image and og_image.get('content'):
+            imagem_url = og_image.get('content')
+        # Tentar twitter:image
+        if not imagem_url:
+            twitter_image = soup.find('meta', attrs={'name': 'twitter:image'})
+            if twitter_image and twitter_image.get('content'):
+                imagem_url = twitter_image.get('content')
+        # Tentar primeira imagem grande do produto
+        if not imagem_url:
+            product_images = soup.find_all('img', class_=re.compile(r'product|main|zoom|large', re.I))
+            if product_images:
+                for img in product_images:
+                    src = img.get('src') or img.get('data-src')
+                    if src and 'no-image' not in src.lower() and 'placeholder' not in src.lower():
+                        imagem_url = src
+                        break
+
+        # Garantir URL absoluta para imagem
+        if imagem_url and not imagem_url.startswith('http'):
+            from urllib.parse import urljoin
+            imagem_url = urljoin(url, imagem_url)
+
+        # Extrair preço
+        preco = None
+        # Padrões comuns de preço em Real
+        price_patterns = [
+            r'R\$?\s*(\d+(?:[.,]\d{3})*(?:[.,]\d{2}))',  # R$ 1.234,56 ou R$1234.56
+            r'(\d+(?:[.,]\d{3})*(?:[.,]\d{2}))\s*reais?',  # 1.234,56 reais
+        ]
+
+        # Procurar em meta tags primeiro
+        price_meta = soup.find('meta', property='product:price:amount') or soup.find('meta', attrs={'itemprop': 'price'})
+        if price_meta and price_meta.get('content'):
+            try:
+                preco_str = price_meta.get('content')
+                preco = float(preco_str.replace(',', '.'))
+            except:
+                pass
+
+        # Procurar no HTML
+        if not preco:
+            # Procurar em elementos comuns de preço
+            price_elements = soup.find_all(['span', 'div', 'strong', 'p'], class_=re.compile(r'price|preco|valor|value', re.I))
+            for elem in price_elements:
+                text = elem.get_text(strip=True)
+                for pattern in price_patterns:
+                    match = re.search(pattern, text, re.I)
+                    if match:
+                        preco_str = match.group(1).replace('.', '').replace(',', '.')
+                        try:
+                            preco = float(preco_str)
+                            break
+                        except:
+                            continue
+                if preco:
+                    break
+
+        # Formatar resposta
+        response_data = {
+            'success': True,
+            'titulo': titulo or '',
+            'imagem_url': imagem_url or '',
+            'preco': preco if preco else '',
+        }
+
+        logger.info(f"Informações extraídas: título={titulo}, imagem={bool(imagem_url)}, preco={preco}")
+
+        return JsonResponse(response_data)
+
+    except requests.RequestException as e:
+        logger.error(f"Erro ao buscar URL {url}: {str(e)}")
+        return JsonResponse({
+            'error': 'Não foi possível acessar a URL. Verifique se o link está correto.',
+            'details': str(e)
+        }, status=400)
+
+    except Exception as e:
+        logger.error(f"Erro ao extrair informações de {url}: {str(e)}")
+        import traceback
+        logger.error(traceback.format_exc())
+        return JsonResponse({
+            'error': 'Erro ao processar a página. Tente preencher os campos manualmente.',
+            'details': str(e)
+        }, status=500)
+
+@login_required
 def gerar_dados_teste_view(request):
     """
     View para gerar dados de teste.
