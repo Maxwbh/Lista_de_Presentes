@@ -20,6 +20,7 @@ urlpatterns = [
     path('presente/<int:pk>/imagem/', views.servir_imagem_view, name='servir_imagem'),
     path('buscar-sugestoes/<int:pk>/', views.buscar_sugestoes_ia_view, name='buscar_sugestoes'),
     path('ver-sugestoes/<int:pk>/', views.ver_sugestoes_view, name='ver_sugestoes'),
+    path('atualizar-todos-precos/', views.atualizar_todos_precos_view, name='atualizar_todos_precos'),
     
     # Presentes de outros usuários
     path('usuarios/', views.lista_usuarios_view, name='lista_usuarios'),
