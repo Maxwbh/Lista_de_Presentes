@@ -444,6 +444,62 @@
                 <input type="text" class="form-control search-input" id="search-usuarios" placeholder="🔍 Buscar por nome..." onkeyup="filterUsuarios()">
             </div>
 
+            <!-- Filtros e Ordenação (mesma barra da aba Produtos) -->
+            <div class="filters-bar" style="background: white; padding: 20px; border-radius: 15px; box-shadow: 0 3px 15px rgba(0,0,0,0.08); margin-bottom: 25px;">
+                <form method="get" action="{% url 'lista_usuarios' %}" id="filtros-form-usuarios">
+                    <input type="hidden" name="view" value="usuarios" id="view-input-usuarios">
+                    <div class="row g-3">
+                        <!-- Ordenação -->
+                        <div class="col-md-4">
+                            <label class="form-label" style="font-weight: 600; color: var(--christmas-green); display: flex; align-items: center; gap: 5px;">
+                                <i class="bi bi-sort-down"></i>
+                                Ordenar por
+                            </label>
+                            <select name="ordenar" class="form-select" onchange="this.form.submit()">
+                                <option value="-data" {% if ordenar_por == '-data' or ordenar_por == '-data_cadastro' %}selected{% endif %}>Mais Recentes</option>
+                                <option value="data" {% if ordenar_por == 'data' or ordenar_por == 'data_cadastro' %}selected{% endif %}>Mais Antigos</option>
+                                <option value="produto" {% if ordenar_por == 'produto' %}selected{% endif %}>Produto (A-Z)</option>
+                                <option value="-produto" {% if ordenar_por == '-produto' %}selected{% endif %}>Produto (Z-A)</option>
+                                <option value="usuario" {% if ordenar_por == 'usuario' %}selected{% endif %}>Usuário (A-Z)</option>
+                                <option value="-usuario" {% if ordenar_por == '-usuario' %}selected{% endif %}>Usuário (Z-A)</option>
+                                <option value="preco" {% if ordenar_por == 'preco' %}selected{% endif %}>Menor Preço</option>
+                                <option value="-preco" {% if ordenar_por == '-preco' %}selected{% endif %}>Maior Preço</option>
+                                <option value="melhor_preco" {% if ordenar_por == 'melhor_preco' %}selected{% endif %}>Melhor Oferta</option>
+                                <option value="-melhor_preco" {% if ordenar_por == '-melhor_preco' %}selected{% endif %}>Pior Oferta</option>
+                            </select>
+                        </div>
+
+                        <!-- Preço Mínimo -->
+                        <div class="col-md-3">
+                            <label class="form-label" style="font-weight: 600; color: var(--christmas-green); display: flex; align-items: center; gap: 5px;">
+                                <i class="bi bi-currency-dollar"></i>
+                                Preço Mínimo
+                            </label>
+                            <input type="number" name="preco_min" class="form-control" placeholder="R$ 0,00" step="0.01" value="{{ preco_min }}">
+                        </div>
+
+                        <!-- Preço Máximo -->
+                        <div class="col-md-3">
+                            <label class="form-label" style="font-weight: 600; color: var(--christmas-green); display: flex; align-items: center; gap: 5px;">
+                                <i class="bi bi-currency-dollar"></i>
+                                Preço Máximo
+                            </label>
+                            <input type="number" name="preco_max" class="form-control" placeholder="R$ 999,99" step="0.01" value="{{ preco_max }}">
+                        </div>
+
+                        <!-- Botões -->
+                        <div class="col-md-2" style="display: flex; align-items: flex-end; gap: 5px;">
+                            <button type="submit" class="btn btn-success flex-fill" style="border-radius: 8px; font-weight: 600;">
+                                <i class="bi bi-funnel-fill"></i> Filtrar
+                            </button>
+                            <a href="{% url 'lista_usuarios' %}" class="btn btn-outline-secondary" style="border-radius: 8px;" title="Limpar filtros">
+                                <i class="bi bi-x-lg"></i>
+                            </a>
+                        </div>
+                    </div>
+                </form>
+            </div>
+
             <div id="usuarios-container">
                 {% for usuario in usuarios %}
                     <div class="usuario-card" data-nome="{{ usuario.first_name }} {{ usuario.last_name }}">
@@ -543,7 +599,8 @@
 
             <!-- Filtros e Ordenação -->
             <div class="filters-bar" style="background: white; padding: 20px; border-radius: 15px; box-shadow: 0 3px 15px rgba(0,0,0,0.08); margin-bottom: 25px;">
-                <form method="get" action="{% url 'lista_usuarios' %}" id="filtros-form">
+                <form method="get" action="{% url 'lista_usuarios' %}" id="filtros-form-produtos">
+                    <input type="hidden" name="view" value="produtos" id="view-input-produtos">
                     <div class="row g-3">
                         <!-- Ordenação -->
                         <div class="col-md-4">
@@ -660,149 +717,53 @@
     </div>
 
     <!-- Modais de Sugestões (compartilhado entre as duas views) -->
-    <!-- Modais para visualização Por Usuário -->
-    {% for usuario in usuarios %}
-        {% for presente in usuario.presentes_list %}
-            {% if presente.sugestoes.count > 0 %}
-                <div class="modal fade" id="modalSugestoes{{ presente.id }}" tabindex="-1" aria-labelledby="modalSugestoes{{ presente.id }}Label" aria-hidden="true">
-                    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
-                        <div class="modal-content">
-                            <div class="modal-header" style="background: linear-gradient(135deg, var(--christmas-green) 0%, var(--christmas-green-light) 100%); color: white;">
-                                <h5 class="modal-title" id="modalSugestoes{{ presente.id }}Label">
-                                    <i class="bi bi-shop me-2"></i>
-                                    Sugestões: {{ presente.descricao|truncatewords:10 }}
-                                </h5>
-                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fechar"></button>
-                            </div>
-                            <div class="modal-body">
-                                <div class="alert alert-info">
-                                    <i class="bi bi-info-circle me-2"></i>
-                                    <strong>{{ presente.sugestoes.count }}</strong> opções de compra para presente de <strong>{{ presente.usuario.first_name }}</strong>
-                                </div>
-
-                                <div class="list-group">
-                                    {% for sugestao in presente.sugestoes.all %}
-                                        <div class="list-group-item {% if forloop.first %}border-success border-3{% endif %}">
-                                            {% if forloop.first %}
-                                                <div class="badge bg-success mb-2">
-                                                    <i class="bi bi-trophy-fill"></i> Melhor Preço
-                                                </div>
-                                            {% endif %}
-
-                                            <div class="d-flex justify-content-between align-items-start">
-                                                <div class="flex-grow-1">
-                                                    <h6 class="mb-1">
-                                                        <i class="bi bi-shop-window me-2"></i>
-                                                        {{ sugestao.local_compra }}
-                                                    </h6>
-                                                    <small class="text-muted">
-                                                        <i class="bi bi-clock me-1"></i>
-                                                        {{ sugestao.data_busca|date:"d/m/Y às H:i" }}
-                                                    </small>
-                                                </div>
-                                                <div class="text-end">
-                                                    {% if sugestao.preco_sugerido %}
-                                                        <div class="fs-4 fw-bold text-success">
-                                                            R$ {{ sugestao.preco_sugerido }}
-                                                        </div>
-                                                    {% else %}
-                                                        <div class="fs-5 text-muted">Consultar loja</div>
-                                                    {% endif %}
-                                                </div>
-                                            </div>
-
-                                            {% if sugestao.url_compra %}
-                                                <div class="mt-2">
-                                                    <a href="{{ sugestao.url_compra }}" target="_blank" class="btn btn-sm btn-outline-success w-100">
-                                                        <i class="bi bi-box-arrow-up-right me-2"></i>
-                                                        Visitar Loja
-                                                    </a>
-                                                </div>
-                                            {% endif %}
-                                        </div>
-                                    {% endfor %}
-                                </div>
-                            </div>
-                            <div class="modal-footer">
-                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                                    <i class="bi bi-x-circle me-2"></i>
-                                    Fechar
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            {% endif %}
-        {% endfor %}
-    {% endfor %}
-
-    <!-- Modais para visualização Por Produto -->
     {% for presente in todos_presentes %}
         {% if presente.sugestoes.count > 0 %}
             <div class="modal fade" id="modalSugestoes{{ presente.id }}" tabindex="-1" aria-labelledby="modalSugestoes{{ presente.id }}Label" aria-hidden="true">
-                <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+                <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
                     <div class="modal-content">
                         <div class="modal-header" style="background: linear-gradient(135deg, var(--christmas-green) 0%, var(--christmas-green-light) 100%); color: white;">
                             <h5 class="modal-title" id="modalSugestoes{{ presente.id }}Label">
                                 <i class="bi bi-shop me-2"></i>
-                                Sugestões: {{ presente.descricao|truncatewords:10 }}
+                                {{ presente.descricao|truncatewords:8 }}
                             </h5>
                             <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fechar"></button>
                         </div>
-                        <div class="modal-body">
-                            <div class="alert alert-info">
-                                <i class="bi bi-info-circle me-2"></i>
-                                <strong>{{ presente.sugestoes.count }}</strong> opções de compra para presente de <strong>{{ presente.usuario.first_name }}</strong>
-                            </div>
-
+                        <div class="modal-body" style="padding: 15px;">
                             <div class="list-group">
                                 {% for sugestao in presente.sugestoes.all %}
-                                    <div class="list-group-item {% if forloop.first %}border-success border-3{% endif %}">
-                                        {% if forloop.first %}
-                                            <div class="badge bg-success mb-2">
-                                                <i class="bi bi-trophy-fill"></i> Melhor Preço
-                                            </div>
-                                        {% endif %}
-
-                                        <div class="d-flex justify-content-between align-items-start">
+                                    <div class="list-group-item {% if forloop.first %}border-success border-2{% endif %}" style="padding: 12px;">
+                                        <div class="d-flex justify-content-between align-items-center">
                                             <div class="flex-grow-1">
-                                                <h6 class="mb-1">
-                                                    <i class="bi bi-shop-window me-2"></i>
-                                                    {{ sugestao.local_compra }}
-                                                </h6>
-                                                <small class="text-muted">
-                                                    <i class="bi bi-clock me-1"></i>
-                                                    {{ sugestao.data_busca|date:"d/m/Y às H:i" }}
-                                                </small>
+                                                <div class="d-flex align-items-center gap-2 mb-1">
+                                                    {% if forloop.first %}
+                                                        <span class="badge bg-success" style="font-size: 0.7rem;">
+                                                            <i class="bi bi-star-fill"></i> Melhor
+                                                        </span>
+                                                    {% endif %}
+                                                    <strong style="font-size: 0.95rem;">{{ sugestao.local_compra }}</strong>
+                                                </div>
                                             </div>
-                                            <div class="text-end">
+                                            <div class="text-end ms-2">
                                                 {% if sugestao.preco_sugerido %}
-                                                    <div class="fs-4 fw-bold text-success">
+                                                    <div class="fs-5 fw-bold text-success">
                                                         R$ {{ sugestao.preco_sugerido }}
                                                     </div>
                                                 {% else %}
-                                                    <div class="fs-5 text-muted">Consultar loja</div>
+                                                    <div class="fs-6 text-muted">Consultar</div>
                                                 {% endif %}
                                             </div>
                                         </div>
 
                                         {% if sugestao.url_compra %}
-                                            <div class="mt-2">
-                                                <a href="{{ sugestao.url_compra }}" target="_blank" class="btn btn-sm btn-outline-success w-100">
-                                                    <i class="bi bi-box-arrow-up-right me-2"></i>
-                                                    Visitar Loja
-                                                </a>
-                                            </div>
+                                            <a href="{{ sugestao.url_compra }}" target="_blank" class="btn btn-sm btn-outline-success w-100 mt-2" style="font-size: 0.85rem;">
+                                                <i class="bi bi-box-arrow-up-right me-1"></i>
+                                                Visitar Loja
+                                            </a>
                                         {% endif %}
                                     </div>
                                 {% endfor %}
                             </div>
-                        </div>
-                        <div class="modal-footer">
-                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                                <i class="bi bi-x-circle me-2"></i>
-                                Fechar
-                            </button>
                         </div>
                     </div>
                 </div>
@@ -832,7 +793,24 @@
             viewProdutos.classList.add('active');
             viewUsuarios.classList.remove('active');
         }
+
+        // Salvar preferência no localStorage
+        localStorage.setItem('viewPreference', view);
     }
+
+    // Restaurar visualização ao carregar a página
+    document.addEventListener('DOMContentLoaded', function() {
+        // Verificar se há parâmetro 'view' na URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const viewParam = urlParams.get('view');
+
+        // Se houver parâmetro na URL, usar ele; senão, usar localStorage
+        const savedView = viewParam || localStorage.getItem('viewPreference') || 'usuarios';
+
+        if (savedView === 'produtos') {
+            switchView('produtos');
+        }
+    });
 
     // Expandir/colapsar usuário
     function toggleUsuario(element) {
