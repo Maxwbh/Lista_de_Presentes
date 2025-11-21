@@ -2,10 +2,14 @@ from django.core.management.base import BaseCommand
 from presentes.models import Usuario, Presente
 from django.contrib.auth.hashers import make_password
 import random
+import logging
+import time
+
+logger = logging.getLogger(__name__)
 
 
 class Command(BaseCommand):
-    help = 'Cria usuários e presentes de teste para desenvolvimento'
+    help = 'Cria usuários e presentes de teste para desenvolvimento com dados reais de lojas'
 
     def add_arguments(self, parser):
         parser.add_argument(
@@ -41,38 +45,48 @@ class Command(BaseCommand):
             ('Camila', 'Martins', 'camila.martins@example.com'),
         ]
 
-        # Lista de presentes variados
+        # Lista de presentes com URLs reais de produtos brasileiros
+        # Formato: (descrição_fallback, url_real, preco_fallback)
         presentes_exemplos = [
-            ('Notebook Gamer', 'https://zoom.com.br', 3500.00),
-            ('Mouse Sem Fio Logitech', 'https://zoom.com.br', 89.90),
-            ('Teclado Mecânico RGB', 'https://zoom.com.br', 450.00),
-            ('Fone de Ouvido Bluetooth', 'https://zoom.com.br', 299.00),
-            ('Webcam Full HD', 'https://zoom.com.br', 350.00),
-            ('Monitor 27 polegadas', 'https://zoom.com.br', 1200.00),
-            ('SSD 1TB', 'https://zoom.com.br', 450.00),
-            ('Cadeira Gamer', 'https://zoom.com.br', 1100.00),
-            ('Microfone Condensador', 'https://zoom.com.br', 280.00),
-            ('Kit Iluminação LED', 'https://zoom.com.br', 120.00),
-            ('Kindle Paperwhite', 'https://amazon.com.br', 499.00),
-            ('Echo Dot 5ª Geração', 'https://amazon.com.br', 349.00),
-            ('Fire TV Stick 4K', 'https://amazon.com.br', 449.00),
-            ('Smartwatch Samsung', 'https://zoom.com.br', 899.00),
-            ('Fone JBL Tune 510BT', 'https://zoom.com.br', 199.00),
-            ('Caixa de Som Portátil', 'https://zoom.com.br', 159.00),
-            ('Power Bank 20000mAh', 'https://zoom.com.br', 79.90),
-            ('Suporte para Notebook', 'https://zoom.com.br', 89.90),
-            ('Hub USB-C 7 em 1', 'https://zoom.com.br', 129.00),
-            ('Mousepad Gamer XXL', 'https://zoom.com.br', 49.90),
-            ('Livro Clean Code', 'https://amazon.com.br', 65.00),
-            ('Livro The Pragmatic Programmer', 'https://amazon.com.br', 89.00),
-            ('Garrafa Térmica Stanley', 'https://amazon.com.br', 220.00),
-            ('Mochila para Notebook', 'https://zoom.com.br', 180.00),
-            ('Planta Suculenta Decorativa', 'https://example.com', 35.00),
-            ('Caneca Personalizada', 'https://example.com', 29.90),
-            ('Lego Star Wars', 'https://amazon.com.br', 450.00),
-            ('Controle Xbox Wireless', 'https://zoom.com.br', 399.00),
-            ('Headset Gamer HyperX', 'https://zoom.com.br', 299.00),
-            ('Câmera GoPro Hero 11', 'https://zoom.com.br', 2500.00),
+            # Amazon Brasil
+            ('Kindle Paperwhite', 'https://www.amazon.com.br/dp/B08N3J8GTX', 499.00),
+            ('Echo Dot 5ª Geração', 'https://www.amazon.com.br/dp/B09B8V1LZ3', 349.00),
+            ('Fire TV Stick 4K', 'https://www.amazon.com.br/dp/B08XVYZ1Y5', 449.00),
+            ('Mouse Logitech MX Master 3S', 'https://www.amazon.com.br/dp/B09HM94VDS', 599.00),
+            ('Teclado Mecânico Logitech', 'https://www.amazon.com.br/dp/B07ZGXJ4R7', 450.00),
+            ('Fone JBL Tune 510BT', 'https://www.amazon.com.br/dp/B08F28N8TP', 199.00),
+            ('Garrafa Térmica Stanley', 'https://www.amazon.com.br/dp/B07VFFSGCH', 220.00),
+            ('Mochila Swissport', 'https://www.amazon.com.br/dp/B07G5D5VNQ', 180.00),
+            ('Power Bank Anker 20000mAh', 'https://www.amazon.com.br/dp/B07QXV6N1B', 199.90),
+            ('Webcam Logitech C920', 'https://www.amazon.com.br/dp/B006JH8T3S', 350.00),
+
+            # Kabum - Eletrônicos
+            ('SSD Kingston 1TB', 'https://www.kabum.com.br/produto/130858', 450.00),
+            ('Monitor LG 27 UltraGear', 'https://www.kabum.com.br/produto/385005', 1200.00),
+            ('Headset Gamer HyperX', 'https://www.kabum.com.br/produto/86089', 299.00),
+            ('Microfone USB Fifine', 'https://www.kabum.com.br/produto/129589', 280.00),
+            ('Mousepad Gamer Havit', 'https://www.kabum.com.br/produto/104026', 49.90),
+            ('Hub USB-C Baseus', 'https://www.kabum.com.br/produto/304721', 129.00),
+            ('Cadeira Gamer DT3 Sports', 'https://www.kabum.com.br/produto/97278', 1100.00),
+
+            # Mercado Livre
+            ('Controle Xbox Wireless', 'https://produto.mercadolivre.com.br/MLB-1856828084', 399.00),
+            ('Smartwatch Xiaomi Band 8', 'https://produto.mercadolivre.com.br/MLB-3180157424', 299.00),
+            ('Caixa de Som JBL Flip 6', 'https://produto.mercadolivre.com.br/MLB-2150396817', 599.00),
+
+            # Magazine Luiza
+            ('Air Fryer Philips', 'https://www.magazineluiza.com.br/air-fryer/p/234158700', 499.00),
+            ('Liquidificador Arno', 'https://www.magazineluiza.com.br/liquidificador/p/221344500', 189.00),
+            ('Cafeteira Nespresso', 'https://www.magazineluiza.com.br/cafeteira-nespresso/p/237043000', 399.00),
+
+            # Produtos genéricos com dados fixos (fallback caso APIs falhem)
+            ('Kit Iluminação LED', 'https://www.kabum.com.br/produto/305214', 120.00),
+            ('Suporte para Notebook', 'https://www.amazon.com.br/dp/B07DFKG1X5', 89.90),
+            ('Filtro de Linha', 'https://www.kabum.com.br/produto/102837', 79.90),
+            ('Caneca Térmica', 'https://www.amazon.com.br/dp/B07Y8PRDFT', 49.90),
+            ('Livro Clean Code', 'https://www.amazon.com.br/dp/8576082675', 65.00),
+            ('LEGO Star Wars', 'https://www.amazon.com.br/dp/B07W7XNRQS', 450.00),
+            ('Câmera GoPro Hero 11', 'https://www.amazon.com.br/dp/B0B3MQJFJX', 2500.00),
         ]
 
         usuarios_criados = 0
@@ -106,10 +120,33 @@ class Command(BaseCommand):
             # Criar presentes para este usuário
             presentes_usuario = random.sample(presentes_exemplos, min(gifts_per_user, len(presentes_exemplos)))
 
-            for descricao, url, preco in presentes_usuario:
+            for descricao_fallback, url, preco_fallback in presentes_usuario:
+                # Tentar extrair informações reais do produto usando scrapers específicos
+                from presentes.scrapers import ScraperFactory
+
+                descricao = descricao_fallback
+                preco = preco_fallback
+                imagem_url = None
+
+                self.stdout.write(f'  → Buscando informações de: {url[:50]}...')
+                info_extraida = ScraperFactory.extract_product_info(url)
+
+                if info_extraida:
+                    titulo_extraido, preco_extraido, img_extraida = info_extraida
+                    if titulo_extraido:
+                        descricao = titulo_extraido
+                    if preco_extraido:
+                        preco = preco_extraido
+                    if img_extraida:
+                        imagem_url = img_extraida
+                    self.stdout.write(self.style.SUCCESS(f'    ✓ Dados extraídos com sucesso!'))
+                else:
+                    self.stdout.write(self.style.WARNING(f'    ⚠ Usando dados padrão (falha na extração)'))
+
                 # 70% de chance de ser ATIVO, 30% de ser COMPRADO
                 status = 'ATIVO' if random.random() < 0.7 else 'COMPRADO'
 
+                # Criar presente
                 presente = Presente.objects.create(
                     usuario=usuario,
                     descricao=descricao,
@@ -120,7 +157,10 @@ class Command(BaseCommand):
                 presentes_criados += 1
 
                 status_icon = '✓' if status == 'ATIVO' else '✗'
-                self.stdout.write(f'  {status_icon} Presente: {descricao} - R$ {preco:.2f} ({status})')
+                self.stdout.write(f'  {status_icon} Criado: {descricao[:50]} - R$ {preco:.2f} ({status})')
+
+                # Pequeno delay para evitar rate limiting
+                time.sleep(0.5)
 
         # Resumo
         self.stdout.write('\n' + '='*60)
