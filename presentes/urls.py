@@ -30,4 +30,7 @@ urlpatterns = [
     # Notificações
     path('notificacoes/', views.notificacoes_view, name='notificacoes'),
     path('api/notificacoes/', views.notificacoes_nao_lidas_json, name='notificacoes_json'),
+
+    # Dados de teste (apenas superusuários)
+    path('gerar-dados-teste/', views.gerar_dados_teste_view, name='gerar_dados_teste'),
 ]

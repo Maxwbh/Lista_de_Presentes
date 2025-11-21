@@ -5,41 +5,39 @@ Este documento explica como popular o banco de dados de produção no Render com
 ## ⚠️ AVISO IMPORTANTE
 Este comando cria usuários e presentes de teste. Use apenas em ambiente de desenvolvimento ou quando necessário para testes.
 
-## Opção 1: Via Shell do Render (Recomendado)
+---
 
-1. Acesse o **Dashboard do Render** (https://dashboard.render.com)
+## ✅ MÉTODO RECOMENDADO: Via Interface Web
 
-2. Selecione seu serviço **Lista_de_Presentes**
+**Este é o método mais fácil e funciona no Render Free!**
 
-3. Vá até a aba **"Shell"** no menu lateral
+### Passo a Passo:
 
-4. Execute o seguinte comando:
-   ```bash
-   python manage.py populate_test_data --users 4 --gifts-per-user 4
+1. **Faça login como administrador** no seu site:
+   ```
+   https://seu-app.onrender.com/admin/
    ```
 
-5. O comando irá criar:
-   - **4 usuários** com emails diferentes
-   - **4 presentes** para cada usuário
-   - Total: **16 presentes** no sistema
-
-## Opção 2: Via Console (Python Shell)
-
-1. No Dashboard do Render, vá até **Shell**
-
-2. Digite `python` para abrir o console Python
-
-3. Execute o seguinte código:
-   ```python
-   import os
-   import django
-
-   os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'lista_presentes.settings')
-   django.setup()
-
-   from django.core.management import call_command
-   call_command('populate_test_data', users=4, gifts_per_user=4)
+2. **Acesse a URL de geração de dados**:
    ```
+   https://seu-app.onrender.com/gerar-dados-teste/
+   ```
+
+3. **Clique no botão "Gerar Dados de Teste"**
+
+4. **Aguarde a confirmação** - Você verá uma mensagem de sucesso com o total de dados criados
+
+**Pronto!** Os dados foram criados automaticamente.
+
+---
+
+## Alternativa: Via Shell (Plano Pago)
+
+⚠️ **Nota:** O Render Free não tem acesso ao Shell. Se você tiver um plano pago, pode usar:
+
+```bash
+python manage.py populate_test_data --users 4 --gifts-per-user 4
+```
 
 ## Usuários Criados
 
