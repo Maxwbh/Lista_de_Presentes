@@ -337,13 +337,13 @@
                                             <i class="bi bi-robot"></i> IA
                                         </button>
                                         <div class="ia-options" id="ia-options-{{ presente.id }}">
-                                            <a href="{% url 'buscar_sugestoes_ia' presente.id %}?ia=claude" class="ia-option">
+                                            <a href="{% url 'buscar_sugestoes' presente.id %}?ia=claude" class="ia-option">
                                                 <i class="bi bi-stars"></i> Buscar com Claude
                                             </a>
-                                            <a href="{% url 'buscar_sugestoes_ia' presente.id %}?ia=chatgpt" class="ia-option">
+                                            <a href="{% url 'buscar_sugestoes' presente.id %}?ia=chatgpt" class="ia-option">
                                                 <i class="bi bi-chat-dots"></i> Buscar com ChatGPT
                                             </a>
-                                            <a href="{% url 'buscar_sugestoes_ia' presente.id %}?ia=gemini" class="ia-option">
+                                            <a href="{% url 'buscar_sugestoes' presente.id %}?ia=gemini" class="ia-option">
                                                 <i class="bi bi-gem"></i> Buscar com Gemini
                                             </a>
                                             <a href="{% url 'ver_sugestoes' presente.id %}" class="ia-option">
