@@ -382,10 +382,16 @@
                                     </div>
                                     {% for sugestao in presente.sugestoes.all|slice:":5" %}
                                         <div class="sugestao-item">
-                                            <div class="sugestao-loja">{{ sugestao.loja }}</div>
-                                            <div class="sugestao-preco">R$ {{ sugestao.preco }}</div>
-                                            {% if sugestao.url %}
-                                                <a href="{{ sugestao.url }}" target="_blank" class="sugestao-link" title="Ver na loja">
+                                            <div class="sugestao-loja">{{ sugestao.local_compra }}</div>
+                                            <div class="sugestao-preco">
+                                                {% if sugestao.preco_sugerido %}
+                                                    R$ {{ sugestao.preco_sugerido }}
+                                                {% else %}
+                                                    Consultar
+                                                {% endif %}
+                                            </div>
+                                            {% if sugestao.url_compra %}
+                                                <a href="{{ sugestao.url_compra }}" target="_blank" class="sugestao-link" title="Ver na loja">
                                                     <i class="bi bi-box-arrow-up-right"></i>
                                                 </a>
                                             {% endif %}
