@@ -260,26 +260,26 @@
                     <div class="usuario-stats">
                         <div class="stat">
                             <div class="stat-number">
-                                {{ usuario.presentes.all|length }}
+                                {{ usuario.total_presentes }}
                             </div>
                             <div class="stat-label">Total</div>
                         </div>
                         <div class="stat">
                             <div class="stat-number">
-                                {{ usuario.presentes.filter|selectattr:"status", "equalto", "ATIVO"|list|length|default:0 }}
+                                {{ usuario.presentes_ativos }}
                             </div>
                             <div class="stat-label">Disponíveis</div>
                         </div>
                         <div class="stat">
                             <div class="stat-number">
-                                {{ usuario.presentes.filter|selectattr:"status", "equalto", "COMPRADO"|list|length|default:0 }}
+                                {{ usuario.presentes_comprados }}
                             </div>
                             <div class="stat-label">Comprados</div>
                         </div>
                     </div>
 
                     <div class="usuario-meta">
-                        {% if usuario.presentes.filter|selectattr:"status", "equalto", "ATIVO"|list|length > 0 %}
+                        {% if usuario.presentes_ativos > 0 %}
                             <span class="meta-badge">
                                 <i class="bi bi-gift"></i>
                                 Tem presentes disponíveis
