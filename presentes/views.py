@@ -278,6 +278,53 @@ def ver_sugestoes_view(request, pk):
     })
 
 @login_required
+def atualizar_todos_precos_view(request):
+    """Atualiza os preços de todos os presentes ativos do usuário"""
+    if request.method == 'POST':
+        # Buscar todos os presentes ativos do usuário
+        presentes = Presente.objects.filter(usuario=request.user, status='ATIVO')
+
+        total_presentes = presentes.count()
+        sucesso_count = 0
+        erro_count = 0
+
+        logger.info(f"Iniciando atualização de preços para {total_presentes} presentes do usuário {request.user}")
+
+        for presente in presentes:
+            try:
+                sucesso, mensagem = IAService.buscar_sugestoes_reais(presente)
+                if sucesso:
+                    sucesso_count += 1
+                    logger.info(f"Presente {presente.id}: {mensagem}")
+                else:
+                    erro_count += 1
+                    logger.warning(f"Presente {presente.id}: {mensagem}")
+            except Exception as e:
+                erro_count += 1
+                logger.error(f"Erro ao atualizar presente {presente.id}: {str(e)}")
+
+        # Mensagens de feedback
+        if sucesso_count > 0:
+            messages.success(
+                request,
+                f'Preços atualizados com sucesso para {sucesso_count} de {total_presentes} presentes!'
+            )
+
+        if erro_count > 0:
+            messages.warning(
+                request,
+                f'Não foi possível atualizar {erro_count} presentes. Verifique os logs para detalhes.'
+            )
+
+        if sucesso_count == 0 and erro_count == 0:
+            messages.info(request, 'Nenhum presente ativo encontrado para atualizar.')
+
+        return redirect('meus_presentes')
+
+    # Se não for POST, redirecionar para meus presentes
+    return redirect('meus_presentes')
+
+@login_required
 def lista_usuarios_view(request):
     # Otimizar query com prefetch_related para pegar presentes
     usuarios_list = Usuario.objects.filter(ativo=True).exclude(id=request.user.id).prefetch_related('presentes')
