@@ -1,0 +1,227 @@
+{% extends 'base.html' %}
+
+{% block title %}Gerar Dados de Teste - Lista de Presentes{% endblock %}
+
+{% block extra_css %}
+<style>
+    .page-header {
+        background: linear-gradient(135deg, var(--christmas-green) 0%, var(--christmas-green-light) 100%);
+        color: white;
+        padding: 40px 0;
+        margin: -20px -15px 30px;
+        border-radius: 0 0 30px 30px;
+        text-align: center;
+    }
+
+    .stats-card {
+        background: white;
+        border-radius: 20px;
+        box-shadow: 0 5px 20px rgba(0,0,0,0.08);
+        padding: 30px;
+        margin-bottom: 30px;
+    }
+
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 20px;
+        margin-top: 20px;
+    }
+
+    .stat-item {
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        padding: 20px;
+        border-radius: 15px;
+        text-align: center;
+        border-left: 4px solid var(--christmas-green);
+    }
+
+    .stat-value {
+        font-size: 2.5rem;
+        font-weight: 800;
+        color: var(--christmas-green);
+        line-height: 1;
+    }
+
+    .stat-label {
+        font-size: 0.9rem;
+        color: #6c757d;
+        margin-top: 8px;
+        text-transform: uppercase;
+        font-weight: 600;
+    }
+
+    .action-card {
+        background: white;
+        border-radius: 20px;
+        box-shadow: 0 5px 20px rgba(0,0,0,0.08);
+        padding: 40px;
+        text-align: center;
+    }
+
+    .warning-box {
+        background: #fff3cd;
+        border-left: 5px solid #ffc107;
+        padding: 20px;
+        border-radius: 10px;
+        margin-bottom: 30px;
+    }
+
+    .warning-box i {
+        color: #856404;
+        font-size: 1.5rem;
+        margin-right: 10px;
+    }
+
+    .btn-generate {
+        background: linear-gradient(135deg, var(--christmas-green) 0%, var(--christmas-green-light) 100%);
+        border: none;
+        color: white;
+        padding: 15px 50px;
+        border-radius: 30px;
+        font-weight: 700;
+        font-size: 1.1rem;
+        transition: all 0.3s;
+        box-shadow: 0 5px 20px rgba(45, 80, 22, 0.3);
+    }
+
+    .btn-generate:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 8px 25px rgba(45, 80, 22, 0.4);
+        color: white;
+    }
+
+    .info-list {
+        text-align: left;
+        margin: 30px auto;
+        max-width: 600px;
+    }
+
+    .info-list li {
+        padding: 10px 0;
+        border-bottom: 1px solid #f0f0f0;
+    }
+
+    .info-list li:last-child {
+        border-bottom: none;
+    }
+
+    .info-list i {
+        color: var(--christmas-green);
+        margin-right: 10px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="container">
+        <h1 class="mb-0">
+            <i class="bi bi-database-fill-gear me-2"></i>
+            Gerar Dados de Teste
+        </h1>
+        <p class="mb-0 mt-2">Popule o banco de dados com usuários e presentes para teste</p>
+    </div>
+</div>
+
+<div class="container">
+    <!-- Estatísticas Atuais -->
+    <div class="stats-card">
+        <h3 class="text-center mb-3">
+            <i class="bi bi-graph-up me-2"></i>
+            Estatísticas Atuais do Banco de Dados
+        </h3>
+        <div class="stats-grid">
+            <div class="stat-item">
+                <div class="stat-value">{{ usuarios_count }}</div>
+                <div class="stat-label">Usuários</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value">{{ presentes_count }}</div>
+                <div class="stat-label">Presentes Total</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value">{{ presentes_ativos }}</div>
+                <div class="stat-label">Presentes Ativos</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value">{{ presentes_comprados }}</div>
+                <div class="stat-label">Presentes Comprados</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Card de Ação -->
+    <div class="action-card">
+        <div class="warning-box">
+            <i class="bi bi-exclamation-triangle-fill"></i>
+            <strong>Atenção:</strong> Esta ação irá criar novos dados de teste no banco de dados. Use apenas em ambiente de desenvolvimento ou quando necessário para testes.
+        </div>
+
+        <h2 class="mb-4">
+            <i class="bi bi-plus-circle me-2"></i>
+            Criar Dados de Teste
+        </h2>
+
+        <p class="text-muted mb-4">O sistema irá criar:</p>
+
+        <ul class="info-list">
+            <li>
+                <i class="bi bi-people-fill"></i>
+                <strong>4 usuários</strong> com nomes e emails diferentes
+            </li>
+            <li>
+                <i class="bi bi-gift-fill"></i>
+                <strong>4 presentes</strong> aleatórios para cada usuário
+            </li>
+            <li>
+                <i class="bi bi-check-circle"></i>
+                <strong>70%</strong> dos presentes com status ATIVO
+            </li>
+            <li>
+                <i class="bi bi-bag-check"></i>
+                <strong>30%</strong> dos presentes com status COMPRADO
+            </li>
+            <li>
+                <i class="bi bi-key-fill"></i>
+                Todos os usuários com senha: <code>senha123</code>
+            </li>
+        </ul>
+
+        <form method="post" onsubmit="return confirm('Tem certeza que deseja gerar os dados de teste?\n\nSerão criados 4 usuários com 4 presentes cada (16 presentes no total).');">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-generate">
+                <i class="bi bi-database-fill-add me-2"></i>
+                Gerar Dados de Teste
+            </button>
+        </form>
+
+        <p class="text-muted mt-4 mb-0" style="font-size: 0.9rem;">
+            <i class="bi bi-info-circle me-1"></i>
+            Os emails seguirão o padrão: joao.silva1@example.com, maria.santos2@example.com, etc.
+        </p>
+    </div>
+
+    <div class="text-center mt-4">
+        <a href="{% url 'dashboard' %}" class="btn btn-secondary">
+            <i class="bi bi-arrow-left me-2"></i>
+            Voltar ao Dashboard
+        </a>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Animação ao carregar a página
+    document.addEventListener('DOMContentLoaded', function() {
+        const statItems = document.querySelectorAll('.stat-item');
+        statItems.forEach((item, index) => {
+            setTimeout(() => {
+                item.style.animation = 'fadeIn 0.5s ease-out';
+                item.style.opacity = '1';
+            }, index * 100);
+        });
+    });
+</script>
+{% endblock %}

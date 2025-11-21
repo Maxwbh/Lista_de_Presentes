@@ -460,3 +460,60 @@ def notificacoes_nao_lidas_json(request):
         'count': count,
         'notificacoes': list(notificacoes)
     })
+
+@login_required
+def gerar_dados_teste_view(request):
+    """
+    View para gerar dados de teste.
+    IMPORTANTE: Apenas superusuários podem acessar esta view.
+    Acesso via: /gerar-dados-teste/
+    """
+    # Verificar se o usuário é superusuário
+    if not request.user.is_superuser:
+        messages.error(request, 'Acesso negado. Apenas administradores podem gerar dados de teste.')
+        return redirect('index')
+
+    if request.method == 'POST':
+        try:
+            from django.core.management import call_command
+            from io import StringIO
+
+            # Capturar a saída do comando
+            output = StringIO()
+
+            # Executar comando com 4 usuários e 4 presentes cada
+            call_command('populate_test_data', users=4, gifts_per_user=4, stdout=output)
+
+            # Pegar a saída
+            result = output.getvalue()
+
+            # Contar resultados
+            usuarios_count = Usuario.objects.count()
+            presentes_count = Presente.objects.count()
+            presentes_ativos = Presente.objects.filter(status='ATIVO').count()
+
+            messages.success(request, f'✓ Dados de teste gerados com sucesso!')
+            messages.info(request, f'Total: {usuarios_count} usuários e {presentes_count} presentes ({presentes_ativos} ativos)')
+
+            logger.info(f"Dados de teste gerados por {request.user.email}")
+            logger.info(result)
+
+            return redirect('gerar_dados_teste')
+
+        except Exception as e:
+            logger.error(f"Erro ao gerar dados de teste: {str(e)}")
+            messages.error(request, f'Erro ao gerar dados: {str(e)}')
+            return redirect('gerar_dados_teste')
+
+    # GET - Mostrar página de confirmação
+    usuarios_count = Usuario.objects.count()
+    presentes_count = Presente.objects.count()
+    presentes_ativos = Presente.objects.filter(status='ATIVO').count()
+    presentes_comprados = Presente.objects.filter(status='COMPRADO').count()
+
+    return render(request, 'presentes/gerar_dados_teste.html', {
+        'usuarios_count': usuarios_count,
+        'presentes_count': presentes_count,
+        'presentes_ativos': presentes_ativos,
+        'presentes_comprados': presentes_comprados,
+    })
