@@ -144,24 +144,32 @@ def deletar_presente_view(request, pk):
 @login_required
 def buscar_sugestoes_ia_view(request, pk):
     presente = get_object_or_404(Presente, pk=pk, usuario=request.user)
-    
+
     # Escolher qual IA usar (pode ser configurável)
     ia_escolhida = request.GET.get('ia', 'claude')  # claude, chatgpt, gemini
-    
-    if ia_escolhida == 'claude':
-        sucesso, mensagem = IAService.buscar_sugestoes_claude(presente)
-    elif ia_escolhida == 'chatgpt':
-        sucesso, mensagem = IAService.buscar_sugestoes_chatgpt(presente)
-    elif ia_escolhida == 'gemini':
-        sucesso, mensagem = IAService.buscar_sugestoes_gemini(presente)
-    else:
-        sucesso, mensagem = False, "IA não reconhecida"
-    
-    if sucesso:
-        messages.success(request, mensagem)
-    else:
-        messages.error(request, mensagem)
-    
+
+    try:
+        if ia_escolhida == 'claude':
+            sucesso, mensagem = IAService.buscar_sugestoes_claude(presente)
+        elif ia_escolhida == 'chatgpt':
+            sucesso, mensagem = IAService.buscar_sugestoes_chatgpt(presente)
+        elif ia_escolhida == 'gemini':
+            sucesso, mensagem = IAService.buscar_sugestoes_gemini(presente)
+        else:
+            sucesso, mensagem = False, "IA não reconhecida"
+
+        if sucesso:
+            messages.success(request, mensagem)
+        else:
+            messages.warning(request, f"Não foi possível buscar sugestões: {mensagem}")
+
+    except Exception as e:
+        # Capturar qualquer erro da IA para não quebrar a aplicação
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Erro ao buscar sugestões com {ia_escolhida}: {str(e)}")
+        messages.warning(request, f"Não foi possível buscar sugestões com {ia_escolhida}. Tente novamente mais tarde ou use outra IA.")
+
     return redirect('ver_sugestoes', pk=pk)
 
 @login_required
