@@ -1,0 +1,289 @@
+-- ==============================================================================
+-- SCRIPT DE CRIACAO DE TABELAS - LISTA DE PRESENTES
+-- Oracle 26 / Apex 24
+-- Data: 2025-11-21
+-- Desenvolvedor: Maxwell da Silva Oliveira (@maxwbh)
+-- Email: maxwbh@gmail.com
+-- Empresa: M&S do Brasil LTDA - msbrasil.inf.br
+-- ==============================================================================
+
+-- ==============================================================================
+-- TABELA: TB_USUARIO
+-- Descricao: Armazena informacoes dos usuarios do sistema
+-- ==============================================================================
+CREATE TABLE TB_USUARIO (
+    ID_USUARIO          NUMBER(10)      NOT NULL,
+    USERNAME            VARCHAR2(150)   NOT NULL,
+    EMAIL               VARCHAR2(255)   NOT NULL,
+    SENHA_HASH          VARCHAR2(255)   NOT NULL,
+    PRIMEIRO_NOME       VARCHAR2(150),
+    ULTIMO_NOME         VARCHAR2(150),
+    TELEFONE            VARCHAR2(20),
+    ATIVO               CHAR(1)         DEFAULT 'S' NOT NULL,
+    IS_SUPERUSER        CHAR(1)         DEFAULT 'N' NOT NULL,
+    IS_STAFF            CHAR(1)         DEFAULT 'N' NOT NULL,
+    DATA_CADASTRO       DATE            DEFAULT SYSDATE NOT NULL,
+    DATA_LOGIN          DATE,
+    DATA_ALTERACAO      DATE            DEFAULT SYSDATE NOT NULL,
+    CONSTRAINT PK_USUARIO PRIMARY KEY (ID_USUARIO),
+    CONSTRAINT UK_USUARIO_EMAIL UNIQUE (EMAIL),
+    CONSTRAINT UK_USUARIO_USERNAME UNIQUE (USERNAME),
+    CONSTRAINT CK_USUARIO_ATIVO CHECK (ATIVO IN ('S', 'N')),
+    CONSTRAINT CK_USUARIO_SUPERUSER CHECK (IS_SUPERUSER IN ('S', 'N')),
+    CONSTRAINT CK_USUARIO_STAFF CHECK (IS_STAFF IN ('S', 'N'))
+);
+
+-- Comentarios da tabela
+COMMENT ON TABLE TB_USUARIO IS 'Tabela de usuarios do sistema de lista de presentes';
+COMMENT ON COLUMN TB_USUARIO.ID_USUARIO IS 'Chave primaria - Identificador unico do usuario';
+COMMENT ON COLUMN TB_USUARIO.USERNAME IS 'Nome de usuario para login';
+COMMENT ON COLUMN TB_USUARIO.EMAIL IS 'Email do usuario (usado como login principal)';
+COMMENT ON COLUMN TB_USUARIO.SENHA_HASH IS 'Hash da senha do usuario (bcrypt/pbkdf2)';
+COMMENT ON COLUMN TB_USUARIO.ATIVO IS 'Indica se usuario esta ativo (S/N)';
+COMMENT ON COLUMN TB_USUARIO.IS_SUPERUSER IS 'Indica se usuario e administrador (S/N)';
+
+-- Indices
+CREATE INDEX IDX_USUARIO_EMAIL ON TB_USUARIO(EMAIL);
+CREATE INDEX IDX_USUARIO_ATIVO ON TB_USUARIO(ATIVO);
+CREATE INDEX IDX_USUARIO_DATA_CADASTRO ON TB_USUARIO(DATA_CADASTRO);
+
+-- Sequence
+CREATE SEQUENCE SEQ_USUARIO START WITH 1 INCREMENT BY 1 NOCACHE;
+
+
+-- ==============================================================================
+-- TABELA: TB_PRESENTE
+-- Descricao: Armazena os presentes cadastrados pelos usuarios
+-- ==============================================================================
+CREATE TABLE TB_PRESENTE (
+    ID_PRESENTE         NUMBER(10)      NOT NULL,
+    ID_USUARIO          NUMBER(10)      NOT NULL,
+    DESCRICAO           CLOB            NOT NULL,
+    URL                 VARCHAR2(1000),
+    PRECO               NUMBER(10,2),
+    STATUS              VARCHAR2(20)    DEFAULT 'ATIVO' NOT NULL,
+    -- Campos de imagem
+    IMAGEM_BASE64       CLOB,
+    IMAGEM_NOME         VARCHAR2(255),
+    IMAGEM_TIPO         VARCHAR2(50),
+    -- Auditoria
+    DATA_CADASTRO       DATE            DEFAULT SYSDATE NOT NULL,
+    DATA_ALTERACAO      DATE            DEFAULT SYSDATE NOT NULL,
+    CONSTRAINT PK_PRESENTE PRIMARY KEY (ID_PRESENTE),
+    CONSTRAINT FK_PRESENTE_USUARIO FOREIGN KEY (ID_USUARIO)
+        REFERENCES TB_USUARIO(ID_USUARIO) ON DELETE CASCADE,
+    CONSTRAINT CK_PRESENTE_STATUS CHECK (STATUS IN ('ATIVO', 'COMPRADO')),
+    CONSTRAINT CK_PRESENTE_PRECO CHECK (PRECO >= 0)
+);
+
+-- Comentarios
+COMMENT ON TABLE TB_PRESENTE IS 'Tabela de presentes desejados pelos usuarios';
+COMMENT ON COLUMN TB_PRESENTE.ID_PRESENTE IS 'Chave primaria - Identificador unico do presente';
+COMMENT ON COLUMN TB_PRESENTE.ID_USUARIO IS 'Chave estrangeira - Usuario dono do presente';
+COMMENT ON COLUMN TB_PRESENTE.STATUS IS 'Status do presente (ATIVO/COMPRADO)';
+COMMENT ON COLUMN TB_PRESENTE.IMAGEM_BASE64 IS 'Imagem do presente codificada em Base64';
+COMMENT ON COLUMN TB_PRESENTE.IMAGEM_TIPO IS 'MIME type da imagem (image/jpeg, image/png, etc)';
+
+-- Indices
+CREATE INDEX IDX_PRESENTE_USUARIO ON TB_PRESENTE(ID_USUARIO);
+CREATE INDEX IDX_PRESENTE_STATUS ON TB_PRESENTE(STATUS);
+CREATE INDEX IDX_PRESENTE_DATA_CAD ON TB_PRESENTE(DATA_CADASTRO DESC);
+CREATE INDEX IDX_PRESENTE_USR_STATUS ON TB_PRESENTE(ID_USUARIO, STATUS);
+
+-- Sequence
+CREATE SEQUENCE SEQ_PRESENTE START WITH 1 INCREMENT BY 1 NOCACHE;
+
+
+-- ==============================================================================
+-- TABELA: TB_COMPRA
+-- Descricao: Registra as compras de presentes
+-- ==============================================================================
+CREATE TABLE TB_COMPRA (
+    ID_COMPRA           NUMBER(10)      NOT NULL,
+    ID_PRESENTE         NUMBER(10)      NOT NULL,
+    ID_COMPRADOR        NUMBER(10)      NOT NULL,
+    DATA_COMPRA         DATE            DEFAULT SYSDATE NOT NULL,
+    CONSTRAINT PK_COMPRA PRIMARY KEY (ID_COMPRA),
+    CONSTRAINT UK_COMPRA_PRESENTE UNIQUE (ID_PRESENTE),
+    CONSTRAINT FK_COMPRA_PRESENTE FOREIGN KEY (ID_PRESENTE)
+        REFERENCES TB_PRESENTE(ID_PRESENTE) ON DELETE CASCADE,
+    CONSTRAINT FK_COMPRA_COMPRADOR FOREIGN KEY (ID_COMPRADOR)
+        REFERENCES TB_USUARIO(ID_USUARIO) ON DELETE CASCADE
+);
+
+-- Comentarios
+COMMENT ON TABLE TB_COMPRA IS 'Tabela de registro de compras de presentes';
+COMMENT ON COLUMN TB_COMPRA.ID_COMPRA IS 'Chave primaria - Identificador unico da compra';
+COMMENT ON COLUMN TB_COMPRA.ID_PRESENTE IS 'Chave estrangeira - Presente comprado';
+COMMENT ON COLUMN TB_COMPRA.ID_COMPRADOR IS 'Chave estrangeira - Usuario que comprou';
+
+-- Indices
+CREATE INDEX IDX_COMPRA_PRESENTE ON TB_COMPRA(ID_PRESENTE);
+CREATE INDEX IDX_COMPRA_COMPRADOR ON TB_COMPRA(ID_COMPRADOR);
+CREATE INDEX IDX_COMPRA_DATA ON TB_COMPRA(DATA_COMPRA DESC);
+
+-- Sequence
+CREATE SEQUENCE SEQ_COMPRA START WITH 1 INCREMENT BY 1 NOCACHE;
+
+
+-- ==============================================================================
+-- TABELA: TB_SUGESTAO_COMPRA
+-- Descricao: Armazena sugestoes de onde comprar os presentes
+-- ==============================================================================
+CREATE TABLE TB_SUGESTAO_COMPRA (
+    ID_SUGESTAO         NUMBER(10)      NOT NULL,
+    ID_PRESENTE         NUMBER(10)      NOT NULL,
+    LOCAL_COMPRA        VARCHAR2(200)   NOT NULL,
+    URL_COMPRA          VARCHAR2(1000)  NOT NULL,
+    PRECO_SUGERIDO      NUMBER(10,2),
+    DATA_BUSCA          DATE            DEFAULT SYSDATE NOT NULL,
+    CONSTRAINT PK_SUGESTAO_COMPRA PRIMARY KEY (ID_SUGESTAO),
+    CONSTRAINT FK_SUGESTAO_PRESENTE FOREIGN KEY (ID_PRESENTE)
+        REFERENCES TB_PRESENTE(ID_PRESENTE) ON DELETE CASCADE,
+    CONSTRAINT CK_SUGESTAO_PRECO CHECK (PRECO_SUGERIDO IS NULL OR PRECO_SUGERIDO >= 0)
+);
+
+-- Comentarios
+COMMENT ON TABLE TB_SUGESTAO_COMPRA IS 'Tabela de sugestoes de onde comprar presentes';
+COMMENT ON COLUMN TB_SUGESTAO_COMPRA.LOCAL_COMPRA IS 'Nome da loja/local de compra';
+COMMENT ON COLUMN TB_SUGESTAO_COMPRA.URL_COMPRA IS 'URL do produto na loja';
+COMMENT ON COLUMN TB_SUGESTAO_COMPRA.PRECO_SUGERIDO IS 'Preco encontrado na loja';
+
+-- Indices
+CREATE INDEX IDX_SUGESTAO_PRESENTE ON TB_SUGESTAO_COMPRA(ID_PRESENTE);
+CREATE INDEX IDX_SUGESTAO_PRECO ON TB_SUGESTAO_COMPRA(PRECO_SUGERIDO);
+CREATE INDEX IDX_SUGESTAO_DATA ON TB_SUGESTAO_COMPRA(DATA_BUSCA DESC);
+
+-- Sequence
+CREATE SEQUENCE SEQ_SUGESTAO_COMPRA START WITH 1 INCREMENT BY 1 NOCACHE;
+
+
+-- ==============================================================================
+-- TABELA: TB_NOTIFICACAO
+-- Descricao: Armazena notificacoes para os usuarios
+-- ==============================================================================
+CREATE TABLE TB_NOTIFICACAO (
+    ID_NOTIFICACAO      NUMBER(10)      NOT NULL,
+    ID_USUARIO          NUMBER(10)      NOT NULL,
+    MENSAGEM            CLOB            NOT NULL,
+    LIDA                CHAR(1)         DEFAULT 'N' NOT NULL,
+    DATA_NOTIFICACAO    DATE            DEFAULT SYSDATE NOT NULL,
+    DATA_LEITURA        DATE,
+    CONSTRAINT PK_NOTIFICACAO PRIMARY KEY (ID_NOTIFICACAO),
+    CONSTRAINT FK_NOTIFICACAO_USUARIO FOREIGN KEY (ID_USUARIO)
+        REFERENCES TB_USUARIO(ID_USUARIO) ON DELETE CASCADE,
+    CONSTRAINT CK_NOTIFICACAO_LIDA CHECK (LIDA IN ('S', 'N'))
+);
+
+-- Comentarios
+COMMENT ON TABLE TB_NOTIFICACAO IS 'Tabela de notificacoes para usuarios';
+COMMENT ON COLUMN TB_NOTIFICACAO.LIDA IS 'Indica se notificacao foi lida (S/N)';
+
+-- Indices
+CREATE INDEX IDX_NOTIF_USUARIO ON TB_NOTIFICACAO(ID_USUARIO);
+CREATE INDEX IDX_NOTIF_LIDA ON TB_NOTIFICACAO(LIDA);
+CREATE INDEX IDX_NOTIF_DATA ON TB_NOTIFICACAO(DATA_NOTIFICACAO DESC);
+CREATE INDEX IDX_NOTIF_USR_LIDA ON TB_NOTIFICACAO(ID_USUARIO, LIDA, DATA_NOTIFICACAO);
+
+-- Sequence
+CREATE SEQUENCE SEQ_NOTIFICACAO START WITH 1 INCREMENT BY 1 NOCACHE;
+
+
+-- ==============================================================================
+-- TABELA: TB_LOG_AUDITORIA
+-- Descricao: Tabela para auditoria de operacoes
+-- ==============================================================================
+CREATE TABLE TB_LOG_AUDITORIA (
+    ID_LOG              NUMBER(10)      NOT NULL,
+    TABELA              VARCHAR2(50)    NOT NULL,
+    ID_REGISTRO         NUMBER(10),
+    OPERACAO            VARCHAR2(10)    NOT NULL,
+    USUARIO_BD          VARCHAR2(100)   DEFAULT USER NOT NULL,
+    ID_USUARIO_APP      NUMBER(10),
+    DATA_OPERACAO       DATE            DEFAULT SYSDATE NOT NULL,
+    DADOS_ANTES         CLOB,
+    DADOS_DEPOIS        CLOB,
+    CONSTRAINT PK_LOG_AUDITORIA PRIMARY KEY (ID_LOG),
+    CONSTRAINT CK_LOG_OPERACAO CHECK (OPERACAO IN ('INSERT', 'UPDATE', 'DELETE'))
+);
+
+-- Comentarios
+COMMENT ON TABLE TB_LOG_AUDITORIA IS 'Tabela de auditoria de operacoes do sistema';
+
+-- Indices
+CREATE INDEX IDX_LOG_TABELA ON TB_LOG_AUDITORIA(TABELA);
+CREATE INDEX IDX_LOG_DATA ON TB_LOG_AUDITORIA(DATA_OPERACAO DESC);
+CREATE INDEX IDX_LOG_USUARIO ON TB_LOG_AUDITORIA(ID_USUARIO_APP);
+
+-- Sequence
+CREATE SEQUENCE SEQ_LOG_AUDITORIA START WITH 1 INCREMENT BY 1 NOCACHE;
+
+
+-- ==============================================================================
+-- VIEWS
+-- ==============================================================================
+
+-- View de Presentes com informacoes completas
+CREATE OR REPLACE VIEW VW_PRESENTES_COMPLETO AS
+SELECT
+    p.ID_PRESENTE,
+    p.DESCRICAO,
+    p.URL,
+    p.PRECO,
+    p.STATUS,
+    p.DATA_CADASTRO,
+    -- Usuario
+    u.ID_USUARIO,
+    u.EMAIL AS USUARIO_EMAIL,
+    u.PRIMEIRO_NOME || ' ' || u.ULTIMO_NOME AS USUARIO_NOME,
+    -- Compra (se houver)
+    c.ID_COMPRA,
+    c.DATA_COMPRA,
+    comp.ID_USUARIO AS ID_COMPRADOR,
+    comp.PRIMEIRO_NOME || ' ' || comp.ULTIMO_NOME AS COMPRADOR_NOME,
+    -- Estatisticas
+    (SELECT COUNT(*)
+     FROM TB_SUGESTAO_COMPRA s
+     WHERE s.ID_PRESENTE = p.ID_PRESENTE) AS TOTAL_SUGESTOES,
+    (SELECT MIN(PRECO_SUGERIDO)
+     FROM TB_SUGESTAO_COMPRA s
+     WHERE s.ID_PRESENTE = p.ID_PRESENTE
+       AND PRECO_SUGERIDO IS NOT NULL) AS MELHOR_PRECO
+FROM TB_PRESENTE p
+INNER JOIN TB_USUARIO u ON p.ID_USUARIO = u.ID_USUARIO
+LEFT JOIN TB_COMPRA c ON p.ID_PRESENTE = c.ID_PRESENTE
+LEFT JOIN TB_USUARIO comp ON c.ID_COMPRADOR = comp.ID_USUARIO;
+
+-- View de Dashboard
+CREATE OR REPLACE VIEW VW_DASHBOARD AS
+SELECT
+    (SELECT COUNT(*) FROM TB_USUARIO WHERE ATIVO = 'S') AS TOTAL_USUARIOS,
+    (SELECT COUNT(*) FROM TB_PRESENTE WHERE STATUS = 'ATIVO') AS TOTAL_PRESENTES_ATIVOS,
+    (SELECT COUNT(*) FROM TB_PRESENTE WHERE STATUS = 'COMPRADO') AS TOTAL_PRESENTES_COMPRADOS,
+    (SELECT COUNT(*) FROM TB_COMPRA WHERE TRUNC(DATA_COMPRA) = TRUNC(SYSDATE)) AS COMPRAS_HOJE,
+    (SELECT COUNT(*) FROM TB_NOTIFICACAO WHERE LIDA = 'N') AS NOTIFICACOES_NAO_LIDAS
+FROM DUAL;
+
+-- View de Estatisticas por Usuario
+CREATE OR REPLACE VIEW VW_USUARIO_ESTATISTICAS AS
+SELECT
+    u.ID_USUARIO,
+    u.EMAIL,
+    u.PRIMEIRO_NOME || ' ' || u.ULTIMO_NOME AS NOME_COMPLETO,
+    u.DATA_CADASTRO,
+    COUNT(p.ID_PRESENTE) AS TOTAL_PRESENTES,
+    SUM(CASE WHEN p.STATUS = 'ATIVO' THEN 1 ELSE 0 END) AS PRESENTES_ATIVOS,
+    SUM(CASE WHEN p.STATUS = 'COMPRADO' THEN 1 ELSE 0 END) AS PRESENTES_COMPRADOS,
+    (SELECT COUNT(*)
+     FROM TB_NOTIFICACAO n
+     WHERE n.ID_USUARIO = u.ID_USUARIO
+       AND n.LIDA = 'N') AS NOTIFICACOES_NAO_LIDAS
+FROM TB_USUARIO u
+LEFT JOIN TB_PRESENTE p ON u.ID_USUARIO = p.ID_USUARIO
+WHERE u.ATIVO = 'S'
+GROUP BY u.ID_USUARIO, u.EMAIL, u.PRIMEIRO_NOME, u.ULTIMO_NOME, u.DATA_CADASTRO;
+
+
+-- ==============================================================================
+-- FIM DO SCRIPT DDL
+-- ==============================================================================
