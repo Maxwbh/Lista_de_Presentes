@@ -275,7 +275,10 @@ def ver_sugestoes_view(request, pk):
     # Debug: Log das sugestões carregadas
     logger.info(f"Ver sugestões para presente {pk}: {sugestoes.count()} sugestões encontradas")
     for sug in sugestoes:
-        logger.info(f"  - Loja: '{sug.local_compra}', Preço: {sug.preco_sugerido}, URL: '{sug.url_compra}'")
+        loja = sug.local_compra or '(vazio)'
+        preco = sug.preco_sugerido if sug.preco_sugerido else '(sem preço)'
+        url = sug.url_compra or '(vazio)'
+        logger.info(f"  - Loja: '{loja}', Preço: {preco}, URL: '{url}'")
 
     return render(request, 'presentes/ver_sugestoes.html', {
         'presente': presente,
