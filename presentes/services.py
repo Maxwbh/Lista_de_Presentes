@@ -331,21 +331,36 @@ class IAService:
             SugestaoCompra.objects.filter(presente=presente).delete()
 
             # Salvar até 10 melhores sugestões
+            sugestoes_salvas = 0
             for produto in todos_produtos[:10]:
-                loja = f"{produto['loja']} ({produto['fonte']})"
-                url = produto['url']
+                loja_nome = produto.get('loja', '').strip()
+                loja_fonte = produto.get('fonte', '').strip()
+                url = produto.get('url', '').strip()
                 preco = produto.get('preco') if produto.get('preco', 0) > 0 else None
 
-                logger.info(f"Salvando sugestão: loja='{loja}', url='{url}', preco={preco}")
+                # Validar dados antes de salvar
+                if not loja_nome:
+                    logger.warning(f"Ignorando sugestão sem nome de loja: {produto}")
+                    continue
+
+                if not url:
+                    logger.warning(f"Ignorando sugestão sem URL: {produto}")
+                    continue
+
+                # Formatar nome da loja com fonte
+                loja_completo = f"{loja_nome} ({loja_fonte})" if loja_fonte else loja_nome
+
+                logger.info(f"Salvando sugestão: loja='{loja_completo}', url='{url}', preco={preco}")
 
                 SugestaoCompra.objects.create(
                     presente=presente,
-                    local_compra=loja,
+                    local_compra=loja_completo,
                     url_compra=url,
                     preco_sugerido=preco
                 )
+                sugestoes_salvas += 1
 
-            return True, f"Encontradas {len(todos_produtos[:10])} sugestões de IA + Zoom + Buscapé!"
+            return True, f"Encontradas {sugestoes_salvas} sugestões válidas de IA + Zoom + Buscapé!"
 
         except Exception as e:
             logger.error(f"Erro ao buscar sugestões: {str(e)}")
@@ -478,12 +493,21 @@ class IAService:
         """Salva as sugestões no banco de dados"""
         # Limpar sugestões antigas
         SugestaoCompra.objects.filter(presente=presente).delete()
-        
+
         # Salvar novas sugestões
         for sug in sugestoes:
+            loja = sug.get('loja', '').strip()
+            url = sug.get('url', '').strip()
+            preco = sug.get('preco')
+
+            # Validar dados antes de salvar
+            if not loja or not url:
+                logger.warning(f"Ignorando sugestão da IA com dados vazios: {sug}")
+                continue
+
             SugestaoCompra.objects.create(
                 presente=presente,
-                local_compra=sug['loja'],
-                url_compra=sug['url'],
-                preco_sugerido=sug.get('preco')
+                local_compra=loja,
+                url_compra=url,
+                preco_sugerido=preco
             )
