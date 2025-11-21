@@ -5,7 +5,7 @@
 {% block extra_css %}
 <style>
     .page-header {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: linear-gradient(135deg, #2d5016 0%, #4a7c2c 100%);
         color: white;
         padding: 40px 0;
         margin: -20px -15px 30px;
@@ -28,19 +28,21 @@
     }
 
     .presente-img {
-        height: 200px;
-        object-fit: cover;
         width: 100%;
+        height: 200px;
+        object-fit: contain;
+        object-position: center;
+        background-color: #f8f9fa;
     }
 
     .presente-img-placeholder {
         height: 200px;
-        background: linear-gradient(135deg, #667eea20 0%, #764ba220 100%);
+        background: linear-gradient(135deg, rgba(45, 80, 22, 0.1) 0%, rgba(74, 124, 44, 0.15) 100%);
         display: flex;
         align-items: center;
         justify-content: center;
         font-size: 4rem;
-        color: #667eea;
+        color: #4a7c2c;
     }
 
     .badge-status {
@@ -55,12 +57,12 @@
     }
 
     .badge-ativo {
-        background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+        background: linear-gradient(135deg, #2d5016 0%, #4a7c2c 100%);
         color: white;
     }
 
     .badge-comprado {
-        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        background: linear-gradient(135deg, #8b8b8b 0%, #6c757d 100%);
         color: white;
     }
 
@@ -132,20 +134,20 @@
     }
 
     .btn-add-presente {
-        background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+        background: linear-gradient(135deg, #2d5016 0%, #4a7c2c 100%);
         border: none;
         color: white;
         padding: 15px 30px;
         border-radius: 50px;
         font-weight: 600;
         font-size: 1.1rem;
-        box-shadow: 0 5px 20px rgba(17, 153, 142, 0.3);
+        box-shadow: 0 5px 20px rgba(45, 80, 22, 0.3);
         transition: all 0.3s;
     }
 
     .btn-add-presente:hover {
         transform: translateY(-3px);
-        box-shadow: 0 8px 30px rgba(17, 153, 142, 0.5);
+        box-shadow: 0 8px 30px rgba(45, 80, 22, 0.5);
         color: white;
     }
 
@@ -178,53 +180,84 @@
         margin-top: 10px;
     }
 
-    .dropdown-ia {
-        position: relative;
+    .sugestoes-ia-card {
+        background: linear-gradient(135deg, #667eea10 0%, #764ba220 100%);
+        border: 1px solid #667eea40;
+        border-radius: 10px;
+        padding: 15px;
     }
 
-    .ia-options {
-        display: none;
-        position: absolute;
-        bottom: 100%;
-        left: 0;
-        right: 0;
+    .sugestoes-header {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: #667eea;
+        font-size: 0.9rem;
+        margin-bottom: 12px;
+        padding-bottom: 8px;
+        border-bottom: 1px solid #667eea30;
+    }
+
+    .sugestao-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 8px 10px;
         background: white;
-        border-radius: 8px;
-        box-shadow: 0 -5px 20px rgba(0,0,0,0.15);
-        margin-bottom: 5px;
-        z-index: 10;
+        border-radius: 6px;
+        margin-bottom: 8px;
+        transition: all 0.2s;
     }
 
-    .ia-options.show {
-        display: block;
-        animation: slideDown 0.3s ease-out;
+    .sugestao-item:last-child {
+        margin-bottom: 0;
     }
 
-    @keyframes slideDown {
-        from {
-            opacity: 0;
-            transform: translateY(10px);
-        }
-        to {
-            opacity: 1;
-            transform: translateY(0);
-        }
+    .sugestao-item:hover {
+        transform: translateX(5px);
+        box-shadow: 0 2px 8px rgba(102, 126, 234, 0.2);
     }
 
-    .ia-option {
-        padding: 10px;
-        border-bottom: 1px solid #f0f0f0;
-        cursor: pointer;
-        transition: background 0.2s;
+    .sugestao-loja {
+        flex: 1;
+        font-weight: 600;
+        color: #495057;
         font-size: 0.85rem;
     }
 
-    .ia-option:last-child {
-        border-bottom: none;
+    .sugestao-preco {
+        font-weight: 700;
+        color: #28a745;
+        font-size: 0.9rem;
     }
 
-    .ia-option:hover {
-        background: #f8f9fa;
+    .sugestao-link {
+        color: #667eea;
+        text-decoration: none;
+        padding: 4px 8px;
+        border-radius: 4px;
+        transition: all 0.2s;
+    }
+
+    .sugestao-link:hover {
+        background: #667eea;
+        color: white;
+    }
+
+    .btn-ver-todas {
+        display: inline-block;
+        font-size: 0.8rem;
+        color: #667eea;
+        text-decoration: none;
+        font-weight: 600;
+        padding: 5px 12px;
+        border-radius: 15px;
+        transition: all 0.2s;
+    }
+
+    .btn-ver-todas:hover {
+        background: #667eea20;
+        color: #764ba2;
     }
 
     .stats-row {
@@ -267,15 +300,15 @@
     <div class="stats-row">
         <div class="row">
             <div class="col-md-4 stat-item">
-                <div class="stat-number">{{ presentes|length }}</div>
+                <div class="stat-number">{{ total_presentes }}</div>
                 <div class="stat-label">Total de Presentes</div>
             </div>
             <div class="col-md-4 stat-item">
-                <div class="stat-number">{{ presentes|selectattr:"status", "equalto", "ATIVO"|list|length }}</div>
+                <div class="stat-number">{{ presentes_ativos }}</div>
                 <div class="stat-label">Ativos</div>
             </div>
             <div class="col-md-4 stat-item">
-                <div class="stat-number">{{ presentes|selectattr:"status", "equalto", "COMPRADO"|list|length }}</div>
+                <div class="stat-number">{{ presentes_comprados }}</div>
                 <div class="stat-label">Comprados</div>
             </div>
         </div>
@@ -286,6 +319,16 @@
             <i class="bi bi-plus-circle me-2"></i>
             Adicionar Novo Presente
         </a>
+
+        {% if presentes_ativos > 0 %}
+        <form method="post" action="{% url 'atualizar_todos_precos' %}" style="display: inline-block;" onsubmit="return confirm('Deseja atualizar os preços de todos os {{ presentes_ativos }} presentes ativos? Isso pode levar alguns minutos.');">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-secondary ms-2">
+                <i class="bi bi-arrow-clockwise me-2"></i>
+                Atualizar Todos os Preços
+            </button>
+        </form>
+        {% endif %}
     </div>
 
     {% if presentes %}
@@ -294,8 +337,8 @@
                 <div class="col-md-6 col-lg-4">
                     <div class="card presente-card">
                         <div class="position-relative">
-                            {% if presente.imagem %}
-                                <img src="{{ presente.imagem.url }}" alt="{{ presente.descricao }}" class="presente-img">
+                            {% if presente.tem_imagem %}
+                                <img src="{{ presente.get_imagem_url }}" alt="{{ presente.descricao }}" class="presente-img">
                             {% else %}
                                 <div class="presente-img-placeholder">
                                     <i class="bi bi-gift"></i>
@@ -330,28 +373,42 @@
                                 Adicionado em {{ presente.data_cadastro|date:"d/m/Y" }}
                             </div>
 
-                            {% if presente.status == 'ATIVO' %}
-                                <div class="presente-actions mt-3">
-                                    <div class="dropdown-ia" style="flex: 1;">
-                                        <button class="btn btn-action btn-ia w-100" onclick="toggleIAOptions({{ presente.id }})">
-                                            <i class="bi bi-robot"></i> IA
-                                        </button>
-                                        <div class="ia-options" id="ia-options-{{ presente.id }}">
-                                            <a href="{% url 'buscar_sugestoes_ia' presente.id %}?ia=claude" class="ia-option">
-                                                <i class="bi bi-stars"></i> Buscar com Claude
-                                            </a>
-                                            <a href="{% url 'buscar_sugestoes_ia' presente.id %}?ia=chatgpt" class="ia-option">
-                                                <i class="bi bi-chat-dots"></i> Buscar com ChatGPT
-                                            </a>
-                                            <a href="{% url 'buscar_sugestoes_ia' presente.id %}?ia=gemini" class="ia-option">
-                                                <i class="bi bi-gem"></i> Buscar com Gemini
-                                            </a>
-                                            <a href="{% url 'ver_sugestoes' presente.id %}" class="ia-option">
-                                                <i class="bi bi-eye"></i> Ver Sugestões
+                            <!-- Exibir sugestões de IA (se existirem) -->
+                            {% if presente.sugestoes.count > 0 %}
+                                <div class="sugestoes-ia-card mt-3">
+                                    <div class="sugestoes-header">
+                                        <i class="bi bi-shop"></i>
+                                        <strong>Sugestões de Lojas ({{ presente.sugestoes.count }})</strong>
+                                    </div>
+                                    {% for sugestao in presente.sugestoes.all|slice:":5" %}
+                                        <div class="sugestao-item">
+                                            <div class="sugestao-loja">{{ sugestao.local_compra }}</div>
+                                            <div class="sugestao-preco">
+                                                {% if sugestao.preco_sugerido %}
+                                                    R$ {{ sugestao.preco_sugerido }}
+                                                {% else %}
+                                                    Consultar
+                                                {% endif %}
+                                            </div>
+                                            {% if sugestao.url_compra %}
+                                                <a href="{{ sugestao.url_compra }}" target="_blank" class="sugestao-link" title="Ver na loja">
+                                                    <i class="bi bi-box-arrow-up-right"></i>
+                                                </a>
+                                            {% endif %}
+                                        </div>
+                                    {% endfor %}
+                                    {% if presente.sugestoes.count > 5 %}
+                                        <div class="text-center mt-2">
+                                            <a href="{% url 'ver_sugestoes' presente.id %}" class="btn-ver-todas">
+                                                Ver todas as {{ presente.sugestoes.count }} sugestões
                                             </a>
                                         </div>
-                                    </div>
+                                    {% endif %}
+                                </div>
+                            {% endif %}
 
+                            {% if presente.status == 'ATIVO' %}
+                                <div class="presente-actions mt-3">
                                     <a href="{% url 'editar_presente' presente.id %}" class="btn btn-action btn-edit">
                                         <i class="bi bi-pencil"></i> Editar
                                     </a>
@@ -383,32 +440,4 @@
         </div>
     {% endif %}
 </div>
-{% endblock %}
-
-{% block extra_js %}
-<script>
-    function toggleIAOptions(presenteId) {
-        const options = document.getElementById('ia-options-' + presenteId);
-        const allOptions = document.querySelectorAll('.ia-options');
-
-        // Fechar todos os outros dropdowns
-        allOptions.forEach(opt => {
-            if (opt !== options) {
-                opt.classList.remove('show');
-            }
-        });
-
-        // Toggle o dropdown atual
-        options.classList.toggle('show');
-    }
-
-    // Fechar dropdowns ao clicar fora
-    document.addEventListener('click', function(event) {
-        if (!event.target.closest('.dropdown-ia')) {
-            document.querySelectorAll('.ia-options').forEach(opt => {
-                opt.classList.remove('show');
-            });
-        }
-    });
-</script>
 {% endblock %}

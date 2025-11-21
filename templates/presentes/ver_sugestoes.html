@@ -45,7 +45,9 @@
     .presente-thumbnail {
         width: 150px;
         height: 150px;
-        object-fit: cover;
+        object-fit: contain;
+        object-position: center;
+        background-color: #f8f9fa;
         border-radius: 15px;
         box-shadow: 0 5px 15px rgba(0,0,0,0.1);
     }
@@ -355,8 +357,8 @@
     <div class="presente-info-card">
         <div class="presente-details">
             <div class="presente-img-container">
-                {% if presente.imagem %}
-                    <img src="{{ presente.imagem.url }}" alt="{{ presente.descricao }}" class="presente-thumbnail">
+                {% if presente.tem_imagem %}
+                    <img src="{{ presente.get_imagem_url }}" alt="{{ presente.descricao }}" class="presente-thumbnail">
                 {% else %}
                     <div class="presente-img-placeholder">
                         <i class="bi bi-gift"></i>

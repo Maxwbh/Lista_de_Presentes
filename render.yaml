@@ -15,7 +15,7 @@ services:
 
     # Start
     startCommand: |
-      gunicorn --bind 0.0.0.0:$PORT --workers 3 --timeout 120 lista_presentes.wsgi:application
+      gunicorn --bind 0.0.0.0:$PORT --workers 2 --timeout 120 --log-level info --access-logfile - --error-logfile - lista_presentes.wsgi:application
 
     # Variáveis de ambiente
     envVars:
@@ -32,7 +32,7 @@ services:
         generateValue: true
 
       - key: ALLOWED_HOSTS
-        value: .onrender.com
+        value: .onrender.com,lista-presentes-0hbp.onrender.com
 
       - key: DATABASE_URL
         fromDatabase:
@@ -49,7 +49,7 @@ services:
         sync: false  # Definir manualmente no dashboard
 
     # Health check
-    healthCheckPath: /
+    healthCheckPath: /health/
 
 # Banco de dados PostgreSQL
 databases:

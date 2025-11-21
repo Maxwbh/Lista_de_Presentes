@@ -4,11 +4,39 @@ from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.db.models import Count, Q
 from django.db import transaction
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from .models import Usuario, Presente, Compra, Notificacao, SugestaoCompra
 from .forms import UsuarioRegistroForm, PresenteForm, LoginForm
 from .services import IAService
+import base64
+import logging
+
+logger = logging.getLogger(__name__)
+
+def converter_imagem_para_base64(imagem_file):
+    """Converte um arquivo de imagem para base64"""
+    try:
+        # Ler o conteúdo do arquivo
+        imagem_data = imagem_file.read()
+
+        # Converter para base64
+        imagem_base64 = base64.b64encode(imagem_data).decode('utf-8')
+
+        # Obter o tipo MIME
+        content_type = imagem_file.content_type
+
+        # Obter o nome do arquivo
+        nome_arquivo = imagem_file.name
+
+        return imagem_base64, nome_arquivo, content_type
+    except Exception as e:
+        logger.error(f"Erro ao converter imagem para base64: {str(e)}")
+        return None, None, None
+
+def health_check(request):
+    """Health check endpoint para Render.com e outros serviços"""
+    return HttpResponse("OK", status=200)
 
 def registro_view(request):
     if request.method == 'POST':
@@ -76,6 +104,11 @@ def meus_presentes_view(request):
     # Otimizar query com select_related para evitar N+1
     presentes_list = Presente.objects.filter(usuario=request.user).select_related('usuario').prefetch_related('sugestoes')
 
+    # Estatísticas
+    total_presentes = presentes_list.count()
+    presentes_ativos = presentes_list.filter(status='ATIVO').count()
+    presentes_comprados = presentes_list.filter(status='COMPRADO').count()
+
     # Paginação (20 presentes por página)
     paginator = Paginator(presentes_list, 20)
     page = request.GET.get('page', 1)
@@ -87,7 +120,14 @@ def meus_presentes_view(request):
     except EmptyPage:
         presentes = paginator.page(paginator.num_pages)
 
-    return render(request, 'presentes/meus_presentes.html', {'presentes': presentes})
+    context = {
+        'presentes': presentes,
+        'total_presentes': total_presentes,
+        'presentes_ativos': presentes_ativos,
+        'presentes_comprados': presentes_comprados,
+    }
+
+    return render(request, 'presentes/meus_presentes.html', context)
 
 @login_required
 def adicionar_presente_view(request):
@@ -96,8 +136,40 @@ def adicionar_presente_view(request):
         if form.is_valid():
             presente = form.save(commit=False)
             presente.usuario = request.user
+
+            # Converter imagem para base64 se foi enviada
+            if 'imagem' in request.FILES:
+                imagem_file = request.FILES['imagem']
+                imagem_base64, nome_arquivo, content_type = converter_imagem_para_base64(imagem_file)
+
+                if imagem_base64:
+                    presente.imagem_base64 = imagem_base64
+                    presente.imagem_nome = nome_arquivo
+                    presente.imagem_tipo = content_type
+                    # Limpar o campo antigo para economizar espaço
+                    presente.imagem = None
+                    logger.info(f"Imagem convertida para base64: {nome_arquivo}")
+
             presente.save()
-            messages.success(request, 'Presente adicionado com sucesso!')
+
+            # Buscar preços REAIS automaticamente (Zoom + Buscapé)
+            try:
+                logger.info(f"Buscando preços reais para presente {presente.id}")
+
+                # Buscar preços reais no Zoom e Buscapé
+                sucesso, mensagem = IAService.buscar_sugestoes_reais(presente)
+
+                if sucesso:
+                    messages.success(request, f'Presente adicionado! {mensagem}')
+                else:
+                    messages.success(request, 'Presente adicionado com sucesso!')
+                    messages.info(request, f'Preços: {mensagem}')
+
+            except Exception as e:
+                logger.error(f"Erro ao buscar preços reais: {str(e)}")
+                messages.success(request, 'Presente adicionado com sucesso!')
+                messages.warning(request, 'Não foi possível buscar preços automaticamente.')
+
             return redirect('meus_presentes')
     else:
         form = PresenteForm()
@@ -109,7 +181,22 @@ def editar_presente_view(request, pk):
     if request.method == 'POST':
         form = PresenteForm(request.POST, request.FILES, instance=presente)
         if form.is_valid():
-            form.save()
+            presente = form.save(commit=False)
+
+            # Converter imagem para base64 se foi enviada uma nova
+            if 'imagem' in request.FILES:
+                imagem_file = request.FILES['imagem']
+                imagem_base64, nome_arquivo, content_type = converter_imagem_para_base64(imagem_file)
+
+                if imagem_base64:
+                    presente.imagem_base64 = imagem_base64
+                    presente.imagem_nome = nome_arquivo
+                    presente.imagem_tipo = content_type
+                    # Limpar o campo antigo para economizar espaço
+                    presente.imagem = None
+                    logger.info(f"Imagem atualizada e convertida para base64: {nome_arquivo}")
+
+            presente.save()
             messages.success(request, 'Presente atualizado com sucesso!')
             return redirect('meus_presentes')
     else:
@@ -125,27 +212,56 @@ def deletar_presente_view(request, pk):
         return redirect('meus_presentes')
     return render(request, 'presentes/deletar_presente.html', {'presente': presente})
 
+def servir_imagem_view(request, pk):
+    """Serve imagem armazenada em base64 no banco de dados"""
+    presente = get_object_or_404(Presente, pk=pk)
+
+    if not presente.imagem_base64:
+        # Se não há imagem base64, retornar 404
+        return HttpResponse('Imagem não encontrada', status=404)
+
+    try:
+        # Decodificar base64
+        imagem_data = base64.b64decode(presente.imagem_base64)
+
+        # Determinar content type (padrão image/jpeg se não especificado)
+        content_type = presente.imagem_tipo or 'image/jpeg'
+
+        # Retornar a imagem
+        return HttpResponse(imagem_data, content_type=content_type)
+    except Exception as e:
+        logger.error(f"Erro ao servir imagem do presente {pk}: {str(e)}")
+        return HttpResponse('Erro ao carregar imagem', status=500)
+
 @login_required
 def buscar_sugestoes_ia_view(request, pk):
     presente = get_object_or_404(Presente, pk=pk, usuario=request.user)
-    
+
     # Escolher qual IA usar (pode ser configurável)
     ia_escolhida = request.GET.get('ia', 'claude')  # claude, chatgpt, gemini
-    
-    if ia_escolhida == 'claude':
-        sucesso, mensagem = IAService.buscar_sugestoes_claude(presente)
-    elif ia_escolhida == 'chatgpt':
-        sucesso, mensagem = IAService.buscar_sugestoes_chatgpt(presente)
-    elif ia_escolhida == 'gemini':
-        sucesso, mensagem = IAService.buscar_sugestoes_gemini(presente)
-    else:
-        sucesso, mensagem = False, "IA não reconhecida"
-    
-    if sucesso:
-        messages.success(request, mensagem)
-    else:
-        messages.error(request, mensagem)
-    
+
+    try:
+        if ia_escolhida == 'claude':
+            sucesso, mensagem = IAService.buscar_sugestoes_claude(presente)
+        elif ia_escolhida == 'chatgpt':
+            sucesso, mensagem = IAService.buscar_sugestoes_chatgpt(presente)
+        elif ia_escolhida == 'gemini':
+            sucesso, mensagem = IAService.buscar_sugestoes_gemini(presente)
+        else:
+            sucesso, mensagem = False, "IA não reconhecida"
+
+        if sucesso:
+            messages.success(request, mensagem)
+        else:
+            messages.warning(request, f"Não foi possível buscar sugestões: {mensagem}")
+
+    except Exception as e:
+        # Capturar qualquer erro da IA para não quebrar a aplicação
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Erro ao buscar sugestões com {ia_escolhida}: {str(e)}")
+        messages.warning(request, f"Não foi possível buscar sugestões com {ia_escolhida}. Tente novamente mais tarde ou use outra IA.")
+
     return redirect('ver_sugestoes', pk=pk)
 
 @login_required
@@ -156,18 +272,119 @@ def ver_sugestoes_view(request, pk):
     # Sugestões já vem ordenadas por preço (definido no model)
     sugestoes = SugestaoCompra.objects.filter(presente=presente).select_related('presente')
 
+    # Debug: Log das sugestões carregadas
+    logger.info(f"Ver sugestões para presente {pk}: {sugestoes.count()} sugestões encontradas")
+    for sug in sugestoes:
+        loja = sug.local_compra or '(vazio)'
+        preco = sug.preco_sugerido if sug.preco_sugerido else '(sem preço)'
+        url = sug.url_compra or '(vazio)'
+        logger.info(f"  - Loja: '{loja}', Preço: {preco}, URL: '{url}'")
+
     return render(request, 'presentes/ver_sugestoes.html', {
         'presente': presente,
         'sugestoes': sugestoes
     })
 
+def _atualizar_precos_background():
+    """Função para atualizar preços em background"""
+    try:
+        # Buscar TODOS os presentes ativos de TODOS os usuários
+        presentes = Presente.objects.filter(status='ATIVO').select_related('usuario')
+
+        total_presentes = presentes.count()
+        sucesso_count = 0
+        erro_count = 0
+
+        logger.info(f"[BACKGROUND] Iniciando atualização de preços para {total_presentes} presentes ativos do sistema")
+
+        for presente in presentes:
+            try:
+                sucesso, mensagem = IAService.buscar_sugestoes_reais(presente)
+                if sucesso:
+                    sucesso_count += 1
+                    logger.info(f"[BACKGROUND] Presente {presente.id} ({presente.usuario.first_name}): {mensagem}")
+                else:
+                    erro_count += 1
+                    logger.warning(f"[BACKGROUND] Presente {presente.id}: {mensagem}")
+            except Exception as e:
+                erro_count += 1
+                logger.error(f"[BACKGROUND] Erro ao atualizar presente {presente.id}: {str(e)}")
+
+        logger.info(f"[BACKGROUND] Atualização concluída: {sucesso_count} sucessos, {erro_count} erros de {total_presentes} presentes")
+
+    except Exception as e:
+        logger.error(f"[BACKGROUND] Erro fatal na atualização de preços: {str(e)}")
+        import traceback
+        logger.error(f"[BACKGROUND] Traceback: {traceback.format_exc()}")
+
+@login_required
+def atualizar_todos_precos_view(request):
+    """Inicia atualização de preços de TODOS os presentes ativos em background"""
+    if request.method == 'POST':
+        # Verificar se usuário é admin (apenas admins podem atualizar todos)
+        if not request.user.is_superuser:
+            messages.error(request, 'Apenas administradores podem atualizar todos os preços do sistema.')
+            return redirect('meus_presentes')
+
+        # Contar quantos presentes serão atualizados
+        total_presentes = Presente.objects.filter(status='ATIVO').count()
+
+        if total_presentes == 0:
+            messages.warning(request, 'Não há presentes ativos para atualizar.')
+            return redirect('meus_presentes')
+
+        logger.info(f"Usuário {request.user.email} iniciou atualização em background de {total_presentes} presentes")
+
+        # Iniciar thread em background
+        import threading
+        thread = threading.Thread(target=_atualizar_precos_background, daemon=True)
+        thread.start()
+
+        # Mensagem de feedback imediato
+        messages.success(
+            request,
+            f'✓ Atualização de preços iniciada em background para {total_presentes} presentes! '
+            f'O processo continuará executando e você pode acompanhar o progresso nos logs. '
+            f'As sugestões serão atualizadas automaticamente.'
+        )
+        messages.info(
+            request,
+            '💡 Dica: Aguarde alguns minutos e recarregue a página para ver as atualizações.'
+        )
+
+        return redirect('meus_presentes')
+
+    # Se não for POST, redirecionar para meus presentes
+    return redirect('meus_presentes')
+
 @login_required
 def lista_usuarios_view(request):
-    # Otimizar query com prefetch_related para pegar presentes
-    usuarios_list = Usuario.objects.filter(ativo=True).exclude(id=request.user.id).prefetch_related('presentes')
+    # Otimizar query com prefetch_related para pegar presentes e sugestões
+    usuarios_list = Usuario.objects.filter(ativo=True).exclude(id=request.user.id).prefetch_related(
+        'presentes',
+        'presentes__sugestoes'
+    )
+
+    # Adicionar estatísticas para cada usuário
+    usuarios_com_stats = []
+    for usuario in usuarios_list:
+        usuario.total_presentes = usuario.presentes.count()
+        usuario.presentes_ativos = usuario.presentes.filter(status='ATIVO').count()
+        usuario.presentes_comprados = usuario.presentes.filter(status='COMPRADO').count()
+        # Adicionar presentes com sugestões como atributo
+        usuario.presentes_list = usuario.presentes.filter(status='ATIVO').order_by('-data_cadastro')[:6]
+        usuarios_com_stats.append(usuario)
+
+    # Buscar todos os presentes ativos de outros usuários (para visualização por produto)
+    todos_presentes = Presente.objects.filter(
+        usuario__ativo=True,
+        status='ATIVO'
+    ).exclude(
+        usuario=request.user
+    ).select_related('usuario').prefetch_related('sugestoes').order_by('-data_cadastro')
 
     # Paginação (20 usuários por página)
-    paginator = Paginator(usuarios_list, 20)
+    paginator = Paginator(usuarios_com_stats, 20)
     page = request.GET.get('page', 1)
 
     try:
@@ -177,7 +394,10 @@ def lista_usuarios_view(request):
     except EmptyPage:
         usuarios = paginator.page(paginator.num_pages)
 
-    return render(request, 'presentes/lista_usuarios.html', {'usuarios': usuarios})
+    return render(request, 'presentes/lista_usuarios.html', {
+        'usuarios': usuarios,
+        'todos_presentes': todos_presentes,
+    })
 
 @login_required
 def presentes_usuario_view(request, user_id):
@@ -185,6 +405,11 @@ def presentes_usuario_view(request, user_id):
 
     # Otimizar query com select_related e prefetch_related
     presentes_list = Presente.objects.filter(usuario=usuario).select_related('usuario').prefetch_related('sugestoes', 'compra')
+
+    # Estatísticas
+    total_presentes = presentes_list.count()
+    presentes_ativos = presentes_list.filter(status='ATIVO').count()
+    presentes_comprados = presentes_list.filter(status='COMPRADO').count()
 
     # Paginação (20 presentes por página)
     paginator = Paginator(presentes_list, 20)
@@ -199,7 +424,10 @@ def presentes_usuario_view(request, user_id):
 
     return render(request, 'presentes/presentes_usuario.html', {
         'usuario_presente': usuario,
-        'presentes': presentes
+        'presentes': presentes,
+        'total_presentes': total_presentes,
+        'presentes_ativos': presentes_ativos,
+        'presentes_comprados': presentes_comprados,
     })
 
 @login_required
@@ -275,4 +503,61 @@ def notificacoes_nao_lidas_json(request):
     return JsonResponse({
         'count': count,
         'notificacoes': list(notificacoes)
+    })
+
+@login_required
+def gerar_dados_teste_view(request):
+    """
+    View para gerar dados de teste.
+    IMPORTANTE: Apenas superusuários podem acessar esta view.
+    Acesso via: /gerar-dados-teste/
+    """
+    # Verificar se o usuário é superusuário
+    if not request.user.is_superuser:
+        messages.error(request, 'Acesso negado. Apenas administradores podem gerar dados de teste.')
+        return redirect('index')
+
+    if request.method == 'POST':
+        try:
+            from django.core.management import call_command
+            from io import StringIO
+
+            # Capturar a saída do comando
+            output = StringIO()
+
+            # Executar comando com 4 usuários e 4 presentes cada
+            call_command('populate_test_data', users=4, gifts_per_user=4, stdout=output)
+
+            # Pegar a saída
+            result = output.getvalue()
+
+            # Contar resultados
+            usuarios_count = Usuario.objects.count()
+            presentes_count = Presente.objects.count()
+            presentes_ativos = Presente.objects.filter(status='ATIVO').count()
+
+            messages.success(request, f'✓ Dados de teste gerados com sucesso!')
+            messages.info(request, f'Total: {usuarios_count} usuários e {presentes_count} presentes ({presentes_ativos} ativos)')
+
+            logger.info(f"Dados de teste gerados por {request.user.email}")
+            logger.info(result)
+
+            return redirect('gerar_dados_teste')
+
+        except Exception as e:
+            logger.error(f"Erro ao gerar dados de teste: {str(e)}")
+            messages.error(request, f'Erro ao gerar dados: {str(e)}')
+            return redirect('gerar_dados_teste')
+
+    # GET - Mostrar página de confirmação
+    usuarios_count = Usuario.objects.count()
+    presentes_count = Presente.objects.count()
+    presentes_ativos = Presente.objects.filter(status='ATIVO').count()
+    presentes_comprados = Presente.objects.filter(status='COMPRADO').count()
+
+    return render(request, 'presentes/gerar_dados_teste.html', {
+        'usuarios_count': usuarios_count,
+        'presentes_count': presentes_count,
+        'presentes_ativos': presentes_ativos,
+        'presentes_comprados': presentes_comprados,
     })

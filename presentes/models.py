@@ -24,15 +24,22 @@ class Presente(models.Model):
         ('ATIVO', 'Ativo'),
         ('COMPRADO', 'Comprado'),
     ]
-    
+
     usuario = models.ForeignKey(Usuario, on_delete=models.CASCADE, related_name='presentes')
     descricao = models.TextField()
     url = models.URLField(max_length=1000, blank=True, null=True)
     preco = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='ATIVO')
     data_cadastro = models.DateTimeField(auto_now_add=True)
+
+    # Campo antigo (mantido para compatibilidade)
     imagem = models.ImageField(upload_to='presentes/', blank=True, null=True)
-    
+
+    # Campos novos para armazenar imagem no BD
+    imagem_base64 = models.TextField(blank=True, null=True, help_text='Imagem codificada em base64')
+    imagem_nome = models.CharField(max_length=255, blank=True, null=True, help_text='Nome original do arquivo')
+    imagem_tipo = models.CharField(max_length=50, blank=True, null=True, help_text='MIME type da imagem')
+
     class Meta:
         verbose_name = 'Presente'
         verbose_name_plural = 'Presentes'
@@ -42,9 +49,21 @@ class Presente(models.Model):
             models.Index(fields=['status', '-data_cadastro'], name='presente_status_data_idx'),
             models.Index(fields=['-data_cadastro'], name='presente_data_idx'),
         ]
-    
+
     def __str__(self):
         return f"{self.descricao[:50]} - {self.usuario}"
+
+    def tem_imagem(self):
+        """Verifica se o presente tem imagem (novo formato ou antigo)"""
+        return bool(self.imagem_base64 or self.imagem)
+
+    def get_imagem_url(self):
+        """Retorna a URL da imagem (novo formato tem prioridade)"""
+        if self.imagem_base64:
+            return f'/presente/{self.id}/imagem/'
+        elif self.imagem:
+            return self.imagem.url
+        return None
 
 
 class Compra(models.Model):
