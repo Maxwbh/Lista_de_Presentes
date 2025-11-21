@@ -25,9 +25,12 @@ urlpatterns = [
     path('', include('presentes.urls')),  # URLs do app presentes
 ]
 
-# Servir arquivos de mídia em desenvolvimento
+# Servir arquivos de mídia (desenvolvimento e produção)
+# IMPORTANTE: Em produção, idealmente usar S3 ou CDN, mas para Render.com free tier isso funciona
+urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+
+# Servir arquivos estáticos em desenvolvimento
 if settings.DEBUG:
-    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
     urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
 
 # Error handlers customizados para produção

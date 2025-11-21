@@ -114,27 +114,27 @@ def adicionar_presente_view(request):
             presente.usuario = request.user
             presente.save()
 
-            # Buscar sugestões da IA automaticamente
+            # Buscar preços REAIS automaticamente (Zoom + Buscapé)
             try:
                 import logging
                 logger = logging.getLogger(__name__)
-                logger.info(f"Buscando sugestões de IA para presente {presente.id}")
+                logger.info(f"Buscando preços reais para presente {presente.id}")
 
-                # Usar Claude por padrão
-                sucesso, mensagem = IAService.buscar_sugestoes_claude(presente)
+                # Buscar preços reais no Zoom e Buscapé
+                sucesso, mensagem = IAService.buscar_sugestoes_reais(presente)
 
                 if sucesso:
                     messages.success(request, f'Presente adicionado! {mensagem}')
                 else:
                     messages.success(request, 'Presente adicionado com sucesso!')
-                    messages.info(request, f'Sugestões de IA: {mensagem}')
+                    messages.info(request, f'Preços: {mensagem}')
 
             except Exception as e:
                 import logging
                 logger = logging.getLogger(__name__)
-                logger.error(f"Erro ao buscar sugestões de IA: {str(e)}")
+                logger.error(f"Erro ao buscar preços reais: {str(e)}")
                 messages.success(request, 'Presente adicionado com sucesso!')
-                messages.warning(request, 'Não foi possível buscar sugestões de lojas automaticamente.')
+                messages.warning(request, 'Não foi possível buscar preços automaticamente.')
 
             return redirect('meus_presentes')
     else:
