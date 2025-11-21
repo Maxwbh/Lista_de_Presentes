@@ -37,6 +37,16 @@ class LoginForm(forms.Form):
     }))
 
 class PresenteForm(forms.ModelForm):
+    url_imagem = forms.URLField(
+        required=False,
+        label='URL da Imagem',
+        widget=forms.URLInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'https://exemplo.com/imagem.jpg',
+            'id': 'url-imagem-input'
+        })
+    )
+
     class Meta:
         model = Presente
         fields = ['descricao', 'url', 'preco', 'imagem']
@@ -56,6 +66,12 @@ class PresenteForm(forms.ModelForm):
                 'step': '0.01'
             }),
             'imagem': forms.FileInput(attrs={
-                'class': 'form-control'
+                'class': 'form-control',
+                'style': 'display: none;'
             })
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Reordenar campos
+        self.order_fields(['descricao', 'url_imagem', 'imagem', 'url', 'preco'])

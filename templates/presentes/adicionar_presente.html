@@ -225,23 +225,42 @@
             </div>
 
             <div class="mb-4">
-                <label for="{{ form.imagem.id_for_label }}" class="form-label">
+                <label for="{{ form.url_imagem.id_for_label }}" class="form-label">
                     <i class="bi bi-image"></i> Imagem do Presente
                 </label>
-                <div class="image-placeholder" onclick="document.getElementById('{{ form.imagem.id_for_label }}').click();">
+
+                <!-- Campo para URL da imagem -->
+                <div class="input-group mb-3">
+                    {{ form.url_imagem }}
+                    <button class="btn btn-outline-secondary" type="button" id="load-from-url" title="Carregar imagem da URL">
+                        <i class="bi bi-download"></i>
+                    </button>
+                </div>
+                <small class="form-text text-muted mb-3 d-block">
+                    <i class="bi bi-info-circle"></i> Cole a URL de uma imagem ou pressione Ctrl+V para colar uma imagem
+                </small>
+
+                <!-- Área de upload -->
+                <div class="image-placeholder" id="drop-area" onclick="document.getElementById('{{ form.imagem.id_for_label }}').click();">
                     <i class="bi bi-cloud-upload"></i>
                     <p class="mb-0"><strong>Clique para fazer upload</strong></p>
-                    <small class="text-muted">ou arraste uma imagem aqui</small>
+                    <small class="text-muted">ou arraste uma imagem / Ctrl+V para colar</small>
                 </div>
                 {{ form.imagem }}
+
+                <!-- Preview da imagem -->
                 <img id="image-preview" class="image-preview" alt="Preview">
                 <div class="image-preview-container" id="preview-container" style="display: none;">
                     <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeImage()">
                         <i class="bi bi-trash"></i> Remover imagem
                     </button>
                 </div>
+
                 {% if form.imagem.errors %}
                     <div class="text-danger small mt-1">{{ form.imagem.errors.0 }}</div>
+                {% endif %}
+                {% if form.url_imagem.errors %}
+                    <div class="text-danger small mt-1">{{ form.url_imagem.errors.0 }}</div>
                 {% endif %}
             </div>
 
@@ -301,18 +320,124 @@
     const imagePreview = document.getElementById('image-preview');
     const previewContainer = document.getElementById('preview-container');
     const placeholder = document.querySelector('.image-placeholder');
+    const urlImagemInput = document.getElementById('url-imagem-input');
+    const loadFromUrlBtn = document.getElementById('load-from-url');
+
+    // Função para exibir preview
+    function showImagePreview(src) {
+        imagePreview.src = src;
+        imagePreview.style.display = 'block';
+        previewContainer.style.display = 'block';
+        placeholder.style.display = 'none';
+    }
 
     imageInput.addEventListener('change', function(e) {
         const file = e.target.files[0];
         if (file) {
             const reader = new FileReader();
             reader.onload = function(event) {
-                imagePreview.src = event.target.result;
-                imagePreview.style.display = 'block';
-                previewContainer.style.display = 'block';
-                placeholder.style.display = 'none';
+                showImagePreview(event.target.result);
             };
             reader.readAsDataURL(file);
+        }
+    });
+
+    // Carregar imagem de URL
+    async function loadImageFromUrl(url) {
+        if (!url || !url.trim()) {
+            alert('Por favor, insira uma URL válida');
+            return;
+        }
+
+        // Mostrar loading
+        loadFromUrlBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+        loadFromUrlBtn.disabled = true;
+
+        try {
+            // Fazer fetch da imagem através de um proxy CORS ou direto
+            const response = await fetch(url);
+
+            if (!response.ok) {
+                throw new Error('Não foi possível carregar a imagem');
+            }
+
+            const blob = await response.blob();
+
+            // Verificar se é uma imagem
+            if (!blob.type.startsWith('image/')) {
+                throw new Error('URL não é uma imagem válida');
+            }
+
+            // Criar arquivo a partir do blob
+            const filename = url.split('/').pop().split('?')[0] || 'imagem.jpg';
+            const file = new File([blob], filename, { type: blob.type });
+
+            // Criar DataTransfer para simular upload de arquivo
+            const dataTransfer = new DataTransfer();
+            dataTransfer.items.add(file);
+            imageInput.files = dataTransfer.files;
+
+            // Disparar evento de change
+            const event = new Event('change', { bubbles: true });
+            imageInput.dispatchEvent(event);
+
+            // Limpar campo de URL após carregar
+            // urlImagemInput.value = '';
+
+        } catch (error) {
+            console.error('Erro ao carregar imagem:', error);
+            alert('Erro ao carregar imagem da URL: ' + error.message + '\n\nTente fazer download da imagem e fazer upload direto.');
+        } finally {
+            // Restaurar botão
+            loadFromUrlBtn.innerHTML = '<i class="bi bi-download"></i>';
+            loadFromUrlBtn.disabled = false;
+        }
+    }
+
+    // Evento do botão de carregar da URL
+    loadFromUrlBtn.addEventListener('click', function() {
+        loadImageFromUrl(urlImagemInput.value);
+    });
+
+    // Carregar ao pressionar Enter no campo de URL
+    urlImagemInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            loadImageFromUrl(this.value);
+        }
+    });
+
+    // PASTE DE IMAGEM (Ctrl+V)
+    document.addEventListener('paste', function(e) {
+        const items = e.clipboardData.items;
+
+        for (let i = 0; i < items.length; i++) {
+            // Verificar se é uma imagem
+            if (items[i].type.indexOf('image') !== -1) {
+                e.preventDefault();
+
+                const blob = items[i].getAsFile();
+                const dataTransfer = new DataTransfer();
+                dataTransfer.items.add(blob);
+                imageInput.files = dataTransfer.files;
+
+                // Disparar evento de change
+                const event = new Event('change', { bubbles: true });
+                imageInput.dispatchEvent(event);
+
+                break;
+            }
+            // Verificar se é texto (pode ser URL)
+            else if (items[i].type === 'text/plain') {
+                items[i].getAsString(function(text) {
+                    // Verificar se é uma URL de imagem
+                    const urlPattern = /^https?:\/\/.+\.(jpg|jpeg|png|gif|webp|svg)(\?.*)?$/i;
+                    if (urlPattern.test(text.trim())) {
+                        urlImagemInput.value = text.trim();
+                        loadImageFromUrl(text.trim());
+                    }
+                });
+            }
         }
     });
 
@@ -359,6 +484,7 @@
 
     function removeImage() {
         imageInput.value = '';
+        urlImagemInput.value = '';
         imagePreview.style.display = 'none';
         previewContainer.style.display = 'none';
         placeholder.style.display = 'flex';
