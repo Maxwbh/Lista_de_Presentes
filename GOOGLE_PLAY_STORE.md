@@ -193,7 +193,11 @@ Você pode:
 
 ## 6. Contato
 
-Para questões sobre privacidade: [SEU EMAIL]
+Para questões sobre privacidade:
+- **Email**: maxwbh@gmail.com
+- **Desenvolvedor**: Maxwell da Silva Oliveira
+- **Empresa**: M&S do Brasil LTDA
+- **Site**: http://msbrasil.inf.br
 ```
 
 ---
@@ -229,7 +233,12 @@ Não garantimos disponibilidade 100% do tempo.
 Podemos modificar estes termos a qualquer momento.
 
 ## 7. Contato
-Dúvidas: [SEU EMAIL]
+
+Dúvidas sobre os Termos de Serviço:
+- **Email**: maxwbh@gmail.com
+- **Desenvolvedor**: Maxwell da Silva Oliveira
+- **Empresa**: M&S do Brasil LTDA
+- **Site**: http://msbrasil.inf.br
 ```
 
 ---
@@ -253,8 +262,10 @@ Dúvidas: [SEU EMAIL]
 
 ### Informações de Contato
 
-- [ ] E-mail do desenvolvedor
-- [ ] Site (opcional mas recomendado)
+- [x] E-mail do desenvolvedor: **maxwbh@gmail.com**
+- [x] Site: **http://msbrasil.inf.br**
+- [x] Desenvolvedor: **Maxwell da Silva Oliveira**
+- [x] Empresa: **M&S do Brasil LTDA**
 - [ ] Telefone (opcional)
 
 ### Build do Aplicativo
