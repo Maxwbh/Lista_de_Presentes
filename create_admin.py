@@ -32,13 +32,20 @@ def create_admin():
         user = Usuario.objects.get(email=EMAIL)
         print(f"✅ Usuário: {user.username}")
         print(f"✅ Email: {user.email}")
-        print(f"✅ Superuser: {user.is_superuser}")
-        print(f"✅ Staff: {user.is_staff}")
+        print(f"📊 Superuser ANTES: {user.is_superuser}")
+        print(f"📊 Staff ANTES: {user.is_staff}")
 
-        # Atualizar senha se necessário
+        # Atualizar senha E permissões
         user.set_password(PASSWORD)
+        user.is_superuser = True
+        user.is_staff = True
+        user.is_active = True
         user.save()
+
         print(f"🔄 Senha atualizada!")
+        print(f"👑 Superuser DEPOIS: {user.is_superuser}")
+        print(f"👔 Staff DEPOIS: {user.is_staff}")
+        print(f"✅ Permissões de admin concedidas!")
         return user
 
     # Criar novo superusuário
