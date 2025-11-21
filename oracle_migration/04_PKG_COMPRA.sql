@@ -133,12 +133,11 @@ CREATE OR REPLACE PACKAGE BODY PKG_COMPRA AS
         v_descricao         CLOB;
         v_compra_existente  NUMBER;
     BEGIN
-        -- Bloquear linha do presente para evitar race condition
+        -- Buscar dados do presente
         SELECT p.ID_USUARIO, p.STATUS, p.DESCRICAO
         INTO v_id_usuario_dono, v_status, v_descricao
         FROM TB_PRESENTE p
-        WHERE p.ID_PRESENTE = p_id_presente
-        FOR UPDATE;
+        WHERE p.ID_PRESENTE = p_id_presente;
 
         -- Validacao 1: Nao pode comprar proprio presente
         IF v_id_usuario_dono = p_id_comprador THEN
@@ -150,7 +149,7 @@ CREATE OR REPLACE PACKAGE BODY PKG_COMPRA AS
             RAISE EX_PRESENTE_JA_COMPRADO;
         END IF;
 
-        -- Validacao 3: Verificar se ja existe compra (double check)
+        -- Validacao 3: Verificar se ja existe compra
         SELECT COUNT(*) INTO v_compra_existente
         FROM TB_COMPRA
         WHERE ID_PRESENTE = p_id_presente;
@@ -220,8 +219,7 @@ CREATE OR REPLACE PACKAGE BODY PKG_COMPRA AS
             INTO v_id_comprador, v_id_usuario_dono, v_descricao
             FROM TB_COMPRA c
             INNER JOIN TB_PRESENTE p ON c.ID_PRESENTE = p.ID_PRESENTE
-            WHERE c.ID_PRESENTE = p_id_presente
-            FOR UPDATE;
+            WHERE c.ID_PRESENTE = p_id_presente;
         EXCEPTION
             WHEN NO_DATA_FOUND THEN
                 RAISE EX_COMPRA_NAO_ENCONTRADA;
