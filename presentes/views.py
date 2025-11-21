@@ -272,6 +272,11 @@ def ver_sugestoes_view(request, pk):
     # Sugestões já vem ordenadas por preço (definido no model)
     sugestoes = SugestaoCompra.objects.filter(presente=presente).select_related('presente')
 
+    # Debug: Log das sugestões carregadas
+    logger.info(f"Ver sugestões para presente {pk}: {sugestoes.count()} sugestões encontradas")
+    for sug in sugestoes:
+        logger.info(f"  - Loja: '{sug.local_compra}', Preço: {sug.preco_sugerido}, URL: '{sug.url_compra}'")
+
     return render(request, 'presentes/ver_sugestoes.html', {
         'presente': presente,
         'sugestoes': sugestoes
