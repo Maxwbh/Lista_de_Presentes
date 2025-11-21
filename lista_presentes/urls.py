@@ -15,8 +15,24 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 from django.contrib import admin
-from django.urls import path
+from django.urls import path, include
+from django.conf import settings
+from django.conf.urls.static import static
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path('', include('pwa.urls')),  # PWA manifest e service worker
+    path('', include('presentes.urls')),  # URLs do app presentes
 ]
+
+# Servir arquivos de mídia (desenvolvimento e produção)
+# IMPORTANTE: Em produção, idealmente usar S3 ou CDN, mas para Render.com free tier isso funciona
+urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+
+# Servir arquivos estáticos em desenvolvimento
+if settings.DEBUG:
+    urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
+
+# Error handlers customizados para produção
+handler500 = 'presentes.error_handlers.handler500'
+handler404 = 'presentes.error_handlers.handler404'

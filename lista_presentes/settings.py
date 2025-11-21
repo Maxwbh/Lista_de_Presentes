@@ -128,6 +128,15 @@ STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
+# IMPORTANTE: Criar diretório media se não existir
+import os
+os.makedirs(MEDIA_ROOT, exist_ok=True)
+
+# WhiteNoise também pode servir arquivos de mídia (não é ideal, mas funciona para free tier)
+# Nota: Em produção real, use S3, Cloudinary ou similar
+WHITENOISE_USE_FINDERS = True
+WHITENOISE_AUTOREFRESH = True if DEBUG else False
+
 # PWA Settings
 PWA_APP_NAME = 'Lista de Presentes'
 PWA_APP_DESCRIPTION = "Sistema de Lista de Presentes"
@@ -187,9 +196,45 @@ GEMINI_API_KEY = os.getenv('GEMINI_API_KEY', 'sua-chave-gemini')
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
+# Logging em produção
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{levelname} {asctime} {module} {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'verbose',
+        },
+    },
+    'root': {
+        'handlers': ['console'],
+        'level': 'INFO',
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'django.request': {
+            'handlers': ['console'],
+            'level': 'ERROR',
+            'propagate': False,
+        },
+    },
+}
+
 # Configurações de segurança para produção
 if not DEBUG:
-    SECURE_SSL_REDIRECT = True
+    # Render.com fornece proxy SSL, não redirecionar no app
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+    SECURE_SSL_REDIRECT = False  # Render.com já faz o redirect
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
     SECURE_BROWSER_XSS_FILTER = True
