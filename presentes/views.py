@@ -4,11 +4,15 @@ from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.db.models import Count, Q
 from django.db import transaction
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from .models import Usuario, Presente, Compra, Notificacao, SugestaoCompra
 from .forms import UsuarioRegistroForm, PresenteForm, LoginForm
 from .services import IAService
+
+def health_check(request):
+    """Health check endpoint para Render.com e outros serviços"""
+    return HttpResponse("OK", status=200)
 
 def registro_view(request):
     if request.method == 'POST':

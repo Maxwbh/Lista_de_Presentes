@@ -49,7 +49,7 @@ services:
         sync: false  # Definir manualmente no dashboard
 
     # Health check
-    healthCheckPath: /
+    healthCheckPath: /health/
 
 # Banco de dados PostgreSQL
 databases:
