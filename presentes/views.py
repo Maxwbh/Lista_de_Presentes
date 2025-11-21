@@ -190,8 +190,16 @@ def lista_usuarios_view(request):
     # Otimizar query com prefetch_related para pegar presentes
     usuarios_list = Usuario.objects.filter(ativo=True).exclude(id=request.user.id).prefetch_related('presentes')
 
+    # Adicionar estatísticas para cada usuário
+    usuarios_com_stats = []
+    for usuario in usuarios_list:
+        usuario.total_presentes = usuario.presentes.count()
+        usuario.presentes_ativos = usuario.presentes.filter(status='ATIVO').count()
+        usuario.presentes_comprados = usuario.presentes.filter(status='COMPRADO').count()
+        usuarios_com_stats.append(usuario)
+
     # Paginação (20 usuários por página)
-    paginator = Paginator(usuarios_list, 20)
+    paginator = Paginator(usuarios_com_stats, 20)
     page = request.GET.get('page', 1)
 
     try:
@@ -210,6 +218,11 @@ def presentes_usuario_view(request, user_id):
     # Otimizar query com select_related e prefetch_related
     presentes_list = Presente.objects.filter(usuario=usuario).select_related('usuario').prefetch_related('sugestoes', 'compra')
 
+    # Estatísticas
+    total_presentes = presentes_list.count()
+    presentes_ativos = presentes_list.filter(status='ATIVO').count()
+    presentes_comprados = presentes_list.filter(status='COMPRADO').count()
+
     # Paginação (20 presentes por página)
     paginator = Paginator(presentes_list, 20)
     page = request.GET.get('page', 1)
@@ -223,7 +236,10 @@ def presentes_usuario_view(request, user_id):
 
     return render(request, 'presentes/presentes_usuario.html', {
         'usuario_presente': usuario,
-        'presentes': presentes
+        'presentes': presentes,
+        'total_presentes': total_presentes,
+        'presentes_ativos': presentes_ativos,
+        'presentes_comprados': presentes_comprados,
     })
 
 @login_required
