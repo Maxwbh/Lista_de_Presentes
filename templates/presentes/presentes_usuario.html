@@ -343,21 +343,21 @@
     <div class="stats-row">
         <div class="row">
             <div class="col-md-4 stat-item">
-                <div class="stat-number">{{ presentes|length }}</div>
+                <div class="stat-number">{{ total_presentes }}</div>
                 <div class="stat-label">Total de Presentes</div>
             </div>
             <div class="col-md-4 stat-item">
-                <div class="stat-number">{{ presentes|selectattr:"status", "equalto", "ATIVO"|list|length }}</div>
+                <div class="stat-number">{{ presentes_ativos }}</div>
                 <div class="stat-label">Disponíveis</div>
             </div>
             <div class="col-md-4 stat-item">
-                <div class="stat-number">{{ presentes|selectattr:"status", "equalto", "COMPRADO"|list|length }}</div>
+                <div class="stat-number">{{ presentes_comprados }}</div>
                 <div class="stat-label">Já Comprados</div>
             </div>
         </div>
     </div>
 
-    {% if presentes|selectattr:"status", "equalto", "ATIVO"|list|length > 0 %}
+    {% if presentes_ativos > 0 %}
         <div class="alert-info-custom">
             <i class="bi bi-info-circle-fill"></i>
             <strong>Dica:</strong> Clique em "Marcar como Comprado" quando decidir presentear.
