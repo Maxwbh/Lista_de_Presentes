@@ -122,6 +122,7 @@ CREATE OR REPLACE PACKAGE BODY PKG_COMPRA AS
 
     -- ============================================================================
     -- MARCAR_COMPRADO
+    -- Corrigido: Race Condition - usar UPDATE atomico com validacoes no WHERE
     -- ============================================================================
     FUNCTION MARCAR_COMPRADO(
         p_id_presente       IN NUMBER,
@@ -129,42 +130,44 @@ CREATE OR REPLACE PACKAGE BODY PKG_COMPRA AS
     ) RETURN NUMBER IS
         v_id_compra         NUMBER;
         v_id_usuario_dono   NUMBER;
-        v_status            VARCHAR2(20);
         v_descricao         CLOB;
-        v_compra_existente  NUMBER;
+        v_rows_updated      NUMBER;
     BEGIN
-        -- Buscar dados do presente
-        SELECT p.ID_USUARIO, p.STATUS, p.DESCRICAO
-        INTO v_id_usuario_dono, v_status, v_descricao
-        FROM LCP_PRESENTE p
-        WHERE p.ID = p_id_presente;
+        -- Buscar dados do presente primeiro (para validacoes e notificacao)
+        BEGIN
+            SELECT p.ID_USUARIO, p.DESCRICAO
+            INTO v_id_usuario_dono, v_descricao
+            FROM LCP_PRESENTE p
+            WHERE p.ID = p_id_presente;
+        EXCEPTION
+            WHEN NO_DATA_FOUND THEN
+                RAISE_APPLICATION_ERROR(-20101, 'Presente nao encontrado');
+        END;
 
-        -- Validacao 1: Nao pode comprar proprio presente
+        -- Validacao: Nao pode comprar proprio presente
         IF v_id_usuario_dono = p_id_comprador THEN
             RAISE EX_PROPRIO_PRESENTE;
         END IF;
 
-        -- Validacao 2: Presente deve estar ATIVO
-        IF v_status != 'ATIVO' THEN
-            RAISE EX_PRESENTE_JA_COMPRADO;
-        END IF;
-
-        -- Validacao 3: Verificar se ja existe compra
-        SELECT COUNT(*) INTO v_compra_existente
-        FROM LCP_COMPRA
-        WHERE ID_PRESENTE = p_id_presente;
-
-        IF v_compra_existente > 0 THEN
-            RAISE EX_PRESENTE_JA_COMPRADO;
-        END IF;
-
-        -- Atualizar status do presente
+        -- UPDATE ATOMICO: Atualizar apenas se STATUS = 'ATIVO'
+        -- Isso previne race condition pois a verificacao e update sao atomicos
         UPDATE LCP_PRESENTE
         SET STATUS = 'COMPRADO',
             DATA_ALTERACAO = SYSDATE
-        WHERE ID = p_id_presente;
+        WHERE ID = p_id_presente
+          AND STATUS = 'ATIVO'
+          AND NOT EXISTS (
+              SELECT 1 FROM LCP_COMPRA c WHERE c.ID_PRESENTE = p_id_presente
+          );
 
-        -- Criar registro de compra
+        v_rows_updated := SQL%ROWCOUNT;
+
+        -- Se nenhuma linha foi atualizada, presente ja foi comprado
+        IF v_rows_updated = 0 THEN
+            RAISE EX_PRESENTE_JA_COMPRADO;
+        END IF;
+
+        -- Criar registro de compra (agora seguro pois presente ja esta COMPRADO)
         INSERT INTO LCP_COMPRA (
             ID,
             ID_PRESENTE,
@@ -194,9 +197,6 @@ CREATE OR REPLACE PACKAGE BODY PKG_COMPRA AS
         WHEN EX_PRESENTE_JA_COMPRADO THEN
             ROLLBACK;
             RAISE_APPLICATION_ERROR(-20201, 'Este presente ja foi comprado');
-        WHEN NO_DATA_FOUND THEN
-            ROLLBACK;
-            RAISE_APPLICATION_ERROR(-20101, 'Presente nao encontrado');
         WHEN OTHERS THEN
             ROLLBACK;
             RAISE;

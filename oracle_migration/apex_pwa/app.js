@@ -9,19 +9,62 @@
 
 // ============================================================================
 // CONFIGURACOES
+// Carregadas dinamicamente do servidor para maior seguranca
 // ============================================================================
-const LP_CONFIG = {
+let LP_CONFIG = {
     appId: 'LISTA_PRESENTES',
     swPath: '/pwa/service-worker.js',
-    vapidPublicKey: 'YOUR_VAPID_PUBLIC_KEY_HERE', // Substituir pela chave real
-    apiEndpoint: '/ords/api/v1/'
+    vapidPublicKey: null,
+    apiEndpoint: '/ords/api/v1/',
+    loaded: false
 };
+
+/**
+ * Carrega configuracoes do servidor
+ * VAPID key e outras configs sensiveis vem do backend
+ */
+async function loadConfig() {
+    if (LP_CONFIG.loaded) return LP_CONFIG;
+
+    try {
+        // Tentar carregar via APEX process
+        if (typeof apex !== 'undefined' && apex.server) {
+            const response = await apex.server.process('GET_PWA_CONFIG', {});
+            if (response && response.vapidPublicKey) {
+                LP_CONFIG.vapidPublicKey = response.vapidPublicKey;
+                LP_CONFIG.loaded = true;
+                console.log('[LP] Configuracoes carregadas do servidor');
+            }
+        }
+
+        // Fallback: tentar carregar de meta tag (configurada no APEX)
+        if (!LP_CONFIG.vapidPublicKey) {
+            const metaVapid = document.querySelector('meta[name="vapid-public-key"]');
+            if (metaVapid && metaVapid.content) {
+                LP_CONFIG.vapidPublicKey = metaVapid.content;
+                LP_CONFIG.loaded = true;
+                console.log('[LP] VAPID key carregada de meta tag');
+            }
+        }
+
+    } catch (error) {
+        console.warn('[LP] Erro ao carregar config:', error);
+    }
+
+    return LP_CONFIG;
+}
 
 // ============================================================================
 // INICIALIZACAO
 // ============================================================================
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', async function() {
     console.log('[LP] Aplicacao iniciada');
+
+    // Carregar configuracoes do servidor primeiro
+    await loadConfig();
+
+    // Inicializar tema (dark mode)
+    initTheme();
 
     // Registrar Service Worker
     registerServiceWorker();
@@ -29,8 +72,16 @@ document.addEventListener('DOMContentLoaded', function() {
     // Verificar instalacao PWA
     checkPWAInstall();
 
-    // Inicializar notificacoes
-    initPushNotifications();
+    // Inicializar notificacoes (apenas se config carregada)
+    if (LP_CONFIG.vapidPublicKey) {
+        initPushNotifications();
+    } else {
+        console.warn('[LP] Push notifications desabilitadas - VAPID key nao configurada');
+    }
+
+    // Inicializar componentes de UI
+    initFAB();
+    initBottomNav();
 
     // Listeners globais
     initGlobalListeners();
@@ -157,6 +208,16 @@ async function requestNotificationPermission() {
 
 async function subscribeToPush() {
     try {
+        // Verificar se VAPID key esta disponivel
+        if (!LP_CONFIG.vapidPublicKey) {
+            console.warn('[LP] VAPID key nao disponivel, tentando carregar...');
+            await loadConfig();
+            if (!LP_CONFIG.vapidPublicKey) {
+                console.error('[LP] Nao foi possivel obter VAPID key');
+                return;
+            }
+        }
+
         const registration = await navigator.serviceWorker.ready;
 
         // Verificar subscription existente
@@ -391,6 +452,223 @@ function confirmAction(message, callback) {
 }
 
 // ============================================================================
+// DARK MODE / THEME
+// ============================================================================
+function initTheme() {
+    // Verificar preferencia salva ou do sistema
+    const savedTheme = localStorage.getItem('lp-theme');
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+
+    if (savedTheme) {
+        setTheme(savedTheme);
+    } else if (prefersDark) {
+        setTheme('dark');
+    }
+
+    // Escutar mudancas de preferencia do sistema
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+        if (!localStorage.getItem('lp-theme')) {
+            setTheme(e.matches ? 'dark' : 'light');
+        }
+    });
+}
+
+function setTheme(theme) {
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('lp-theme', theme);
+
+    // Atualizar botao de toggle se existir
+    const toggleBtn = document.querySelector('.lp-theme-toggle');
+    if (toggleBtn) {
+        toggleBtn.classList.toggle('dark', theme === 'dark');
+    }
+
+    console.log('[LP] Tema alterado para:', theme);
+}
+
+function toggleTheme() {
+    const current = document.documentElement.getAttribute('data-theme') || 'light';
+    setTheme(current === 'dark' ? 'light' : 'dark');
+}
+
+// ============================================================================
+// FLOATING ACTION BUTTON (FAB)
+// ============================================================================
+function initFAB() {
+    const fab = document.querySelector('.lp-fab');
+    const fabMenu = document.querySelector('.lp-fab-menu');
+
+    if (fab && fabMenu) {
+        fab.addEventListener('click', () => {
+            fab.classList.toggle('open');
+            fabMenu.classList.toggle('show');
+        });
+
+        // Fechar ao clicar fora
+        document.addEventListener('click', (e) => {
+            if (!fab.contains(e.target) && !fabMenu.contains(e.target)) {
+                fab.classList.remove('open');
+                fabMenu.classList.remove('show');
+            }
+        });
+    }
+}
+
+// ============================================================================
+// BOTTOM NAVIGATION
+// ============================================================================
+function initBottomNav() {
+    const navItems = document.querySelectorAll('.lp-bottom-nav-item');
+    const currentPage = window.location.pathname;
+
+    navItems.forEach(item => {
+        const href = item.getAttribute('href') || '';
+        if (href && currentPage.includes(href.split(':')[1])) {
+            item.classList.add('active');
+        }
+    });
+}
+
+// ============================================================================
+// TOAST NOTIFICATIONS (melhorado)
+// ============================================================================
+function createToast(message, type = 'info', duration = 5000) {
+    // Criar container se nao existir
+    let container = document.querySelector('.lp-toast-container');
+    if (!container) {
+        container = document.createElement('div');
+        container.className = 'lp-toast-container';
+        container.setAttribute('role', 'alert');
+        container.setAttribute('aria-live', 'polite');
+        document.body.appendChild(container);
+    }
+
+    // Criar toast
+    const toast = document.createElement('div');
+    toast.className = `lp-toast ${type}`;
+    toast.innerHTML = `
+        <span class="lp-toast-message">${message}</span>
+        <button class="lp-toast-close" aria-label="Fechar">
+            <span class="fa fa-times"></span>
+        </button>
+    `;
+
+    // Evento de fechar
+    toast.querySelector('.lp-toast-close').addEventListener('click', () => {
+        removeToast(toast);
+    });
+
+    container.appendChild(toast);
+
+    // Auto-remover apos duracao
+    if (duration > 0) {
+        setTimeout(() => removeToast(toast), duration);
+    }
+
+    return toast;
+}
+
+function removeToast(toast) {
+    toast.style.animation = 'slideInRight 0.3s ease reverse';
+    setTimeout(() => toast.remove(), 300);
+}
+
+// ============================================================================
+// SKELETON LOADING
+// ============================================================================
+function showSkeleton(container, count = 3) {
+    const skeletonHTML = `
+        <div class="lp-skeleton-card">
+            <div class="lp-skeleton lp-skeleton-image"></div>
+            <div class="lp-card-body">
+                <div class="lp-skeleton lp-skeleton-title"></div>
+                <div class="lp-skeleton lp-skeleton-text"></div>
+                <div class="lp-skeleton lp-skeleton-text-sm"></div>
+            </div>
+        </div>
+    `;
+
+    container.innerHTML = Array(count).fill(skeletonHTML).join('');
+}
+
+function hideSkeleton(container) {
+    const skeletons = container.querySelectorAll('.lp-skeleton-card');
+    skeletons.forEach(s => s.remove());
+}
+
+// ============================================================================
+// CONFETTI EFFECT
+// ============================================================================
+function showConfetti() {
+    const container = document.createElement('div');
+    container.className = 'lp-confetti';
+    document.body.appendChild(container);
+
+    const colors = ['#0572ce', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
+
+    for (let i = 0; i < 50; i++) {
+        const piece = document.createElement('div');
+        piece.className = 'lp-confetti-piece';
+        piece.style.left = Math.random() * 100 + 'vw';
+        piece.style.background = colors[Math.floor(Math.random() * colors.length)];
+        piece.style.animationDelay = Math.random() * 2 + 's';
+        piece.style.transform = `rotate(${Math.random() * 360}deg)`;
+        container.appendChild(piece);
+    }
+
+    // Remover apos animacao
+    setTimeout(() => container.remove(), 4000);
+}
+
+// ============================================================================
+// ACESSIBILIDADE
+// ============================================================================
+function announceToScreenReader(message) {
+    const announcement = document.createElement('div');
+    announcement.setAttribute('role', 'status');
+    announcement.setAttribute('aria-live', 'polite');
+    announcement.className = 'lp-sr-only';
+    announcement.textContent = message;
+    document.body.appendChild(announcement);
+
+    setTimeout(() => announcement.remove(), 1000);
+}
+
+// ============================================================================
+// PULL TO REFRESH (Mobile)
+// ============================================================================
+let touchStartY = 0;
+let touchEndY = 0;
+
+function initPullToRefresh() {
+    document.addEventListener('touchstart', (e) => {
+        touchStartY = e.touches[0].clientY;
+    }, { passive: true });
+
+    document.addEventListener('touchend', (e) => {
+        touchEndY = e.changedTouches[0].clientY;
+        handlePullToRefresh();
+    }, { passive: true });
+}
+
+function handlePullToRefresh() {
+    const scrollTop = window.scrollY || document.documentElement.scrollTop;
+    const pullDistance = touchEndY - touchStartY;
+
+    if (scrollTop === 0 && pullDistance > 100) {
+        const indicator = document.querySelector('.lp-pull-to-refresh');
+        if (indicator) {
+            indicator.classList.add('show');
+            setTimeout(() => {
+                window.location.reload();
+            }, 500);
+        } else {
+            window.location.reload();
+        }
+    }
+}
+
+// ============================================================================
 // EXPORTAR FUNCOES GLOBAIS
 // ============================================================================
 window.LP = {
@@ -401,7 +679,15 @@ window.LP = {
     shareList,
     previewImage,
     confirmAction,
-    showToast
+    showToast,
+    // Novas funcoes
+    toggleTheme,
+    setTheme,
+    createToast,
+    showSkeleton,
+    hideSkeleton,
+    showConfetti,
+    announceToScreenReader
 };
 
-console.log('[LP] JavaScript carregado!');
+console.log('[LP] JavaScript carregado - v2.0');

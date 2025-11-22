@@ -15,6 +15,7 @@
 -- 3. Integracao Push Notifications com APEX
 -- 4. Triggers de Auditoria e Auto-incremento
 -- 5. Funcoes e Views APEX
+-- 6. Melhorias de Seguranca (Sessao, Reset Senha, Rate Limiting)
 --
 -- ==============================================================================
 
@@ -36,7 +37,7 @@ PROMPT
 -- ==============================================================================
 
 PROMPT ========================================
-PROMPT PASSO 1/10: Criando Tabelas e Views
+PROMPT PASSO 1/11: Criando Tabelas e Views
 PROMPT ========================================
 
 @@01_DDL_TABELAS.sql
@@ -50,7 +51,7 @@ PROMPT
 -- ==============================================================================
 
 PROMPT ========================================
-PROMPT PASSO 2/10: Criando Package PKG_USUARIO
+PROMPT PASSO 2/11: Criando Package PKG_USUARIO
 PROMPT ========================================
 
 @@02_PKG_USUARIO.sql
@@ -64,7 +65,7 @@ PROMPT
 -- ==============================================================================
 
 PROMPT ========================================
-PROMPT PASSO 3/10: Criando Package PKG_NOTIFICACAO
+PROMPT PASSO 3/11: Criando Package PKG_NOTIFICACAO
 PROMPT ========================================
 
 @@05_PKG_NOTIFICACAO.sql
@@ -78,7 +79,7 @@ PROMPT
 -- ==============================================================================
 
 PROMPT ========================================
-PROMPT PASSO 4/10: Criando Package PKG_PRESENTE
+PROMPT PASSO 4/11: Criando Package PKG_PRESENTE
 PROMPT ========================================
 
 @@03_PKG_PRESENTE.sql
@@ -92,7 +93,7 @@ PROMPT
 -- ==============================================================================
 
 PROMPT ========================================
-PROMPT PASSO 5/10: Criando Package PKG_SUGESTAO
+PROMPT PASSO 5/11: Criando Package PKG_SUGESTAO
 PROMPT ========================================
 
 @@06_PKG_SUGESTAO.sql
@@ -106,7 +107,7 @@ PROMPT
 -- ==============================================================================
 
 PROMPT ========================================
-PROMPT PASSO 6/10: Criando Package PKG_COMPRA
+PROMPT PASSO 6/11: Criando Package PKG_COMPRA
 PROMPT ========================================
 
 @@04_PKG_COMPRA.sql
@@ -120,7 +121,7 @@ PROMPT
 -- ==============================================================================
 
 PROMPT ========================================
-PROMPT PASSO 7/10: Criando Package PKG_PUSH_NOTIFICATION
+PROMPT PASSO 7/11: Criando Package PKG_PUSH_NOTIFICATION
 PROMPT ========================================
 
 @@07_PKG_PUSH_NOTIFICATION.sql
@@ -134,7 +135,7 @@ PROMPT
 -- ==============================================================================
 
 PROMPT ========================================
-PROMPT PASSO 8/10: Criando Integracao Push Notifications
+PROMPT PASSO 8/11: Criando Integracao Push Notifications
 PROMPT ========================================
 
 @@08_INTEGRACAO_PUSH_APEX.sql
@@ -148,7 +149,7 @@ PROMPT
 -- ==============================================================================
 
 PROMPT ========================================
-PROMPT PASSO 9/10: Criando Triggers de Auditoria
+PROMPT PASSO 9/11: Criando Triggers de Auditoria
 PROMPT ========================================
 
 @@09_TRIGGERS_AUDITORIA.sql
@@ -162,13 +163,27 @@ PROMPT
 -- ==============================================================================
 
 PROMPT ========================================
-PROMPT PASSO 10/10: Criando Funcoes APEX
+PROMPT PASSO 10/11: Criando Funcoes APEX
 PROMPT ========================================
 
 @@10_APEX_APPLICATION.sql
 
 PROMPT
 PROMPT Funcoes APEX criadas com sucesso!
+PROMPT
+
+-- ==============================================================================
+-- PASSO 11: MELHORIAS DE SEGURANCA
+-- ==============================================================================
+
+PROMPT ========================================
+PROMPT PASSO 11/11: Criando Melhorias de Seguranca
+PROMPT ========================================
+
+@@12_MELHORIAS_SEGURANCA.sql
+
+PROMPT
+PROMPT Melhorias de Seguranca criadas com sucesso!
 PROMPT
 
 -- ==============================================================================
