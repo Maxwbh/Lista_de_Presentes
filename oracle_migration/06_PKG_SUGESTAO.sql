@@ -17,12 +17,12 @@ CREATE OR REPLACE PACKAGE PKG_SUGESTAO AS
 
     -- Record type para sugestao
     TYPE t_sugestao IS RECORD (
-        id_sugestao         TB_SUGESTAO_COMPRA.ID_SUGESTAO%TYPE,
-        id_presente         TB_SUGESTAO_COMPRA.ID_PRESENTE%TYPE,
-        local_compra        TB_SUGESTAO_COMPRA.LOCAL_COMPRA%TYPE,
-        url_compra          TB_SUGESTAO_COMPRA.URL_COMPRA%TYPE,
-        preco_sugerido      TB_SUGESTAO_COMPRA.PRECO_SUGERIDO%TYPE,
-        data_busca          TB_SUGESTAO_COMPRA.DATA_BUSCA%TYPE
+        id_sugestao         LCP_SUGESTAO_COMPRA.ID%TYPE,
+        id_presente         LCP_SUGESTAO_COMPRA.ID_PRESENTE%TYPE,
+        local_compra        LCP_SUGESTAO_COMPRA.LOCAL_COMPRA%TYPE,
+        url_compra          LCP_SUGESTAO_COMPRA.URL_COMPRA%TYPE,
+        preco_sugerido      LCP_SUGESTAO_COMPRA.PRECO_SUGERIDO%TYPE,
+        data_busca          LCP_SUGESTAO_COMPRA.DATA_BUSCA%TYPE
     );
 
     /**
@@ -163,7 +163,7 @@ CREATE OR REPLACE PACKAGE BODY PKG_SUGESTAO AS
             v_count NUMBER;
         BEGIN
             SELECT COUNT(*) INTO v_count
-            FROM TB_PRESENTE
+            FROM LCP_PRESENTE
             WHERE ID_PRESENTE = p_id_presente;
 
             IF v_count = 0 THEN
@@ -181,21 +181,21 @@ CREATE OR REPLACE PACKAGE BODY PKG_SUGESTAO AS
         END IF;
 
         -- Inserir sugestao
-        INSERT INTO TB_SUGESTAO_COMPRA (
-            ID_SUGESTAO,
+        INSERT INTO LCP_SUGESTAO_COMPRA (
+            ID,
             ID_PRESENTE,
             LOCAL_COMPRA,
             URL_COMPRA,
             PRECO_SUGERIDO,
             DATA_BUSCA
         ) VALUES (
-            SEQ_SUGESTAO_COMPRA.NEXTVAL,
+            SEQ_LCP_SUGESTAO_COMPRA.NEXTVAL,
             p_id_presente,
             TRIM(p_local_compra),
             TRIM(p_url_compra),
             p_preco_sugerido,
             SYSDATE
-        ) RETURNING ID_SUGESTAO INTO v_id_sugestao;
+        ) RETURNING ID INTO v_id_sugestao;
 
         COMMIT;
 
@@ -219,7 +219,7 @@ CREATE OR REPLACE PACKAGE BODY PKG_SUGESTAO AS
         -- Por enquanto, apenas limpa sugestoes antigas se solicitado
 
         IF p_limpar_antigas THEN
-            DELETE FROM TB_SUGESTAO_COMPRA
+            DELETE FROM LCP_SUGESTAO_COMPRA
             WHERE ID_PRESENTE = p_id_presente;
             COMMIT;
         END IF;
@@ -245,20 +245,20 @@ CREATE OR REPLACE PACKAGE BODY PKG_SUGESTAO AS
     BEGIN
         -- Verificar se sugestao existe
         SELECT COUNT(*) INTO v_count
-        FROM TB_SUGESTAO_COMPRA
-        WHERE ID_SUGESTAO = p_id_sugestao;
+        FROM LCP_SUGESTAO_COMPRA
+        WHERE ID = p_id_sugestao;
 
         IF v_count = 0 THEN
             RAISE_APPLICATION_ERROR(-20403, 'Sugestao nao encontrada');
         END IF;
 
         -- Atualizar apenas campos informados
-        UPDATE TB_SUGESTAO_COMPRA
+        UPDATE LCP_SUGESTAO_COMPRA
         SET LOCAL_COMPRA = NVL(p_local_compra, LOCAL_COMPRA),
             URL_COMPRA = NVL(p_url_compra, URL_COMPRA),
             PRECO_SUGERIDO = NVL(p_preco_sugerido, PRECO_SUGERIDO),
             DATA_BUSCA = SYSDATE
-        WHERE ID_SUGESTAO = p_id_sugestao;
+        WHERE ID = p_id_sugestao;
 
         COMMIT;
     EXCEPTION
@@ -274,8 +274,8 @@ CREATE OR REPLACE PACKAGE BODY PKG_SUGESTAO AS
         p_id_sugestao       IN NUMBER
     ) IS
     BEGIN
-        DELETE FROM TB_SUGESTAO_COMPRA
-        WHERE ID_SUGESTAO = p_id_sugestao;
+        DELETE FROM LCP_SUGESTAO_COMPRA
+        WHERE ID = p_id_sugestao;
 
         IF SQL%ROWCOUNT = 0 THEN
             RAISE_APPLICATION_ERROR(-20403, 'Sugestao nao encontrada');
@@ -296,7 +296,7 @@ CREATE OR REPLACE PACKAGE BODY PKG_SUGESTAO AS
     ) RETURN NUMBER IS
         v_count NUMBER;
     BEGIN
-        DELETE FROM TB_SUGESTAO_COMPRA
+        DELETE FROM LCP_SUGESTAO_COMPRA
         WHERE ID_PRESENTE = p_id_presente;
 
         v_count := SQL%ROWCOUNT;
@@ -333,13 +333,13 @@ CREATE OR REPLACE PACKAGE BODY PKG_SUGESTAO AS
 
         OPEN v_cursor FOR
             'SELECT
-                ID_SUGESTAO,
+                ID,
                 ID_PRESENTE,
                 LOCAL_COMPRA,
                 URL_COMPRA,
                 PRECO_SUGERIDO,
                 DATA_BUSCA
-             FROM TB_SUGESTAO_COMPRA
+             FROM LCP_SUGESTAO_COMPRA
              WHERE ID_PRESENTE = :p_id_presente
              ORDER BY ' || v_order_by
         USING p_id_presente;
@@ -356,15 +356,15 @@ CREATE OR REPLACE PACKAGE BODY PKG_SUGESTAO AS
         v_sugestao t_sugestao;
     BEGIN
         SELECT
-            ID_SUGESTAO,
+            ID,
             ID_PRESENTE,
             LOCAL_COMPRA,
             URL_COMPRA,
             PRECO_SUGERIDO,
             DATA_BUSCA
         INTO v_sugestao
-        FROM TB_SUGESTAO_COMPRA
-        WHERE ID_SUGESTAO = p_id_sugestao;
+        FROM LCP_SUGESTAO_COMPRA
+        WHERE ID = p_id_sugestao;
 
         RETURN v_sugestao;
     EXCEPTION
@@ -382,7 +382,7 @@ CREATE OR REPLACE PACKAGE BODY PKG_SUGESTAO AS
     BEGIN
         SELECT MIN(PRECO_SUGERIDO)
         INTO v_melhor_preco
-        FROM TB_SUGESTAO_COMPRA
+        FROM LCP_SUGESTAO_COMPRA
         WHERE ID_PRESENTE = p_id_presente
           AND PRECO_SUGERIDO IS NOT NULL;
 
@@ -402,13 +402,13 @@ CREATE OR REPLACE PACKAGE BODY PKG_SUGESTAO AS
     BEGIN
         OPEN v_cursor FOR
             SELECT
-                ID_SUGESTAO,
+                ID,
                 ID_PRESENTE,
                 LOCAL_COMPRA,
                 URL_COMPRA,
                 PRECO_SUGERIDO,
                 DATA_BUSCA
-            FROM TB_SUGESTAO_COMPRA
+            FROM LCP_SUGESTAO_COMPRA
             WHERE ID_PRESENTE = p_id_presente
               AND PRECO_SUGERIDO IS NOT NULL
             ORDER BY PRECO_SUGERIDO
@@ -427,7 +427,7 @@ CREATE OR REPLACE PACKAGE BODY PKG_SUGESTAO AS
     BEGIN
         SELECT COUNT(*)
         INTO v_count
-        FROM TB_SUGESTAO_COMPRA
+        FROM LCP_SUGESTAO_COMPRA
         WHERE ID_PRESENTE = p_id_presente;
 
         RETURN v_count;
@@ -440,7 +440,7 @@ CREATE OR REPLACE PACKAGE BODY PKG_SUGESTAO AS
         p_id_presente       IN NUMBER
     ) IS
     BEGIN
-        UPDATE TB_SUGESTAO_COMPRA
+        UPDATE LCP_SUGESTAO_COMPRA
         SET DATA_BUSCA = SYSDATE
         WHERE ID_PRESENTE = p_id_presente;
 

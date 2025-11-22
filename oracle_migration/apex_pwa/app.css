@@ -1,0 +1,457 @@
+/**
+ * CSS Customizado - Lista de Presentes
+ * Oracle APEX 24
+ *
+ * Desenvolvedor: Maxwell da Silva Oliveira (@maxwbh)
+ * Email: maxwbh@gmail.com
+ * Empresa: M&S do Brasil LTDA - msbrasil.inf.br
+ */
+
+/* ============================================================================
+   VARIAVEIS CSS
+   ============================================================================ */
+:root {
+    --lp-primary: #0572ce;
+    --lp-primary-dark: #045ba8;
+    --lp-primary-light: #e8f4fd;
+    --lp-success: #3c763d;
+    --lp-success-bg: #dff0d8;
+    --lp-warning: #8a6d3b;
+    --lp-warning-bg: #fcf8e3;
+    --lp-danger: #a94442;
+    --lp-danger-bg: #f2dede;
+    --lp-gray: #6c757d;
+    --lp-gray-light: #f8f9fa;
+    --lp-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    --lp-radius: 8px;
+    --lp-transition: all 0.3s ease;
+}
+
+/* ============================================================================
+   LAYOUT GERAL
+   ============================================================================ */
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+}
+
+/* ============================================================================
+   CARDS DE PRESENTES
+   ============================================================================ */
+.lp-card {
+    background: white;
+    border-radius: var(--lp-radius);
+    box-shadow: var(--lp-shadow);
+    transition: var(--lp-transition);
+    overflow: hidden;
+}
+
+.lp-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 16px rgba(0,0,0,0.15);
+}
+
+.lp-card-image {
+    width: 100%;
+    height: 200px;
+    object-fit: cover;
+    background-color: var(--lp-gray-light);
+}
+
+.lp-card-body {
+    padding: 16px;
+}
+
+.lp-card-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: #333;
+}
+
+.lp-card-subtitle {
+    font-size: 0.9rem;
+    color: var(--lp-gray);
+    margin-bottom: 12px;
+}
+
+.lp-card-price {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--lp-primary);
+}
+
+.lp-card-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+}
+
+/* ============================================================================
+   BADGES E STATUS
+   ============================================================================ */
+.lp-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 500;
+}
+
+.lp-badge-ativo {
+    background-color: var(--lp-success-bg);
+    color: var(--lp-success);
+}
+
+.lp-badge-comprado {
+    background-color: var(--lp-primary-light);
+    color: var(--lp-primary);
+}
+
+.lp-badge-pendente {
+    background-color: var(--lp-warning-bg);
+    color: var(--lp-warning);
+}
+
+/* ============================================================================
+   DASHBOARD CARDS
+   ============================================================================ */
+.lp-stat-card {
+    background: linear-gradient(135deg, var(--lp-primary) 0%, var(--lp-primary-dark) 100%);
+    color: white;
+    border-radius: var(--lp-radius);
+    padding: 20px;
+    text-align: center;
+}
+
+.lp-stat-card.success {
+    background: linear-gradient(135deg, #28a745 0%, #1e7e34 100%);
+}
+
+.lp-stat-card.warning {
+    background: linear-gradient(135deg, #ffc107 0%, #d39e00 100%);
+}
+
+.lp-stat-card.danger {
+    background: linear-gradient(135deg, #dc3545 0%, #bd2130 100%);
+}
+
+.lp-stat-icon {
+    font-size: 2.5rem;
+    margin-bottom: 10px;
+    opacity: 0.8;
+}
+
+.lp-stat-value {
+    font-size: 2rem;
+    font-weight: 700;
+    margin-bottom: 5px;
+}
+
+.lp-stat-label {
+    font-size: 0.9rem;
+    opacity: 0.9;
+}
+
+/* ============================================================================
+   NOTIFICACOES
+   ============================================================================ */
+.lp-notification {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 16px;
+    border-bottom: 1px solid #eee;
+    transition: var(--lp-transition);
+}
+
+.lp-notification:hover {
+    background-color: var(--lp-gray-light);
+}
+
+.lp-notification.unread {
+    background-color: var(--lp-primary-light);
+    border-left: 4px solid var(--lp-primary);
+}
+
+.lp-notification-icon {
+    font-size: 1.5rem;
+    color: var(--lp-primary);
+}
+
+.lp-notification-content {
+    flex: 1;
+}
+
+.lp-notification-message {
+    margin-bottom: 4px;
+}
+
+.lp-notification-time {
+    font-size: 0.85rem;
+    color: var(--lp-gray);
+}
+
+/* ============================================================================
+   BOTOES CUSTOMIZADOS
+   ============================================================================ */
+.lp-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    border-radius: var(--lp-radius);
+    font-weight: 500;
+    transition: var(--lp-transition);
+    cursor: pointer;
+    border: none;
+}
+
+.lp-btn-primary {
+    background-color: var(--lp-primary);
+    color: white;
+}
+
+.lp-btn-primary:hover {
+    background-color: var(--lp-primary-dark);
+}
+
+.lp-btn-outline {
+    background-color: transparent;
+    border: 2px solid var(--lp-primary);
+    color: var(--lp-primary);
+}
+
+.lp-btn-outline:hover {
+    background-color: var(--lp-primary);
+    color: white;
+}
+
+.lp-btn-success {
+    background-color: var(--lp-success);
+    color: white;
+}
+
+.lp-btn-danger {
+    background-color: var(--lp-danger);
+    color: white;
+}
+
+/* ============================================================================
+   FORMULARIOS
+   ============================================================================ */
+.lp-form-group {
+    margin-bottom: 20px;
+}
+
+.lp-form-label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 500;
+    color: #333;
+}
+
+.lp-form-input {
+    width: 100%;
+    padding: 12px 16px;
+    border: 1px solid #ddd;
+    border-radius: var(--lp-radius);
+    font-size: 1rem;
+    transition: var(--lp-transition);
+}
+
+.lp-form-input:focus {
+    outline: none;
+    border-color: var(--lp-primary);
+    box-shadow: 0 0 0 3px rgba(5, 114, 206, 0.1);
+}
+
+.lp-form-input::placeholder {
+    color: #aaa;
+}
+
+/* ============================================================================
+   LISTA DE PRESENTES
+   ============================================================================ */
+.lp-gift-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 20px;
+    padding: 20px 0;
+}
+
+.lp-gift-item {
+    position: relative;
+}
+
+.lp-gift-status-overlay {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    z-index: 1;
+}
+
+/* ============================================================================
+   HERO SECTION
+   ============================================================================ */
+.lp-hero {
+    background: linear-gradient(135deg, var(--lp-primary) 0%, #00bcd4 100%);
+    color: white;
+    padding: 40px;
+    border-radius: var(--lp-radius);
+    margin-bottom: 30px;
+}
+
+.lp-hero-title {
+    font-size: 2rem;
+    font-weight: 700;
+    margin-bottom: 10px;
+}
+
+.lp-hero-subtitle {
+    font-size: 1.1rem;
+    opacity: 0.9;
+}
+
+/* ============================================================================
+   EMPTY STATE
+   ============================================================================ */
+.lp-empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--lp-gray);
+}
+
+.lp-empty-state-icon {
+    font-size: 4rem;
+    margin-bottom: 20px;
+    opacity: 0.5;
+}
+
+.lp-empty-state-title {
+    font-size: 1.5rem;
+    margin-bottom: 10px;
+    color: #333;
+}
+
+.lp-empty-state-text {
+    margin-bottom: 20px;
+}
+
+/* ============================================================================
+   LOADING
+   ============================================================================ */
+.lp-loading {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 40px;
+}
+
+.lp-spinner {
+    width: 40px;
+    height: 40px;
+    border: 4px solid var(--lp-gray-light);
+    border-top-color: var(--lp-primary);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* ============================================================================
+   RESPONSIVE
+   ============================================================================ */
+@media (max-width: 768px) {
+    .lp-hero {
+        padding: 30px 20px;
+    }
+
+    .lp-hero-title {
+        font-size: 1.5rem;
+    }
+
+    .lp-gift-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .lp-stat-card {
+        padding: 15px;
+    }
+
+    .lp-stat-value {
+        font-size: 1.5rem;
+    }
+}
+
+/* ============================================================================
+   PWA INSTALL BANNER
+   ============================================================================ */
+.lp-install-banner {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: white;
+    padding: 16px 20px;
+    box-shadow: 0 -4px 12px rgba(0,0,0,0.15);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    z-index: 1000;
+    transform: translateY(100%);
+    transition: transform 0.3s ease;
+}
+
+.lp-install-banner.show {
+    transform: translateY(0);
+}
+
+.lp-install-banner-content {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.lp-install-banner-icon {
+    font-size: 2rem;
+    color: var(--lp-primary);
+}
+
+.lp-install-banner-text h4 {
+    margin: 0 0 4px 0;
+    font-size: 1rem;
+}
+
+.lp-install-banner-text p {
+    margin: 0;
+    font-size: 0.85rem;
+    color: var(--lp-gray);
+}
+
+/* ============================================================================
+   DARK MODE (futuro)
+   ============================================================================ */
+@media (prefers-color-scheme: dark) {
+    /* Implementar dark mode se necessario */
+}
+
+/* ============================================================================
+   IMPRESSAO
+   ============================================================================ */
+@media print {
+    .lp-btn,
+    .lp-install-banner,
+    .t-Header,
+    .t-Footer {
+        display: none !important;
+    }
+
+    .lp-card {
+        box-shadow: none;
+        border: 1px solid #ddd;
+    }
+}

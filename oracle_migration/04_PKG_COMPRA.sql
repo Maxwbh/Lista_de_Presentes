@@ -136,8 +136,8 @@ CREATE OR REPLACE PACKAGE BODY PKG_COMPRA AS
         -- Buscar dados do presente
         SELECT p.ID_USUARIO, p.STATUS, p.DESCRICAO
         INTO v_id_usuario_dono, v_status, v_descricao
-        FROM TB_PRESENTE p
-        WHERE p.ID_PRESENTE = p_id_presente;
+        FROM LCP_PRESENTE p
+        WHERE p.ID = p_id_presente;
 
         -- Validacao 1: Nao pode comprar proprio presente
         IF v_id_usuario_dono = p_id_comprador THEN
@@ -151,7 +151,7 @@ CREATE OR REPLACE PACKAGE BODY PKG_COMPRA AS
 
         -- Validacao 3: Verificar se ja existe compra
         SELECT COUNT(*) INTO v_compra_existente
-        FROM TB_COMPRA
+        FROM LCP_COMPRA
         WHERE ID_PRESENTE = p_id_presente;
 
         IF v_compra_existente > 0 THEN
@@ -159,23 +159,23 @@ CREATE OR REPLACE PACKAGE BODY PKG_COMPRA AS
         END IF;
 
         -- Atualizar status do presente
-        UPDATE TB_PRESENTE
+        UPDATE LCP_PRESENTE
         SET STATUS = 'COMPRADO',
             DATA_ALTERACAO = SYSDATE
-        WHERE ID_PRESENTE = p_id_presente;
+        WHERE ID = p_id_presente;
 
         -- Criar registro de compra
-        INSERT INTO TB_COMPRA (
-            ID_COMPRA,
+        INSERT INTO LCP_COMPRA (
+            ID,
             ID_PRESENTE,
             ID_COMPRADOR,
             DATA_COMPRA
         ) VALUES (
-            SEQ_COMPRA.NEXTVAL,
+            SEQ_LCP_COMPRA.NEXTVAL,
             p_id_presente,
             p_id_comprador,
             SYSDATE
-        ) RETURNING ID_COMPRA INTO v_id_compra;
+        ) RETURNING ID INTO v_id_compra;
 
         -- Criar notificacao para dono do presente
         PKG_NOTIFICACAO.CRIAR_NOTIFICACAO(
@@ -217,8 +217,8 @@ CREATE OR REPLACE PACKAGE BODY PKG_COMPRA AS
         BEGIN
             SELECT c.ID_COMPRADOR, p.ID_USUARIO, p.DESCRICAO
             INTO v_id_comprador, v_id_usuario_dono, v_descricao
-            FROM TB_COMPRA c
-            INNER JOIN TB_PRESENTE p ON c.ID_PRESENTE = p.ID_PRESENTE
+            FROM LCP_COMPRA c
+            INNER JOIN LCP_PRESENTE p ON c.ID_PRESENTE = p.ID
             WHERE c.ID_PRESENTE = p_id_presente;
         EXCEPTION
             WHEN NO_DATA_FOUND THEN
@@ -231,13 +231,13 @@ CREATE OR REPLACE PACKAGE BODY PKG_COMPRA AS
         END IF;
 
         -- Voltar presente para ATIVO
-        UPDATE TB_PRESENTE
+        UPDATE LCP_PRESENTE
         SET STATUS = 'ATIVO',
             DATA_ALTERACAO = SYSDATE
-        WHERE ID_PRESENTE = p_id_presente;
+        WHERE ID = p_id_presente;
 
         -- Excluir compra
-        DELETE FROM TB_COMPRA
+        DELETE FROM LCP_COMPRA
         WHERE ID_PRESENTE = p_id_presente;
 
         -- Criar notificacao
@@ -276,7 +276,7 @@ CREATE OR REPLACE PACKAGE BODY PKG_COMPRA AS
     BEGIN
         OPEN v_cursor FOR
             SELECT
-                c.ID_COMPRA,
+                c.ID,
                 c.ID_PRESENTE,
                 c.DATA_COMPRA,
                 -- Dados do presente
@@ -285,12 +285,12 @@ CREATE OR REPLACE PACKAGE BODY PKG_COMPRA AS
                 p.PRECO,
                 CASE WHEN p.IMAGEM_BASE64 IS NOT NULL THEN 'S' ELSE 'N' END AS TEM_IMAGEM,
                 -- Dados do dono do presente
-                u.ID_USUARIO AS ID_DONO,
+                u.ID AS ID_DONO,
                 u.PRIMEIRO_NOME || ' ' || u.ULTIMO_NOME AS NOME_DONO,
                 u.EMAIL AS EMAIL_DONO
-            FROM TB_COMPRA c
-            INNER JOIN TB_PRESENTE p ON c.ID_PRESENTE = p.ID_PRESENTE
-            INNER JOIN TB_USUARIO u ON p.ID_USUARIO = u.ID_USUARIO
+            FROM LCP_COMPRA c
+            INNER JOIN LCP_PRESENTE p ON c.ID_PRESENTE = p.ID
+            INNER JOIN LCP_USUARIO u ON p.ID_USUARIO = u.ID
             WHERE c.ID_COMPRADOR = p_id_comprador
             ORDER BY c.DATA_COMPRA DESC;
 
@@ -307,22 +307,22 @@ CREATE OR REPLACE PACKAGE BODY PKG_COMPRA AS
     BEGIN
         OPEN v_cursor FOR
             SELECT
-                p.ID_PRESENTE,
+                p.ID,
                 p.DESCRICAO,
                 p.URL,
                 p.PRECO,
                 p.DATA_CADASTRO,
                 CASE WHEN p.IMAGEM_BASE64 IS NOT NULL THEN 'S' ELSE 'N' END AS TEM_IMAGEM,
                 -- Dados da compra
-                c.ID_COMPRA,
+                c.ID,
                 c.DATA_COMPRA,
                 -- Dados do comprador
-                comp.ID_USUARIO AS ID_COMPRADOR,
+                comp.ID AS ID_COMPRADOR,
                 comp.PRIMEIRO_NOME || ' ' || comp.ULTIMO_NOME AS NOME_COMPRADOR,
                 comp.EMAIL AS EMAIL_COMPRADOR
-            FROM TB_PRESENTE p
-            INNER JOIN TB_COMPRA c ON p.ID_PRESENTE = c.ID_PRESENTE
-            INNER JOIN TB_USUARIO comp ON c.ID_COMPRADOR = comp.ID_USUARIO
+            FROM LCP_PRESENTE p
+            INNER JOIN LCP_COMPRA c ON p.ID = c.ID_PRESENTE
+            INNER JOIN LCP_USUARIO comp ON c.ID_COMPRADOR = comp.ID
             WHERE p.ID_USUARIO = p_id_usuario
             ORDER BY c.DATA_COMPRA DESC;
 
@@ -339,15 +339,15 @@ CREATE OR REPLACE PACKAGE BODY PKG_COMPRA AS
     BEGIN
         OPEN v_cursor FOR
             SELECT
-                c.ID_COMPRA,
+                c.ID,
                 c.ID_PRESENTE,
                 c.ID_COMPRADOR,
                 c.DATA_COMPRA,
                 -- Dados do comprador
                 u.PRIMEIRO_NOME || ' ' || u.ULTIMO_NOME AS NOME_COMPRADOR,
                 u.EMAIL AS EMAIL_COMPRADOR
-            FROM TB_COMPRA c
-            INNER JOIN TB_USUARIO u ON c.ID_COMPRADOR = u.ID_USUARIO
+            FROM LCP_COMPRA c
+            INNER JOIN LCP_USUARIO u ON c.ID_COMPRADOR = u.ID
             WHERE c.ID_PRESENTE = p_id_presente;
 
         RETURN v_cursor;
@@ -362,7 +362,7 @@ CREATE OR REPLACE PACKAGE BODY PKG_COMPRA AS
         v_count NUMBER;
     BEGIN
         SELECT COUNT(*) INTO v_count
-        FROM TB_COMPRA
+        FROM LCP_COMPRA
         WHERE ID_PRESENTE = p_id_presente;
 
         RETURN v_count > 0;
@@ -378,7 +378,7 @@ CREATE OR REPLACE PACKAGE BODY PKG_COMPRA AS
         v_count NUMBER;
     BEGIN
         SELECT COUNT(*) INTO v_count
-        FROM TB_COMPRA
+        FROM LCP_COMPRA
         WHERE ID_PRESENTE = p_id_presente
           AND ID_COMPRADOR = p_id_usuario;
 
@@ -394,7 +394,7 @@ CREATE OR REPLACE PACKAGE BODY PKG_COMPRA AS
         v_count NUMBER;
     BEGIN
         SELECT COUNT(*) INTO v_count
-        FROM TB_COMPRA
+        FROM LCP_COMPRA
         WHERE ID_COMPRADOR = p_id_comprador;
 
         RETURN v_count;

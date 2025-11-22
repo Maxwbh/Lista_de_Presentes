@@ -1,0 +1,104 @@
+{
+    "name": "Lista de Presentes",
+    "short_name": "Presentes",
+    "description": "Aplicacao para gerenciamento de lista de presentes",
+    "start_url": "/ords/f?p=LISTA_PRESENTES:1",
+    "display": "standalone",
+    "background_color": "#ffffff",
+    "theme_color": "#0572ce",
+    "orientation": "portrait-primary",
+    "scope": "/ords/",
+    "lang": "pt-BR",
+    "icons": [
+        {
+            "src": "/i/app_icons/gift-72.png",
+            "sizes": "72x72",
+            "type": "image/png",
+            "purpose": "any maskable"
+        },
+        {
+            "src": "/i/app_icons/gift-96.png",
+            "sizes": "96x96",
+            "type": "image/png",
+            "purpose": "any maskable"
+        },
+        {
+            "src": "/i/app_icons/gift-128.png",
+            "sizes": "128x128",
+            "type": "image/png",
+            "purpose": "any maskable"
+        },
+        {
+            "src": "/i/app_icons/gift-144.png",
+            "sizes": "144x144",
+            "type": "image/png",
+            "purpose": "any maskable"
+        },
+        {
+            "src": "/i/app_icons/gift-152.png",
+            "sizes": "152x152",
+            "type": "image/png",
+            "purpose": "any maskable"
+        },
+        {
+            "src": "/i/app_icons/gift-192.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "any maskable"
+        },
+        {
+            "src": "/i/app_icons/gift-384.png",
+            "sizes": "384x384",
+            "type": "image/png",
+            "purpose": "any maskable"
+        },
+        {
+            "src": "/i/app_icons/gift-512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "any maskable"
+        }
+    ],
+    "screenshots": [
+        {
+            "src": "/i/app_screenshots/dashboard.png",
+            "sizes": "1280x720",
+            "type": "image/png",
+            "form_factor": "wide",
+            "label": "Dashboard da aplicacao"
+        },
+        {
+            "src": "/i/app_screenshots/mobile.png",
+            "sizes": "750x1334",
+            "type": "image/png",
+            "form_factor": "narrow",
+            "label": "Versao mobile"
+        }
+    ],
+    "categories": ["lifestyle", "shopping"],
+    "shortcuts": [
+        {
+            "name": "Meus Presentes",
+            "short_name": "Presentes",
+            "description": "Ver minha lista de presentes",
+            "url": "/ords/f?p=LISTA_PRESENTES:10",
+            "icons": [{ "src": "/i/app_icons/gift-96.png", "sizes": "96x96" }]
+        },
+        {
+            "name": "Adicionar Presente",
+            "short_name": "Adicionar",
+            "description": "Adicionar novo presente",
+            "url": "/ords/f?p=LISTA_PRESENTES:11",
+            "icons": [{ "src": "/i/app_icons/add-96.png", "sizes": "96x96" }]
+        },
+        {
+            "name": "Notificacoes",
+            "short_name": "Notificacoes",
+            "description": "Ver notificacoes",
+            "url": "/ords/f?p=LISTA_PRESENTES:30",
+            "icons": [{ "src": "/i/app_icons/bell-96.png", "sizes": "96x96" }]
+        }
+    ],
+    "related_applications": [],
+    "prefer_related_applications": false
+}
