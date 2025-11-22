@@ -282,6 +282,39 @@
         color: #6c757d;
         font-size: 0.9rem;
     }
+
+    .btn-whatsapp {
+        background: linear-gradient(135deg, #25D366 0%, #128C7E 100%);
+        border: none;
+        color: white;
+        padding: 12px 25px;
+        border-radius: 50px;
+        font-weight: 600;
+        font-size: 1rem;
+        box-shadow: 0 4px 15px rgba(37, 211, 102, 0.3);
+        transition: all 0.3s;
+    }
+
+    .btn-whatsapp:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(37, 211, 102, 0.5);
+        color: white;
+    }
+
+    .btn-whatsapp-sm {
+        background: linear-gradient(135deg, #25D366 0%, #128C7E 100%);
+        color: white;
+        padding: 6px 12px;
+        border-radius: 8px;
+        font-size: 0.85rem;
+        border: none;
+    }
+
+    .btn-whatsapp-sm:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 10px rgba(37, 211, 102, 0.4);
+        color: white;
+    }
 </style>
 {% endblock %}
 
@@ -321,6 +354,11 @@
         </a>
 
         {% if presentes_ativos > 0 %}
+        <button type="button" class="btn btn-whatsapp ms-2" onclick="compartilharListaWhatsApp()">
+            <i class="bi bi-whatsapp me-2"></i>
+            Compartilhar Lista
+        </button>
+
         <form method="post" action="{% url 'atualizar_todos_precos' %}" style="display: inline-block;" onsubmit="return confirm('Deseja atualizar os preços de todos os {{ presentes_ativos }} presentes ativos? Isso pode levar alguns minutos.');">
             {% csrf_token %}
             <button type="submit" class="btn btn-secondary ms-2">
@@ -413,6 +451,10 @@
                                         <i class="bi bi-pencil"></i> Editar
                                     </a>
 
+                                    <button type="button" class="btn btn-action btn-whatsapp-sm" onclick="compartilharPresenteWhatsApp('{{ presente.descricao|escapejs }}', '{{ presente.preco|default:"" }}', '{{ presente.url|default:"" }}')">
+                                        <i class="bi bi-whatsapp"></i>
+                                    </button>
+
                                     <a href="{% url 'deletar_presente' presente.id %}" class="btn btn-action btn-delete">
                                         <i class="bi bi-trash"></i>
                                     </a>
@@ -440,4 +482,57 @@
         </div>
     {% endif %}
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Compartilhar lista completa via WhatsApp
+    function compartilharListaWhatsApp() {
+        const userName = '{{ user.first_name }}';
+        const baseUrl = window.location.origin;
+
+        let mensagem = `🎁 *Lista de Presentes de ${userName}*\n\n`;
+        mensagem += `Olá! Confira minha lista de presentes de Natal:\n\n`;
+
+        {% for presente in presentes %}
+        {% if presente.status == 'ATIVO' %}
+        mensagem += `✨ *{{ presente.descricao|escapejs }}*\n`;
+        {% if presente.preco %}
+        mensagem += `   💰 R$ {{ presente.preco }}\n`;
+        {% endif %}
+        {% if presente.url %}
+        mensagem += `   🔗 {{ presente.url }}\n`;
+        {% endif %}
+        mensagem += `\n`;
+        {% endif %}
+        {% endfor %}
+
+        mensagem += `📱 Acesse a lista completa em:\n${baseUrl}/presentes-usuario/{{ user.id }}/`;
+
+        const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(mensagem)}`;
+        window.open(whatsappUrl, '_blank');
+    }
+
+    // Compartilhar presente individual via WhatsApp
+    function compartilharPresenteWhatsApp(descricao, preco, url) {
+        const userName = '{{ user.first_name }}';
+
+        let mensagem = `🎁 *Sugestão de Presente*\n\n`;
+        mensagem += `${userName} gostaria de ganhar:\n\n`;
+        mensagem += `✨ *${descricao}*\n`;
+
+        if (preco) {
+            mensagem += `💰 Preço: R$ ${preco}\n`;
+        }
+
+        if (url) {
+            mensagem += `🔗 Ver produto: ${url}\n`;
+        }
+
+        mensagem += `\n🎄 Lista de Presentes de Natal`;
+
+        const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(mensagem)}`;
+        window.open(whatsappUrl, '_blank');
+    }
+</script>
 {% endblock %}

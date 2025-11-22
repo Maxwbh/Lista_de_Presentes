@@ -15,16 +15,38 @@ class UsuarioRegistroForm(UserCreationForm):
         'class': 'form-control',
         'placeholder': 'Seu sobrenome'
     }))
-    
+
     class Meta:
         model = Usuario
-        fields = ('email', 'first_name', 'last_name', 'username', 'password1', 'password2')
-        
+        fields = ('email', 'first_name', 'last_name', 'password1', 'password2')
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields['username'].widget.attrs.update({'class': 'form-control'})
         self.fields['password1'].widget.attrs.update({'class': 'form-control'})
         self.fields['password2'].widget.attrs.update({'class': 'form-control'})
+        # Remover help_text das senhas
+        self.fields['password1'].help_text = None
+        self.fields['password2'].help_text = None
+
+    def save(self, commit=True):
+        user = super().save(commit=False)
+        # Gerar username a partir do email (parte antes do @)
+        email = self.cleaned_data['email']
+        base_username = email.split('@')[0]
+
+        # Garantir username único
+        username = base_username
+        counter = 1
+        while Usuario.objects.filter(username=username).exists():
+            username = f"{base_username}{counter}"
+            counter += 1
+
+        user.username = username
+        user.email = email
+
+        if commit:
+            user.save()
+        return user
 
 class LoginForm(forms.Form):
     email = forms.EmailField(widget=forms.EmailInput(attrs={
