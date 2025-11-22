@@ -17,12 +17,12 @@ CREATE OR REPLACE PACKAGE PKG_NOTIFICACAO AS
 
     -- Record type para notificacao
     TYPE t_notificacao IS RECORD (
-        id_notificacao      TB_NOTIFICACAO.ID_NOTIFICACAO%TYPE,
-        id_usuario          TB_NOTIFICACAO.ID_USUARIO%TYPE,
-        mensagem            TB_NOTIFICACAO.MENSAGEM%TYPE,
-        lida                TB_NOTIFICACAO.LIDA%TYPE,
-        data_notificacao    TB_NOTIFICACAO.DATA_NOTIFICACAO%TYPE,
-        data_leitura        TB_NOTIFICACAO.DATA_LEITURA%TYPE
+        id                  LCP_NOTIFICACAO.ID%TYPE,
+        id_usuario          LCP_NOTIFICACAO.ID_USUARIO%TYPE,
+        mensagem            LCP_NOTIFICACAO.MENSAGEM%TYPE,
+        lida                LCP_NOTIFICACAO.LIDA%TYPE,
+        data_notificacao    LCP_NOTIFICACAO.DATA_NOTIFICACAO%TYPE,
+        data_leitura        LCP_NOTIFICACAO.DATA_LEITURA%TYPE
     );
 
     /**
@@ -128,8 +128,8 @@ CREATE OR REPLACE PACKAGE BODY PKG_NOTIFICACAO AS
             v_count NUMBER;
         BEGIN
             SELECT COUNT(*) INTO v_count
-            FROM TB_USUARIO
-            WHERE ID_USUARIO = p_id_usuario;
+            FROM LCP_USUARIO
+            WHERE ID = p_id_usuario;
 
             IF v_count = 0 THEN
                 RAISE_APPLICATION_ERROR(-20001, 'Usuario nao encontrado');
@@ -137,19 +137,19 @@ CREATE OR REPLACE PACKAGE BODY PKG_NOTIFICACAO AS
         END;
 
         -- Inserir notificacao
-        INSERT INTO TB_NOTIFICACAO (
-            ID_NOTIFICACAO,
+        INSERT INTO LCP_NOTIFICACAO (
+            ID,
             ID_USUARIO,
             MENSAGEM,
             LIDA,
             DATA_NOTIFICACAO
         ) VALUES (
-            SEQ_NOTIFICACAO.NEXTVAL,
+            SEQ_LCP_NOTIFICACAO.NEXTVAL,
             p_id_usuario,
             p_mensagem,
             'N',
             SYSDATE
-        ) RETURNING ID_NOTIFICACAO INTO v_id_notificacao;
+        ) RETURNING ID INTO v_id_notificacao;
 
         COMMIT;
 
@@ -172,8 +172,8 @@ CREATE OR REPLACE PACKAGE BODY PKG_NOTIFICACAO AS
         -- Verificar propriedade da notificacao
         BEGIN
             SELECT ID_USUARIO INTO v_id_usuario_notif
-            FROM TB_NOTIFICACAO
-            WHERE ID_NOTIFICACAO = p_id_notificacao;
+            FROM LCP_NOTIFICACAO
+            WHERE ID = p_id_notificacao;
         EXCEPTION
             WHEN NO_DATA_FOUND THEN
                 RAISE_APPLICATION_ERROR(-20301, 'Notificacao nao encontrada');
@@ -184,10 +184,10 @@ CREATE OR REPLACE PACKAGE BODY PKG_NOTIFICACAO AS
         END IF;
 
         -- Marcar como lida
-        UPDATE TB_NOTIFICACAO
+        UPDATE LCP_NOTIFICACAO
         SET LIDA = 'S',
             DATA_LEITURA = SYSDATE
-        WHERE ID_NOTIFICACAO = p_id_notificacao
+        WHERE ID = p_id_notificacao
           AND LIDA = 'N'; -- Apenas se ainda nao foi lida
 
         COMMIT;
@@ -205,7 +205,7 @@ CREATE OR REPLACE PACKAGE BODY PKG_NOTIFICACAO AS
     ) RETURN NUMBER IS
         v_count NUMBER;
     BEGIN
-        UPDATE TB_NOTIFICACAO
+        UPDATE LCP_NOTIFICACAO
         SET LIDA = 'S',
             DATA_LEITURA = SYSDATE
         WHERE ID_USUARIO = p_id_usuario
@@ -233,13 +233,13 @@ CREATE OR REPLACE PACKAGE BODY PKG_NOTIFICACAO AS
         v_sql    VARCHAR2(4000);
     BEGIN
         v_sql := 'SELECT
-                    ID_NOTIFICACAO,
+                    ID,
                     ID_USUARIO,
                     MENSAGEM,
                     LIDA,
                     DATA_NOTIFICACAO,
                     DATA_LEITURA
-                  FROM TB_NOTIFICACAO
+                  FROM LCP_NOTIFICACAO
                   WHERE ID_USUARIO = :p_id_usuario';
 
         -- Filtrar apenas nao lidas
@@ -270,7 +270,7 @@ CREATE OR REPLACE PACKAGE BODY PKG_NOTIFICACAO AS
     BEGIN
         SELECT COUNT(*)
         INTO v_count
-        FROM TB_NOTIFICACAO
+        FROM LCP_NOTIFICACAO
         WHERE ID_USUARIO = p_id_usuario
           AND LIDA = 'N';
 
@@ -289,8 +289,8 @@ CREATE OR REPLACE PACKAGE BODY PKG_NOTIFICACAO AS
         -- Verificar propriedade
         BEGIN
             SELECT ID_USUARIO INTO v_id_usuario_notif
-            FROM TB_NOTIFICACAO
-            WHERE ID_NOTIFICACAO = p_id_notificacao;
+            FROM LCP_NOTIFICACAO
+            WHERE ID = p_id_notificacao;
         EXCEPTION
             WHEN NO_DATA_FOUND THEN
                 RAISE_APPLICATION_ERROR(-20301, 'Notificacao nao encontrada');
@@ -301,8 +301,8 @@ CREATE OR REPLACE PACKAGE BODY PKG_NOTIFICACAO AS
         END IF;
 
         -- Excluir
-        DELETE FROM TB_NOTIFICACAO
-        WHERE ID_NOTIFICACAO = p_id_notificacao;
+        DELETE FROM LCP_NOTIFICACAO
+        WHERE ID = p_id_notificacao;
 
         COMMIT;
     EXCEPTION
@@ -319,7 +319,7 @@ CREATE OR REPLACE PACKAGE BODY PKG_NOTIFICACAO AS
     ) RETURN NUMBER IS
         v_count NUMBER;
     BEGIN
-        DELETE FROM TB_NOTIFICACAO
+        DELETE FROM LCP_NOTIFICACAO
         WHERE ID_USUARIO = p_id_usuario
           AND LIDA = 'S';
 
@@ -342,15 +342,15 @@ CREATE OR REPLACE PACKAGE BODY PKG_NOTIFICACAO AS
         v_notificacao t_notificacao;
     BEGIN
         SELECT
-            ID_NOTIFICACAO,
+            ID,
             ID_USUARIO,
             MENSAGEM,
             LIDA,
             DATA_NOTIFICACAO,
             DATA_LEITURA
         INTO v_notificacao
-        FROM TB_NOTIFICACAO
-        WHERE ID_NOTIFICACAO = p_id_notificacao;
+        FROM LCP_NOTIFICACAO
+        WHERE ID = p_id_notificacao;
 
         RETURN v_notificacao;
     EXCEPTION
