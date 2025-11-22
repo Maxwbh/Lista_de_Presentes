@@ -10,9 +10,11 @@
 -- IMPORTANTE: Execute este script como usuario com privilegios adequados
 --
 -- Este script executa todos os scripts de criacao na ordem correta:
--- 1. DDL (Tabelas, Indices, Views, Sequences)
+-- 1. DDL (Tabelas, Views, Sequences)
 -- 2. Packages (Usuario, Notificacao, Presente, Sugestao, Compra, Push)
 -- 3. Integracao Push Notifications com APEX
+-- 4. Triggers de Auditoria e Auto-incremento
+-- 5. Funcoes e Views APEX
 --
 -- ==============================================================================
 
@@ -34,7 +36,7 @@ PROMPT
 -- ==============================================================================
 
 PROMPT ========================================
-PROMPT PASSO 1/9: Criando Tabelas, Indices e Views
+PROMPT PASSO 1/10: Criando Tabelas e Views
 PROMPT ========================================
 
 @@01_DDL_TABELAS.sql
@@ -48,7 +50,7 @@ PROMPT
 -- ==============================================================================
 
 PROMPT ========================================
-PROMPT PASSO 2/9: Criando Package PKG_USUARIO
+PROMPT PASSO 2/10: Criando Package PKG_USUARIO
 PROMPT ========================================
 
 @@02_PKG_USUARIO.sql
@@ -62,7 +64,7 @@ PROMPT
 -- ==============================================================================
 
 PROMPT ========================================
-PROMPT PASSO 3/9: Criando Package PKG_NOTIFICACAO
+PROMPT PASSO 3/10: Criando Package PKG_NOTIFICACAO
 PROMPT ========================================
 
 @@05_PKG_NOTIFICACAO.sql
@@ -76,7 +78,7 @@ PROMPT
 -- ==============================================================================
 
 PROMPT ========================================
-PROMPT PASSO 4/9: Criando Package PKG_PRESENTE
+PROMPT PASSO 4/10: Criando Package PKG_PRESENTE
 PROMPT ========================================
 
 @@03_PKG_PRESENTE.sql
@@ -90,7 +92,7 @@ PROMPT
 -- ==============================================================================
 
 PROMPT ========================================
-PROMPT PASSO 5/9: Criando Package PKG_SUGESTAO
+PROMPT PASSO 5/10: Criando Package PKG_SUGESTAO
 PROMPT ========================================
 
 @@06_PKG_SUGESTAO.sql
@@ -104,7 +106,7 @@ PROMPT
 -- ==============================================================================
 
 PROMPT ========================================
-PROMPT PASSO 6/9: Criando Package PKG_COMPRA
+PROMPT PASSO 6/10: Criando Package PKG_COMPRA
 PROMPT ========================================
 
 @@04_PKG_COMPRA.sql
@@ -118,7 +120,7 @@ PROMPT
 -- ==============================================================================
 
 PROMPT ========================================
-PROMPT PASSO 7/9: Criando Package PKG_PUSH_NOTIFICATION
+PROMPT PASSO 7/10: Criando Package PKG_PUSH_NOTIFICATION
 PROMPT ========================================
 
 @@07_PKG_PUSH_NOTIFICATION.sql
@@ -132,7 +134,7 @@ PROMPT
 -- ==============================================================================
 
 PROMPT ========================================
-PROMPT PASSO 8/9: Criando Integracao Push Notifications
+PROMPT PASSO 8/10: Criando Integracao Push Notifications
 PROMPT ========================================
 
 @@08_INTEGRACAO_PUSH_APEX.sql
@@ -146,13 +148,27 @@ PROMPT
 -- ==============================================================================
 
 PROMPT ========================================
-PROMPT PASSO 9/9: Criando Triggers de Auditoria
+PROMPT PASSO 9/10: Criando Triggers de Auditoria
 PROMPT ========================================
 
 @@09_TRIGGERS_AUDITORIA.sql
 
 PROMPT
-PROMPT ✓ Triggers de Auditoria criados com sucesso!
+PROMPT Triggers de Auditoria criados com sucesso!
+PROMPT
+
+-- ==============================================================================
+-- PASSO 10: CRIAR FUNCOES E VIEWS APEX
+-- ==============================================================================
+
+PROMPT ========================================
+PROMPT PASSO 10/10: Criando Funcoes APEX
+PROMPT ========================================
+
+@@10_APEX_APPLICATION.sql
+
+PROMPT
+PROMPT Funcoes APEX criadas com sucesso!
 PROMPT
 
 -- ==============================================================================
@@ -194,6 +210,20 @@ WHERE object_type IN ('PACKAGE', 'PACKAGE BODY')
   AND object_name LIKE 'PKG_%'
 ORDER BY object_name, object_type;
 
+PROMPT Funcoes APEX criadas:
+SELECT object_name, object_type, status
+FROM user_objects
+WHERE object_type IN ('FUNCTION', 'PROCEDURE')
+  AND (object_name LIKE 'FN_APEX_%' OR object_name LIKE 'PRC_APEX_%')
+ORDER BY object_name;
+
+PROMPT
+PROMPT Views APEX criadas:
+SELECT view_name
+FROM user_views
+WHERE view_name LIKE 'VW_APEX_%'
+ORDER BY view_name;
+
 PROMPT
 PROMPT ========================================
 PROMPT STATUS DA COMPILACAO
@@ -207,9 +237,10 @@ FROM user_objects
 WHERE status != 'VALID'
   AND (object_name LIKE 'LCP_%'
    OR object_name LIKE 'PKG_%'
-   OR object_name LIKE 'VW_LCP_%'
-   OR object_name LIKE 'TRG_LCP_%'
-   OR object_name LIKE 'TRG_AUDIT_%')
+   OR object_name LIKE 'VW_%'
+   OR object_name LIKE 'TRG_%'
+   OR object_name LIKE 'FN_APEX_%'
+   OR object_name LIKE 'PRC_APEX_%')
 ORDER BY object_type, object_name;
 
 PROMPT
