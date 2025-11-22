@@ -164,7 +164,7 @@ CREATE OR REPLACE PACKAGE BODY PKG_SUGESTAO AS
         BEGIN
             SELECT COUNT(*) INTO v_count
             FROM LCP_PRESENTE
-            WHERE ID_PRESENTE = p_id_presente;
+            WHERE ID = p_id_presente;
 
             IF v_count = 0 THEN
                 RAISE_APPLICATION_ERROR(-20101, 'Presente nao encontrado');
@@ -311,38 +311,39 @@ CREATE OR REPLACE PACKAGE BODY PKG_SUGESTAO AS
 
     -- ============================================================================
     -- LISTAR_SUGESTOES
+    -- Corrigido: SQL Injection removido - usar SQL estatico com CASE
     -- ============================================================================
     FUNCTION LISTAR_SUGESTOES(
         p_id_presente       IN NUMBER,
         p_ordenar_por       IN VARCHAR2 DEFAULT 'PRECO'
     ) RETURN t_cursor IS
         v_cursor t_cursor;
-        v_order_by VARCHAR2(100);
+        v_ordem VARCHAR2(10);
     BEGIN
-        -- Determinar ordenacao
-        CASE UPPER(p_ordenar_por)
-            WHEN 'PRECO' THEN
-                v_order_by := 'PRECO_SUGERIDO NULLS LAST, LOCAL_COMPRA';
-            WHEN 'DATA' THEN
-                v_order_by := 'DATA_BUSCA DESC';
-            WHEN 'LOJA' THEN
-                v_order_by := 'LOCAL_COMPRA';
-            ELSE
-                v_order_by := 'PRECO_SUGERIDO NULLS LAST, LOCAL_COMPRA';
-        END CASE;
+        -- Validar e normalizar parametro de ordenacao (whitelist)
+        v_ordem := CASE UPPER(TRIM(p_ordenar_por))
+            WHEN 'PRECO' THEN 'PRECO'
+            WHEN 'DATA'  THEN 'DATA'
+            WHEN 'LOJA'  THEN 'LOJA'
+            ELSE 'PRECO'
+        END;
 
+        -- SQL estatico com ordenacao dinamica segura via CASE
         OPEN v_cursor FOR
-            'SELECT
+            SELECT
                 ID,
                 ID_PRESENTE,
                 LOCAL_COMPRA,
                 URL_COMPRA,
                 PRECO_SUGERIDO,
                 DATA_BUSCA
-             FROM LCP_SUGESTAO_COMPRA
-             WHERE ID_PRESENTE = :p_id_presente
-             ORDER BY ' || v_order_by
-        USING p_id_presente;
+            FROM LCP_SUGESTAO_COMPRA
+            WHERE ID_PRESENTE = p_id_presente
+            ORDER BY
+                CASE WHEN v_ordem = 'PRECO' THEN PRECO_SUGERIDO END NULLS LAST,
+                CASE WHEN v_ordem = 'PRECO' THEN LOCAL_COMPRA END,
+                CASE WHEN v_ordem = 'DATA' THEN DATA_BUSCA END DESC,
+                CASE WHEN v_ordem = 'LOJA' THEN LOCAL_COMPRA END;
 
         RETURN v_cursor;
     END LISTAR_SUGESTOES;
