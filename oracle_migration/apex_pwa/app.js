@@ -9,19 +9,59 @@
 
 // ============================================================================
 // CONFIGURACOES
+// Carregadas dinamicamente do servidor para maior seguranca
 // ============================================================================
-const LP_CONFIG = {
+let LP_CONFIG = {
     appId: 'LISTA_PRESENTES',
     swPath: '/pwa/service-worker.js',
-    vapidPublicKey: 'YOUR_VAPID_PUBLIC_KEY_HERE', // Substituir pela chave real
-    apiEndpoint: '/ords/api/v1/'
+    vapidPublicKey: null,
+    apiEndpoint: '/ords/api/v1/',
+    loaded: false
 };
+
+/**
+ * Carrega configuracoes do servidor
+ * VAPID key e outras configs sensiveis vem do backend
+ */
+async function loadConfig() {
+    if (LP_CONFIG.loaded) return LP_CONFIG;
+
+    try {
+        // Tentar carregar via APEX process
+        if (typeof apex !== 'undefined' && apex.server) {
+            const response = await apex.server.process('GET_PWA_CONFIG', {});
+            if (response && response.vapidPublicKey) {
+                LP_CONFIG.vapidPublicKey = response.vapidPublicKey;
+                LP_CONFIG.loaded = true;
+                console.log('[LP] Configuracoes carregadas do servidor');
+            }
+        }
+
+        // Fallback: tentar carregar de meta tag (configurada no APEX)
+        if (!LP_CONFIG.vapidPublicKey) {
+            const metaVapid = document.querySelector('meta[name="vapid-public-key"]');
+            if (metaVapid && metaVapid.content) {
+                LP_CONFIG.vapidPublicKey = metaVapid.content;
+                LP_CONFIG.loaded = true;
+                console.log('[LP] VAPID key carregada de meta tag');
+            }
+        }
+
+    } catch (error) {
+        console.warn('[LP] Erro ao carregar config:', error);
+    }
+
+    return LP_CONFIG;
+}
 
 // ============================================================================
 // INICIALIZACAO
 // ============================================================================
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', async function() {
     console.log('[LP] Aplicacao iniciada');
+
+    // Carregar configuracoes do servidor primeiro
+    await loadConfig();
 
     // Registrar Service Worker
     registerServiceWorker();
@@ -29,8 +69,12 @@ document.addEventListener('DOMContentLoaded', function() {
     // Verificar instalacao PWA
     checkPWAInstall();
 
-    // Inicializar notificacoes
-    initPushNotifications();
+    // Inicializar notificacoes (apenas se config carregada)
+    if (LP_CONFIG.vapidPublicKey) {
+        initPushNotifications();
+    } else {
+        console.warn('[LP] Push notifications desabilitadas - VAPID key nao configurada');
+    }
 
     // Listeners globais
     initGlobalListeners();
@@ -157,6 +201,16 @@ async function requestNotificationPermission() {
 
 async function subscribeToPush() {
     try {
+        // Verificar se VAPID key esta disponivel
+        if (!LP_CONFIG.vapidPublicKey) {
+            console.warn('[LP] VAPID key nao disponivel, tentando carregar...');
+            await loadConfig();
+            if (!LP_CONFIG.vapidPublicKey) {
+                console.error('[LP] Nao foi possivel obter VAPID key');
+                return;
+            }
+        }
+
         const registration = await navigator.serviceWorker.ready;
 
         // Verificar subscription existente
