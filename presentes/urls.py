@@ -10,6 +10,8 @@ urlpatterns = [
     path('registro/', views.registro_view, name='registro'),
     path('login/', views.login_view, name='login'),
     path('logout/', views.logout_view, name='logout'),
+    path('esqueceu-senha/', views.esqueceu_senha_view, name='esqueceu_senha'),
+    path('redefinir-senha/<str:token>/', views.redefinir_senha_view, name='redefinir_senha'),
     path('dashboard/', views.dashboard_view, name='dashboard'),
     
     # Meus presentes

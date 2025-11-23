@@ -6,13 +6,23 @@ from django.db.models import Count, Q
 from django.db import transaction
 from django.http import JsonResponse, HttpResponse
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
+from django.core.mail import send_mail
+from django.conf import settings
+from django.utils import timezone
+from django.contrib.auth.hashers import make_password
 from .models import Usuario, Presente, Compra, Notificacao, SugestaoCompra
 from .forms import UsuarioRegistroForm, PresenteForm, LoginForm
 from .services import IAService
 import base64
 import logging
+import secrets
+import hashlib
+from datetime import timedelta
 
 logger = logging.getLogger(__name__)
+
+# Dicionário para armazenar tokens de recuperação de senha (em produção, usar banco de dados)
+password_reset_tokens = {}
 
 def converter_imagem_para_base64(imagem_file):
     """Converte um arquivo de imagem para base64"""
@@ -32,6 +42,62 @@ def converter_imagem_para_base64(imagem_file):
         return imagem_base64, nome_arquivo, content_type
     except Exception as e:
         logger.error(f"Erro ao converter imagem para base64: {str(e)}")
+        return None, None, None
+
+def baixar_imagem_da_url(url):
+    """Baixa uma imagem de uma URL e converte para base64"""
+    import requests
+    from urllib.parse import urlparse
+
+    try:
+        if not url or not url.strip():
+            return None, None, None
+
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Accept': 'image/webp,image/apng,image/*,*/*;q=0.8',
+        }
+
+        response = requests.get(url, headers=headers, timeout=15, stream=True)
+        response.raise_for_status()
+
+        # Verificar se é uma imagem
+        content_type = response.headers.get('content-type', '')
+        if not content_type.startswith('image/'):
+            logger.warning(f"URL não é uma imagem válida: {content_type}")
+            return None, None, None
+
+        # Ler conteúdo
+        imagem_data = response.content
+
+        # Verificar tamanho (máximo 5MB)
+        if len(imagem_data) > 5 * 1024 * 1024:
+            logger.warning("Imagem muito grande (> 5MB)")
+            return None, None, None
+
+        # Converter para base64
+        imagem_base64 = base64.b64encode(imagem_data).decode('utf-8')
+
+        # Extrair nome do arquivo da URL
+        parsed_url = urlparse(url)
+        nome_arquivo = parsed_url.path.split('/')[-1] or 'imagem.jpg'
+        # Limpar parâmetros do nome
+        nome_arquivo = nome_arquivo.split('?')[0]
+        if not nome_arquivo or '.' not in nome_arquivo:
+            # Determinar extensão pelo content-type
+            extensao = content_type.split('/')[-1].split(';')[0]
+            if extensao == 'jpeg':
+                extensao = 'jpg'
+            nome_arquivo = f'imagem.{extensao}'
+
+        logger.info(f"Imagem baixada da URL: {nome_arquivo} ({content_type})")
+        return imagem_base64, nome_arquivo, content_type
+
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Erro ao baixar imagem da URL {url}: {str(e)}")
+        return None, None, None
+    except Exception as e:
+        logger.error(f"Erro inesperado ao baixar imagem: {str(e)}")
         return None, None, None
 
 def health_check(request):
@@ -70,6 +136,137 @@ def login_view(request):
 def logout_view(request):
     logout(request)
     return redirect('login')
+
+def esqueceu_senha_view(request):
+    """View para solicitar recuperação de senha"""
+    if request.method == 'POST':
+        email = request.POST.get('email', '').strip().lower()
+
+        if not email:
+            return render(request, 'presentes/esqueceu_senha.html', {
+                'erro': 'Por favor, informe seu email.'
+            })
+
+        try:
+            usuario = Usuario.objects.get(email=email)
+
+            # Gerar token único
+            token = secrets.token_urlsafe(32)
+            token_hash = hashlib.sha256(token.encode()).hexdigest()
+
+            # Armazenar token com expiração de 1 hora
+            password_reset_tokens[token_hash] = {
+                'user_id': usuario.id,
+                'expires': timezone.now() + timedelta(hours=1)
+            }
+
+            # Construir URL de redefinição
+            reset_url = request.build_absolute_uri(f'/redefinir-senha/{token}/')
+
+            # Tentar enviar email
+            try:
+                send_mail(
+                    subject='Redefinição de Senha - Lista de Presentes de Natal',
+                    message=f'''Olá {usuario.first_name},
+
+Você solicitou a redefinição de sua senha na Lista de Presentes de Natal.
+
+Clique no link abaixo para criar uma nova senha:
+{reset_url}
+
+Este link expira em 1 hora.
+
+Se você não solicitou esta redefinição, ignore este email.
+
+Atenciosamente,
+Equipe Lista de Presentes de Natal
+''',
+                    from_email=settings.DEFAULT_FROM_EMAIL if hasattr(settings, 'DEFAULT_FROM_EMAIL') else 'noreply@listadepresentes.com',
+                    recipient_list=[email],
+                    fail_silently=False,
+                )
+                logger.info(f"Email de recuperação enviado para {email}")
+            except Exception as e:
+                logger.warning(f"Não foi possível enviar email para {email}: {str(e)}")
+                # Mesmo sem enviar email, mostrar mensagem genérica para não revelar se o email existe
+
+            return render(request, 'presentes/esqueceu_senha.html', {
+                'mensagem_sucesso': f'Se o email {email} estiver cadastrado, você receberá as instruções de recuperação em breve. Verifique também sua caixa de spam.'
+            })
+
+        except Usuario.DoesNotExist:
+            # Não revelar se o email existe ou não (segurança)
+            logger.info(f"Tentativa de recuperação para email não cadastrado: {email}")
+            return render(request, 'presentes/esqueceu_senha.html', {
+                'mensagem_sucesso': f'Se o email {email} estiver cadastrado, você receberá as instruções de recuperação em breve. Verifique também sua caixa de spam.'
+            })
+
+    return render(request, 'presentes/esqueceu_senha.html')
+
+def redefinir_senha_view(request, token):
+    """View para redefinir senha com token"""
+    # Calcular hash do token
+    token_hash = hashlib.sha256(token.encode()).hexdigest()
+
+    # Verificar se token existe e não expirou
+    token_data = password_reset_tokens.get(token_hash)
+
+    if not token_data:
+        return render(request, 'presentes/redefinir_senha.html', {
+            'token_valido': False
+        })
+
+    # Verificar expiração
+    if timezone.now() > token_data['expires']:
+        # Remover token expirado
+        del password_reset_tokens[token_hash]
+        return render(request, 'presentes/redefinir_senha.html', {
+            'token_valido': False
+        })
+
+    if request.method == 'POST':
+        nova_senha = request.POST.get('nova_senha', '')
+        confirmar_senha = request.POST.get('confirmar_senha', '')
+
+        # Validações
+        if not nova_senha or not confirmar_senha:
+            return render(request, 'presentes/redefinir_senha.html', {
+                'token_valido': True,
+                'erro': 'Por favor, preencha todos os campos.'
+            })
+
+        if nova_senha != confirmar_senha:
+            return render(request, 'presentes/redefinir_senha.html', {
+                'token_valido': True,
+                'erro': 'As senhas não conferem.'
+            })
+
+        if len(nova_senha) < 8:
+            return render(request, 'presentes/redefinir_senha.html', {
+                'token_valido': True,
+                'erro': 'A senha deve ter pelo menos 8 caracteres.'
+            })
+
+        try:
+            usuario = Usuario.objects.get(id=token_data['user_id'])
+            usuario.password = make_password(nova_senha)
+            usuario.save()
+
+            # Remover token usado
+            del password_reset_tokens[token_hash]
+
+            messages.success(request, 'Senha redefinida com sucesso! Faça login com sua nova senha.')
+            logger.info(f"Senha redefinida para usuário {usuario.email}")
+            return redirect('login')
+
+        except Usuario.DoesNotExist:
+            return render(request, 'presentes/redefinir_senha.html', {
+                'token_valido': False
+            })
+
+    return render(request, 'presentes/redefinir_senha.html', {
+        'token_valido': True
+    })
 
 @login_required
 def dashboard_view(request):
@@ -137,7 +334,7 @@ def adicionar_presente_view(request):
             presente = form.save(commit=False)
             presente.usuario = request.user
 
-            # Converter imagem para base64 se foi enviada
+            # Converter imagem para base64 se foi enviada via upload
             if 'imagem' in request.FILES:
                 imagem_file = request.FILES['imagem']
                 imagem_base64, nome_arquivo, content_type = converter_imagem_para_base64(imagem_file)
@@ -149,6 +346,22 @@ def adicionar_presente_view(request):
                     # Limpar o campo antigo para economizar espaço
                     presente.imagem = None
                     logger.info(f"Imagem convertida para base64: {nome_arquivo}")
+
+            # Se não houver imagem via upload, tentar baixar da URL (campo url_imagem do formulário)
+            elif not presente.imagem_base64:
+                url_imagem = request.POST.get('url_imagem', '').strip()
+                if url_imagem:
+                    logger.info(f"Tentando baixar imagem da URL: {url_imagem}")
+                    imagem_base64, nome_arquivo, content_type = baixar_imagem_da_url(url_imagem)
+
+                    if imagem_base64:
+                        presente.imagem_base64 = imagem_base64
+                        presente.imagem_nome = nome_arquivo
+                        presente.imagem_tipo = content_type
+                        presente.imagem = None
+                        logger.info(f"Imagem baixada e convertida para base64: {nome_arquivo}")
+                    else:
+                        logger.warning(f"Não foi possível baixar imagem da URL: {url_imagem}")
 
             presente.save()
 
@@ -183,7 +396,7 @@ def editar_presente_view(request, pk):
         if form.is_valid():
             presente = form.save(commit=False)
 
-            # Converter imagem para base64 se foi enviada uma nova
+            # Converter imagem para base64 se foi enviada uma nova via upload
             if 'imagem' in request.FILES:
                 imagem_file = request.FILES['imagem']
                 imagem_base64, nome_arquivo, content_type = converter_imagem_para_base64(imagem_file)
@@ -195,6 +408,20 @@ def editar_presente_view(request, pk):
                     # Limpar o campo antigo para economizar espaço
                     presente.imagem = None
                     logger.info(f"Imagem atualizada e convertida para base64: {nome_arquivo}")
+
+            # Se não houver imagem via upload, tentar baixar da URL
+            else:
+                url_imagem = request.POST.get('url_imagem', '').strip()
+                if url_imagem:
+                    logger.info(f"Tentando baixar imagem da URL para edição: {url_imagem}")
+                    imagem_base64, nome_arquivo, content_type = baixar_imagem_da_url(url_imagem)
+
+                    if imagem_base64:
+                        presente.imagem_base64 = imagem_base64
+                        presente.imagem_nome = nome_arquivo
+                        presente.imagem_tipo = content_type
+                        presente.imagem = None
+                        logger.info(f"Imagem baixada e convertida para base64: {nome_arquivo}")
 
             presente.save()
             messages.success(request, 'Presente atualizado com sucesso!')
