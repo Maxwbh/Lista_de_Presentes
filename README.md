@@ -98,7 +98,27 @@
 
 ## 🛠️ Instalação
 
-### 1. Clone o Repositório
+### Método 1: Instalação via PIP (Recomendado)
+
+Instale o pacote diretamente do GitHub:
+
+```bash
+# Instalação da versão mais recente
+pip install git+https://github.com/Maxwbh/Lista_de_Presentes.git
+
+# Instalação de uma versão específica
+pip install git+https://github.com/Maxwbh/Lista_de_Presentes.git@v1.0.2
+
+# Instalação com dependências de desenvolvimento
+pip install git+https://github.com/Maxwbh/Lista_de_Presentes.git[dev]
+
+# Instalação do repositório local
+pip install -e /caminho/para/Lista_de_Presentes
+```
+
+Após a instalação via PIP, você ainda precisará configurar o banco de dados e executar as migrações conforme descrito nas seções abaixo.
+
+### Método 2: Clone do Repositório
 
 ```bash
 git clone https://github.com/Maxwbh/Lista_de_Presentes.git
@@ -653,4 +673,4 @@ Este projeto está licenciado sob a Licença MIT - veja o arquivo [LICENSE](LICE
 ---
 
 **Última atualização**: Novembro 2025
-**Versão**: 1.0.0
+**Versão**: 1.0.2
