@@ -1,0 +1,158 @@
+# Docker Compose para Desenvolvimento - Recursos Mínimos
+# Otimizado para 512MB - 1GB RAM
+#
+# Uso: docker compose -f docker-compose.minimal.yml up --watch
+#
+# Otimizações:
+# - PostgreSQL com configurações mínimas de memória
+# - 1 worker Gunicorn (ao invés de 3)
+# - Imagens Alpine (menores e mais leves)
+# - Limite de memória por container
+# - Opção de usar SQLite ao invés de PostgreSQL
+
+version: '3.8'
+
+services:
+  # Banco de dados PostgreSQL - OTIMIZADO
+  db:
+    image: postgres:15-alpine  # Alpine = menor uso de memória
+    container_name: lista_presentes_db_minimal
+
+    # Limites de recursos
+    deploy:
+      resources:
+        limits:
+          memory: 256M  # Máximo 256MB
+        reservations:
+          memory: 128M  # Reserva 128MB
+
+    volumes:
+      - postgres_data_minimal:/var/lib/postgresql/data
+
+    environment:
+      - POSTGRES_DB=lista_presentes
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      # Configurações de memória mínima
+      - POSTGRES_SHARED_BUFFERS=32MB       # Padrão: 128MB
+      - POSTGRES_EFFECTIVE_CACHE_SIZE=64MB # Padrão: 4GB
+      - POSTGRES_WORK_MEM=2MB              # Padrão: 4MB
+      - POSTGRES_MAINTENANCE_WORK_MEM=32MB # Padrão: 64MB
+
+    ports:
+      - "5432:5432"
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+    # Comando com configurações otimizadas
+    command: >
+      postgres
+      -c shared_buffers=32MB
+      -c effective_cache_size=64MB
+      -c maintenance_work_mem=32MB
+      -c checkpoint_completion_target=0.9
+      -c wal_buffers=8MB
+      -c default_statistics_target=50
+      -c random_page_cost=1.1
+      -c effective_io_concurrency=200
+      -c work_mem=2MB
+      -c min_wal_size=80MB
+      -c max_wal_size=1GB
+      -c max_worker_processes=2
+      -c max_parallel_workers_per_gather=1
+      -c max_parallel_workers=2
+
+  # Aplicação Django - OTIMIZADA
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.minimal
+    container_name: lista_presentes_web_minimal
+
+    # Limites de recursos
+    deploy:
+      resources:
+        limits:
+          memory: 384M  # Máximo 384MB
+        reservations:
+          memory: 256M  # Reserva 256MB
+
+    # Comando otimizado - 1 worker apenas
+    command: >
+      sh -c "
+        python manage.py migrate --noinput &&
+        python manage.py collectstatic --noinput &&
+        python manage.py runserver 0.0.0.0:8000
+      "
+
+    volumes:
+      - .:/app
+      - static_volume_minimal:/app/staticfiles
+      - media_volume_minimal:/app/media
+
+    ports:
+      - "8000:8000"
+
+    environment:
+      - DEBUG=True
+      - SECRET_KEY=django-insecure-dev-key-change-in-production
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/lista_presentes
+      - ALLOWED_HOSTS=localhost,127.0.0.1,0.0.0.0
+      # Otimizações Django
+      - DJANGO_DEBUG_TOOLBAR=False
+      - DJANGO_LOG_LEVEL=WARNING
+      # APIs opcionais (comentar se não usar)
+      # - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      # - OPENAI_API_KEY=${OPENAI_API_KEY}
+      # - GEMINI_API_KEY=${GEMINI_API_KEY}
+
+    depends_on:
+      db:
+        condition: service_healthy
+
+    # File Watch - otimizado
+    develop:
+      watch:
+        # Sync código Python
+        - action: sync
+          path: ./lista_presentes
+          target: /app/lista_presentes
+          ignore:
+            - __pycache__/
+            - "*.pyc"
+            - "*.pyo"
+
+        - action: sync
+          path: ./presentes
+          target: /app/presentes
+          ignore:
+            - __pycache__/
+            - "*.pyc"
+            - "*.pyo"
+            - migrations/
+
+        # Sync templates
+        - action: sync
+          path: ./templates
+          target: /app/templates
+
+        # Sync static files
+        - action: sync
+          path: ./static
+          target: /app/static
+
+        # Rebuild apenas se necessário
+        - action: rebuild
+          path: ./requirements.txt
+
+        - action: rebuild
+          path: ./Dockerfile.minimal
+
+volumes:
+  postgres_data_minimal:
+  static_volume_minimal:
+  media_volume_minimal:
