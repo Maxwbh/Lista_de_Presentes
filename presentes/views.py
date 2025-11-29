@@ -606,7 +606,7 @@ def lista_usuarios_view(request):
         usuario.presentes_ativos = usuario.presentes.filter(status='ATIVO').count()
         usuario.presentes_comprados = usuario.presentes.filter(status='COMPRADO').count()
         # Adicionar presentes com sugestões como atributo
-        usuario.presentes_list = usuario.presentes.filter(status='ATIVO').order_by('-data_cadastro')[:6]
+        usuario.presentes_list = usuario.presentes.order_by('-data_cadastro')[:30]
         usuarios_com_stats.append(usuario)
 
     # Buscar todos os presentes ativos de outros usuários (para visualização por produto)
@@ -690,7 +690,7 @@ def presentes_usuario_view(request, user_id):
     presentes_comprados = presentes_list.filter(status='COMPRADO').count()
 
     # Paginação (40 presentes por página)
-    paginator = Paginator(presentes_list, 4)
+    paginator = Paginator(presentes_list, 40)
     page = request.GET.get('page', 1)
 
     try:
