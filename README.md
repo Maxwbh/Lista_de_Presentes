@@ -673,4 +673,4 @@ Este projeto está licenciado sob a Licença MIT - veja o arquivo [LICENSE](LICE
 ---
 
 **Última atualização**: Novembro 2025
-**Versão**: 1.0.2
+**Versão**: 1.0.3

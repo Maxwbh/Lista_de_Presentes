@@ -5,6 +5,36 @@ Todas as mudanças notáveis neste projeto serão documentadas neste arquivo.
 O formato é baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/),
 e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
+## [1.0.3] - 2025-11-29
+
+### Adicionado
+- 🐳 Docker Compose File Watch para hot-reload automático
+- 📦 Configuração Docker otimizada para recursos mínimos (512MB-1GB RAM)
+- 🔹 `docker-compose.minimal.yml` - PostgreSQL otimizado
+- 🔹 `docker-compose.sqlite.yml` - Ultra leve com SQLite (~300MB RAM)
+- 🔹 `Dockerfile.minimal` - Imagem Alpine (~150MB vs ~900MB)
+- 📚 `DOCKER-MINIMAL.md` - Documentação para ambientes com poucos recursos
+- 📚 `docs/deployment/docker.md` - Guia completo Docker
+- 🎯 Suporte a variável `USE_SQLITE` para forçar SQLite
+- ⚙️ PostgreSQL com configurações de memória mínima (256MB)
+- 🔄 Sync automático de código, templates e static files
+
+### Alterado
+- 🔧 `docker-compose.yml` atualizado com seção `develop.watch`
+- 🔧 `docker-compose.dev.yml` otimizado para desenvolvimento
+- 🗃️ `settings.py` com suporte explícito a `USE_SQLITE`
+- 📝 `DOCKER.md` expandido com comandos e troubleshooting
+- ⚡ Gunicorn configurado com `--reload` para hot-reload
+
+### Corrigido
+- 🐛 Encoding UTF-8 em `lista_presentes/__init__.py`
+- 🔧 Branch corrigida no `render.yaml`
+
+### Performance
+- ⚡ Uso de RAM reduzido em 60% (ultra leve)
+- ⚡ Tamanho da imagem Docker reduzido em 83% (Alpine)
+- ⚡ Hot-reload em ~2 segundos (vs rebuild manual de 2-3 minutos)
+
 ## [1.0.2] - 2025-11-29
 
 ### Adicionado

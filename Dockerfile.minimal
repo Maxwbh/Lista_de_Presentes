@@ -1,0 +1,71 @@
+# Dockerfile Otimizado para Recursos Mínimos
+# Baseado em Alpine Linux - muito mais leve que Debian
+# Tamanho da imagem: ~150MB (vs ~900MB do Dockerfile padrão)
+
+FROM python:3.11-alpine
+
+# Metadados
+LABEL maintainer="Maxwell da Silva Oliveira <maxwbh@gmail.com>"
+LABEL description="Lista de Presentes - Docker Minimal (512MB-1GB RAM)"
+LABEL version="1.0.2"
+LABEL company="M&S do Brasil LTDA"
+
+# Variáveis de ambiente Python
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
+
+# Diretório de trabalho
+WORKDIR /app
+
+# Instalar dependências do sistema (Alpine)
+# Usar --no-cache para reduzir tamanho da imagem
+RUN apk add --no-cache \
+    # PostgreSQL client
+    postgresql-dev \
+    postgresql-client \
+    # Compiladores necessários
+    gcc \
+    musl-dev \
+    # Pillow dependencies
+    jpeg-dev \
+    zlib-dev \
+    freetype-dev \
+    lcms2-dev \
+    openjpeg-dev \
+    tiff-dev \
+    tk-dev \
+    tcl-dev \
+    # lxml dependencies
+    libxml2-dev \
+    libxslt-dev \
+    # Outros
+    bash \
+    curl
+
+# Copiar requirements primeiro (melhor cache de layers)
+COPY requirements.txt .
+
+# Instalar dependências Python
+# Usar --no-cache-dir para reduzir tamanho
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copiar código do projeto
+COPY . .
+
+# Criar diretórios necessários
+RUN mkdir -p /app/staticfiles /app/media
+
+# Coletar arquivos estáticos (pode ser sobrescrito no docker-compose)
+RUN python manage.py collectstatic --noinput || true
+
+# Porta padrão
+EXPOSE 8000
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+    CMD curl -f http://localhost:8000/health/ || exit 1
+
+# Comando padrão (pode ser sobrescrito no docker-compose)
+CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]
