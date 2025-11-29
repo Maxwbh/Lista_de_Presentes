@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "lista-presentes-natal"
-version = "1.0.3"
+version = "1.0.4"
 description = "Aplicação web Django para gerenciar listas de presentes de Natal em família"
 readme = "README.md"
 license = {text = "MIT"}
