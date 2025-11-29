@@ -606,7 +606,7 @@ def lista_usuarios_view(request):
         usuario.presentes_ativos = usuario.presentes.filter(status='ATIVO').count()
         usuario.presentes_comprados = usuario.presentes.filter(status='COMPRADO').count()
         # Adicionar presentes com sugestões como atributo
-        usuario.presentes_list = usuario.presentes.order_by('-data_cadastro')[:30]
+        usuario.presentes_list = usuario.presentes.filter(status='ATIVO').order_by('-data_cadastro')[:30]
         usuarios_com_stats.append(usuario)
 
     # Buscar todos os presentes ativos de outros usuários (para visualização por produto)
