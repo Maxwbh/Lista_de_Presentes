@@ -5,6 +5,29 @@ Todas as mudanças notáveis neste projeto serão documentadas neste arquivo.
 O formato é baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/),
 e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
+## [1.0.4] - 2025-11-29
+
+### Corrigido
+- 🎨 Contraste de texto no tema claro melhorado drasticamente
+- 🎨 Background do tema claro agora usa gradiente verde claro (ao invés de escuro)
+- 📝 Texto em `.usuario-stats-inline` agora usa cor escura (#2c3e50) com background glassmorphism
+- 📝 Headings (h1-h6) agora usam verde escuro no tema claro (melhor legibilidade)
+- 📝 `.card-body` e `.card-text` com cores escuras no tema claro
+- 📝 `.text-muted` com contraste adequado em ambos os temas
+- 🔗 Links com cores apropriadas para cada tema
+- 🌈 Flocos de neve visíveis em ambos os temas
+
+### Alterado
+- 🎨 Glassmorphism agora diferencia tema claro vs escuro
+- 🎨 Background claro: gradiente verde suave (#e8f5e9 → #a5d6a7)
+- 🎨 Background escuro: gradiente verde escuro (mantido)
+- 📱 Stats inline com background glassmorphism sutil para melhor legibilidade
+
+### Acessibilidade
+- ✅ Razão de contraste WCAG AA alcançada no tema claro
+- ✅ Textos legíveis em fundos glassmorphism
+- ✅ Ícones com cores destacadas (--christmas-green-light)
+
 ## [1.0.3] - 2025-11-29
 
 ### Adicionado

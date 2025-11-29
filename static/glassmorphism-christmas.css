@@ -35,19 +35,31 @@
    BACKGROUND NATALINO ANIMADO
    =================================== */
 
+/* Background claro por padrão (tema claro) */
 body {
     background: linear-gradient(135deg,
-        #0d3d0d 0%,
-        #1a5c1a 25%,
-        #2d5016 50%,
-        #1a5c1a 75%,
-        #0d3d0d 100%
+        #e8f5e9 0%,
+        #c8e6c9 25%,
+        #a5d6a7 50%,
+        #c8e6c9 75%,
+        #e8f5e9 100%
     );
     background-size: 400% 400%;
     animation: gradientShift 15s ease infinite;
     min-height: 100vh;
     position: relative;
     overflow-x: hidden;
+}
+
+/* Background escuro apenas no dark-theme */
+body.dark-theme {
+    background: linear-gradient(135deg,
+        #0d3d0d 0%,
+        #1a5c1a 25%,
+        #2d5016 50%,
+        #1a5c1a 75%,
+        #0d3d0d 100%
+    ) !important;
 }
 
 @keyframes gradientShift {
@@ -143,18 +155,31 @@ body::before {
 
 /* Card Body */
 .card-body {
-    color: var(--snow-white);
+    color: #2c3e50;
     position: relative;
     z-index: 1;
 }
 
+body.dark-theme .card-body {
+    color: var(--snow-white);
+}
+
 .card-title {
-    color: var(--gold-bright) !important;
+    color: var(--christmas-green) !important;
     font-weight: 700;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+body.dark-theme .card-title {
+    color: var(--gold-bright) !important;
     text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
 }
 
 .card-text {
+    color: #495057 !important;
+}
+
+body.dark-theme .card-text {
     color: rgba(240, 248, 255, 0.95) !important;
 }
 
@@ -512,20 +537,44 @@ body::before {
    =================================== */
 
 h1, h2, h3, h4, h5, h6 {
+    color: var(--christmas-green) !important;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    font-weight: 700;
+}
+
+body.dark-theme h1,
+body.dark-theme h2,
+body.dark-theme h3,
+body.dark-theme h4,
+body.dark-theme h5,
+body.dark-theme h6 {
     color: var(--gold-bright) !important;
     text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
 }
 
 .text-muted {
+    color: #6c757d !important;
+}
+
+body.dark-theme .text-muted {
     color: rgba(240, 248, 255, 0.7) !important;
 }
 
 a {
-    color: var(--christmas-green-bright);
+    color: var(--christmas-green-light);
     transition: all 0.3s ease;
 }
 
+body.dark-theme a {
+    color: var(--christmas-green-bright);
+}
+
 a:hover {
+    color: var(--christmas-green);
+    text-decoration: underline;
+}
+
+body.dark-theme a:hover {
     color: var(--gold-bright);
     text-shadow: 0 0 10px rgba(212, 175, 55, 0.5);
 }
