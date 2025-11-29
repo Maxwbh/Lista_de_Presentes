@@ -306,8 +306,8 @@ def meus_presentes_view(request):
     presentes_ativos = presentes_list.filter(status='ATIVO').count()
     presentes_comprados = presentes_list.filter(status='COMPRADO').count()
 
-    # Paginação (20 presentes por página)
-    paginator = Paginator(presentes_list, 20)
+    # Paginação (40 presentes por página)
+    paginator = Paginator(presentes_list, 40)
     page = request.GET.get('page', 1)
 
     try:
@@ -658,8 +658,8 @@ def lista_usuarios_view(request):
     ordem_final = mapeamento_ordenacao.get(ordenar_por, '-data_cadastro')
     todos_presentes = todos_presentes.order_by(ordem_final)
 
-    # Paginação (20 usuários por página)
-    paginator = Paginator(usuarios_com_stats, 20)
+    # Paginação (40 usuários por página)
+    paginator = Paginator(usuarios_com_stats, 40)
     page = request.GET.get('page', 1)
 
     try:
@@ -689,8 +689,8 @@ def presentes_usuario_view(request, user_id):
     presentes_ativos = presentes_list.filter(status='ATIVO').count()
     presentes_comprados = presentes_list.filter(status='COMPRADO').count()
 
-    # Paginação (20 presentes por página)
-    paginator = Paginator(presentes_list, 20)
+    # Paginação (40 presentes por página)
+    paginator = Paginator(presentes_list, 4)
     page = request.GET.get('page', 1)
 
     try:
