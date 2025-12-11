@@ -5,6 +5,43 @@ Todas as mudanças notáveis neste projeto serão documentadas neste arquivo.
 O formato é baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/),
 e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
+## [1.0.5] - 2025-11-29
+
+### Corrigido - CRÍTICO
+- 🔴 Contraste de campos de formulário no tema claro (ILEGÍVEIS antes desta correção)
+- 📝 `.form-control` e `.form-select` agora usam fundo branco (0.8 opacity) com texto escuro
+- 📝 Placeholders com cor cinza adequada (rgba(108, 117, 125, 0.7))
+- 🏷️ Labels (`.form-label`) com cor escura (#2c3e50) e negrito - eliminado text-shadow
+- 💬 Modais (`.modal-content`, `.modal-body`) com texto escuro no tema claro
+- 💬 `.modal-header` e `.modal-footer` com backgrounds verdes claros
+- ⚠️ Alerts com backgrounds opacos (0.95) e cores escuras no tema claro
+  - success: #155724 em fundo verde claro
+  - danger: #721c24 em fundo vermelho claro
+  - info: #0c5460 em fundo azul claro
+  - warning: #856404 em fundo amarelo claro
+
+### Alterado
+- 🎨 Todos os elementos de formulário agora diferenciam tema claro vs escuro
+- 🎨 Forms no claro: background branco opaco, bordas verdes, texto escuro
+- 🎨 Forms no escuro: background translúcido, bordas douradas, texto claro
+- 🎨 Modais no claro: background quase opaco (0.95), texto escuro
+- 🎨 Modais no escuro: background translúcido, texto claro (mantido)
+- ⚠️ Alerts com font-weight 500 para melhor legibilidade
+
+### Acessibilidade
+- ✅ Razão de contraste WCAG AAA alcançada em campos de formulário
+- ✅ Labels totalmente legíveis sem sombras
+- ✅ Placeholders com contraste adequado
+- ✅ Modais completamente legíveis
+- ✅ Alerts com alto contraste
+
+### Problema Reportado
+**Usuário**: "O contraste dos campos de digitação está ilegível, tudo com tom branco sem contraste para leitura. (Opcional) label com sombra, difícil leitura"
+
+**Causa**: Estilos de formulário estavam configurados apenas para tema escuro (texto branco em todos os temas)
+
+**Solução**: Separação completa de estilos por tema com alto contraste
+
 ## [1.0.4] - 2025-11-29
 
 ### Corrigido
