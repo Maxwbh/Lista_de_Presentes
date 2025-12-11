@@ -5,6 +5,137 @@ Todas as mudanças notáveis neste projeto serão documentadas neste arquivo.
 O formato é baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/),
 e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
+## [1.1.0] - 2025-12-11
+
+### NOVO RECURSO PRINCIPAL: Sistema de Grupos
+
+#### Funcionalidades Implementadas
+
+**1. Criacao e Gerenciamento de Grupos**
+- Qualquer usuario autenticado pode criar um novo grupo
+- Criador automaticamente se torna Mantenedor (administrador) do grupo
+- Grupos possuem: nome, descricao opcional, e imagem opcional
+- Cada grupo gera automaticamente um link de convite unico e permanente
+- Suporte a imagens de grupo via URL (mesmo sistema dos presentes)
+
+**2. Sistema de Convite**
+- Link de convite exclusivo por grupo (formato: /grupos/convite/{codigo}/)
+- Usuarios clicam no link e sao adicionados automaticamente ao grupo
+- Login obrigatorio antes de entrar no grupo (redirect automatico)
+- Verificacao para evitar duplicatas
+
+**3. Selecao de Grupo Ativo**
+- TODO usuario DEVE selecionar um "Grupo Ativo" para usar o aplicativo
+- Troca rapida de grupo a qualquer momento
+- Sistema lembra o ultimo grupo ativo do usuario
+- Bloqueio de acesso ao conteudo sem grupo ativo selecionado
+
+**4. Filtragem Global por Grupo - 100% DOS DADOS**
+- TODOS os dados sao filtrados pelo Grupo Ativo selecionado:
+  - Lista de usuarios (apenas membros do grupo)
+  - Presentes (do grupo ativo)
+  - Compras realizadas (do grupo)
+  - Notificacoes (do grupo)
+  - Sugestoes de precos (do grupo)
+  - Dashboard (estatisticas do grupo)
+- Impossivel visualizar ou interagir com dados de outros grupos
+
+**5. Gerenciamento de Membros**
+- Listar todos os membros do grupo
+- Remover membros (apenas mantenedores)
+- Promover/Rebaixar mantenedores (apenas mantenedores)
+- Usuarios podem sair do grupo voluntariamente
+- Protecao: ultimo mantenedor nao pode sair sem promover outro
+- Remocao automatica do grupo ativo se usuario for removido
+
+**6. Permissoes e Regras**
+- Mantenedor: pode editar grupo, gerenciar membros, ativar/desativar grupo
+- Membro comum: apenas visualizacao, sem permissoes de alteracao
+- Mantenedores podem promover outros membros a mantenedor
+- Grupos desativados nao aceitam novos membros
+
+### Adicionado
+
+#### Models (Database)
+- Grupo: nome, descricao, codigo_convite (unico), ativo, data_criacao, imagens
+- GrupoMembro: relacionamento grupo-usuario com permissoes (e_mantenedor)
+- Usuario.grupo_ativo: ForeignKey para Grupo (grupo atualmente selecionado)
+- Todos os models principais agora tem campo grupo:
+  - Presente.grupo
+  - Compra.grupo
+  - Notificacao.grupo
+  - SugestaoCompra.grupo
+- Indexes otimizados para queries por grupo
+
+#### Views
+- grupos_lista_view: Lista grupos do usuario e permite selecao
+- criar_grupo_view: Criacao de novos grupos
+- editar_grupo_view: Edicao de grupos (apenas mantenedores)
+- ativar_grupo_view: Define grupo ativo do usuario
+- gerenciar_membros_view: Gestao de membros do grupo
+- remover_membro_view: Remove membro do grupo
+- toggle_mantenedor_view: Alterna status de mantenedor
+- toggle_ativo_grupo_view: Ativa/desativa grupo
+- sair_grupo_view: Usuario sai do grupo
+- convite_grupo_view: Aceita convite via link
+- servir_imagem_grupo_view: Serve imagens dos grupos
+
+#### Decorator
+- @requer_grupo_ativo: Decorator que forca selecao de grupo ativo
+- Aplicado a TODAS as views principais do aplicativo
+- Redireciona para selecao de grupo se usuario nao tiver grupo ativo
+
+#### Forms
+- GrupoForm: Formulario para criacao/edicao de grupos
+
+#### Admin
+- GrupoAdmin: Interface admin para grupos
+- GrupoMembroAdmin: Interface admin para membros
+- UsuarioAdmin atualizado com campo grupo_ativo
+
+### Alterado
+
+#### Views Existentes - Filtragem por Grupo
+Todas as views principais foram atualizadas para filtrar por grupo ativo:
+- dashboard_view, meus_presentes_view, adicionar_presente_view
+- editar_presente_view, deletar_presente_view, buscar_sugestoes_ia_view
+- ver_sugestoes_view, lista_usuarios_view (APENAS membros do grupo ativo)
+- presentes_usuario_view, marcar_comprado_view, notificacoes_view
+- notificacoes_nao_lidas_json
+
+#### Services
+- IAService.buscar_sugestoes_reais: Sugestoes agora incluem grupo
+- Todas as criacoes de SugestaoCompra agora incluem o campo grupo
+
+### Seguranca
+- Isolamento completo de dados entre grupos
+- Verificacao de permissoes em todas as operacoes
+- Impossivel acessar dados de grupos aos quais o usuario nao pertence
+- Mantenedores nao podem se auto-remover se forem os ultimos
+- Links de convite unicos e permanentes (secrets.token_urlsafe)
+
+### Banco de Dados
+- 3 novas tabelas: Grupo, GrupoMembro, e campo grupo_ativo em Usuario
+- 4 campos grupo adicionados: Presente, Compra, Notificacao, SugestaoCompra
+- Multiplos indexes criados para otimizacao de queries
+- MIGRACAO NECESSARIA: Execute `python manage.py makemigrations` e `python manage.py migrate`
+
+### Performance
+- Queries otimizadas com select_related e prefetch_related
+- Indexes em todos os campos grupo para filtragem rapida
+- Uso de select_for_update em operacoes criticas (compra de presentes)
+
+### BREAKING CHANGES
+- Dados existentes: Presentes, Compras, Notificacoes e Sugestoes existentes terao grupo=NULL apos migracao
+- Usuarios: Precisarao criar ou entrar em um grupo para continuar usando o aplicativo
+- Acesso obrigatorio: Todas as views principais agora requerem grupo ativo
+
+### Migration Path
+1. Executar migrations: `python manage.py makemigrations && python manage.py migrate`
+2. Criar um grupo padrao (opcional): via admin ou interface
+3. Associar dados existentes a um grupo (via admin ou script de migracao)
+4. Usuarios devem criar/entrar em grupos na proxima visita
+
 ## [1.0.5] - 2025-11-29
 
 ### Corrigido - CRÍTICO

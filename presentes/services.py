@@ -353,6 +353,7 @@ class IAService:
                 logger.info(f"Salvando sugestão: loja='{loja_completo}', url='{url}', preco={preco}")
 
                 SugestaoCompra.objects.create(
+                    grupo=presente.grupo,
                     presente=presente,
                     local_compra=loja_completo,
                     url_compra=url,
@@ -506,6 +507,7 @@ class IAService:
                 continue
 
             SugestaoCompra.objects.create(
+                grupo=presente.grupo,
                 presente=presente,
                 local_compra=loja,
                 url_compra=url,

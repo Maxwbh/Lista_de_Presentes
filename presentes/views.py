@@ -10,19 +10,34 @@ from django.core.mail import send_mail
 from django.conf import settings
 from django.utils import timezone
 from django.contrib.auth.hashers import make_password
-from .models import Usuario, Presente, Compra, Notificacao, SugestaoCompra
-from .forms import UsuarioRegistroForm, PresenteForm, LoginForm
+from .models import Usuario, Presente, Compra, Notificacao, SugestaoCompra, Grupo, GrupoMembro
+from .forms import UsuarioRegistroForm, PresenteForm, LoginForm, GrupoForm
 from .services import IAService
 import base64
 import logging
 import secrets
 import hashlib
 from datetime import timedelta
+from functools import wraps
 
 logger = logging.getLogger(__name__)
 
 # Dicionário para armazenar tokens de recuperação de senha (em produção, usar banco de dados)
 password_reset_tokens = {}
+
+def requer_grupo_ativo(view_func):
+    """
+    Decorator que verifica se o usuario tem um grupo ativo.
+    Se nao tiver, redireciona para a pagina de selecao de grupo.
+    """
+    @wraps(view_func)
+    @login_required
+    def wrapper(request, *args, **kwargs):
+        if not request.user.grupo_ativo:
+            messages.warning(request, 'Selecione ou crie um grupo para continuar.')
+            return redirect('grupos_lista')
+        return view_func(request, *args, **kwargs)
+    return wrapper
 
 def converter_imagem_para_base64(imagem_file):
     """Converte um arquivo de imagem para base64"""
@@ -268,26 +283,33 @@ def redefinir_senha_view(request, token):
         'token_valido': True
     })
 
-@login_required
+@requer_grupo_ativo
 def dashboard_view(request):
-    # Total de usuários
-    total_usuarios = Usuario.objects.filter(ativo=True).count()
-    
-    # Meus presentes ativos
+    grupo_ativo = request.user.grupo_ativo
+
+    # Total de usuários do grupo
+    total_usuarios = GrupoMembro.objects.filter(grupo=grupo_ativo).count()
+
+    # Meus presentes ativos no grupo
     meus_presentes_ativos = Presente.objects.filter(
+        grupo=grupo_ativo,
         usuario=request.user,
         status='ATIVO'
     ).count()
-    
-    # Total de presentes não comprados (todos os usuários)
-    presentes_nao_comprados = Presente.objects.filter(status='ATIVO').count()
-    
-    # Notificações não lidas
+
+    # Total de presentes não comprados no grupo (todos os usuários)
+    presentes_nao_comprados = Presente.objects.filter(
+        grupo=grupo_ativo,
+        status='ATIVO'
+    ).count()
+
+    # Notificações não lidas do grupo
     notificacoes_nao_lidas = Notificacao.objects.filter(
+        grupo=grupo_ativo,
         usuario=request.user,
         lida=False
     ).count()
-    
+
     context = {
         'total_usuarios': total_usuarios,
         'meus_presentes_ativos': meus_presentes_ativos,
@@ -296,10 +318,15 @@ def dashboard_view(request):
     }
     return render(request, 'presentes/dashboard.html', context)
 
-@login_required
+@requer_grupo_ativo
 def meus_presentes_view(request):
-    # Otimizar query com select_related para evitar N+1
-    presentes_list = Presente.objects.filter(usuario=request.user).select_related('usuario').prefetch_related('sugestoes')
+    grupo_ativo = request.user.grupo_ativo
+
+    # Otimizar query com select_related para evitar N+1 - FILTRADO POR GRUPO
+    presentes_list = Presente.objects.filter(
+        grupo=grupo_ativo,
+        usuario=request.user
+    ).select_related('usuario').prefetch_related('sugestoes')
 
     # Estatísticas
     total_presentes = presentes_list.count()
@@ -326,13 +353,14 @@ def meus_presentes_view(request):
 
     return render(request, 'presentes/meus_presentes.html', context)
 
-@login_required
+@requer_grupo_ativo
 def adicionar_presente_view(request):
     if request.method == 'POST':
         form = PresenteForm(request.POST, request.FILES)
         if form.is_valid():
             presente = form.save(commit=False)
             presente.usuario = request.user
+            presente.grupo = request.user.grupo_ativo  # Definir grupo automaticamente
 
             # Converter imagem para base64 se foi enviada via upload
             if 'imagem' in request.FILES:
@@ -388,9 +416,10 @@ def adicionar_presente_view(request):
         form = PresenteForm()
     return render(request, 'presentes/adicionar_presente.html', {'form': form})
 
-@login_required
+@requer_grupo_ativo
 def editar_presente_view(request, pk):
-    presente = get_object_or_404(Presente, pk=pk, usuario=request.user)
+    grupo_ativo = request.user.grupo_ativo
+    presente = get_object_or_404(Presente, pk=pk, grupo=grupo_ativo, usuario=request.user)
     if request.method == 'POST':
         form = PresenteForm(request.POST, request.FILES, instance=presente)
         if form.is_valid():
@@ -430,9 +459,10 @@ def editar_presente_view(request, pk):
         form = PresenteForm(instance=presente)
     return render(request, 'presentes/editar_presente.html', {'form': form, 'presente': presente})
 
-@login_required
+@requer_grupo_ativo
 def deletar_presente_view(request, pk):
-    presente = get_object_or_404(Presente, pk=pk, usuario=request.user)
+    grupo_ativo = request.user.grupo_ativo
+    presente = get_object_or_404(Presente, pk=pk, grupo=grupo_ativo, usuario=request.user)
     if request.method == 'POST':
         presente.delete()
         messages.success(request, 'Presente excluído com sucesso!')
@@ -460,9 +490,10 @@ def servir_imagem_view(request, pk):
         logger.error(f"Erro ao servir imagem do presente {pk}: {str(e)}")
         return HttpResponse('Erro ao carregar imagem', status=500)
 
-@login_required
+@requer_grupo_ativo
 def buscar_sugestoes_ia_view(request, pk):
-    presente = get_object_or_404(Presente, pk=pk, usuario=request.user)
+    grupo_ativo = request.user.grupo_ativo
+    presente = get_object_or_404(Presente, pk=pk, grupo=grupo_ativo, usuario=request.user)
 
     # Escolher qual IA usar (pode ser configurável)
     ia_escolhida = request.GET.get('ia', 'claude')  # claude, chatgpt, gemini
@@ -491,13 +522,23 @@ def buscar_sugestoes_ia_view(request, pk):
 
     return redirect('ver_sugestoes', pk=pk)
 
-@login_required
+@requer_grupo_ativo
 def ver_sugestoes_view(request, pk):
-    # Otimizar query com select_related
-    presente = get_object_or_404(Presente.objects.select_related('usuario'), pk=pk, usuario=request.user)
+    grupo_ativo = request.user.grupo_ativo
 
-    # Sugestões já vem ordenadas por preço (definido no model)
-    sugestoes = SugestaoCompra.objects.filter(presente=presente).select_related('presente')
+    # Otimizar query com select_related - FILTRADO POR GRUPO
+    presente = get_object_or_404(
+        Presente.objects.select_related('usuario'),
+        pk=pk,
+        grupo=grupo_ativo,
+        usuario=request.user
+    )
+
+    # Sugestões já vem ordenadas por preço (definido no model) - FILTRADAS POR GRUPO
+    sugestoes = SugestaoCompra.objects.filter(
+        grupo=grupo_ativo,
+        presente=presente
+    ).select_related('presente')
 
     # Debug: Log das sugestões carregadas
     logger.info(f"Ver sugestões para presente {pk}: {sugestoes.count()} sugestões encontradas")
@@ -584,33 +625,44 @@ def atualizar_todos_precos_view(request):
     # Se não for POST, redirecionar para meus presentes
     return redirect('meus_presentes')
 
-@login_required
+@requer_grupo_ativo
 def lista_usuarios_view(request):
     from django.db.models import Min, Q
+
+    grupo_ativo = request.user.grupo_ativo
 
     # Pegar parâmetros de filtro e ordenação
     ordenar_por = request.GET.get('ordenar', '-data_cadastro')
     preco_min = request.GET.get('preco_min', '')
     preco_max = request.GET.get('preco_max', '')
 
-    # Otimizar query com prefetch_related para pegar presentes e sugestões
-    usuarios_list = Usuario.objects.filter(ativo=True).exclude(id=request.user.id).prefetch_related(
+    # Otimizar query - PEGAR APENAS MEMBROS DO GRUPO ATIVO
+    membros_grupo = GrupoMembro.objects.filter(grupo=grupo_ativo).select_related('usuario')
+    usuarios_ids = membros_grupo.values_list('usuario_id', flat=True)
+
+    usuarios_list = Usuario.objects.filter(
+        id__in=usuarios_ids,
+        ativo=True
+    ).exclude(id=request.user.id).prefetch_related(
         'presentes',
         'presentes__sugestoes'
     )
 
-    # Adicionar estatísticas para cada usuário
+    # Adicionar estatísticas para cada usuário - APENAS PRESENTES DO GRUPO
     usuarios_com_stats = []
     for usuario in usuarios_list:
-        usuario.total_presentes = usuario.presentes.count()
-        usuario.presentes_ativos = usuario.presentes.filter(status='ATIVO').count()
-        usuario.presentes_comprados = usuario.presentes.filter(status='COMPRADO').count()
+        # Filtrar presentes pelo grupo ativo
+        presentes_grupo = usuario.presentes.filter(grupo=grupo_ativo)
+        usuario.total_presentes = presentes_grupo.count()
+        usuario.presentes_ativos = presentes_grupo.filter(status='ATIVO').count()
+        usuario.presentes_comprados = presentes_grupo.filter(status='COMPRADO').count()
         # Adicionar presentes com sugestões como atributo
-        usuario.presentes_list = usuario.presentes.filter(status='ATIVO').order_by('-data_cadastro')[:6]
+        usuario.presentes_list = presentes_grupo.filter(status='ATIVO').order_by('-data_cadastro')[:6]
         usuarios_com_stats.append(usuario)
 
-    # Buscar todos os presentes ativos de outros usuários (para visualização por produto)
+    # Buscar todos os presentes ativos de outros usuários DO GRUPO (para visualização por produto)
     todos_presentes = Presente.objects.filter(
+        grupo=grupo_ativo,
         usuario__ativo=True,
         status='ATIVO'
     ).exclude(
@@ -677,12 +729,21 @@ def lista_usuarios_view(request):
         'preco_max': preco_max,
     })
 
-@login_required
+@requer_grupo_ativo
 def presentes_usuario_view(request, user_id):
+    grupo_ativo = request.user.grupo_ativo
     usuario = get_object_or_404(Usuario, pk=user_id)
 
-    # Otimizar query com select_related e prefetch_related
-    presentes_list = Presente.objects.filter(usuario=usuario).select_related('usuario').prefetch_related('sugestoes', 'compra')
+    # Verificar se usuario e membro do grupo
+    if not GrupoMembro.objects.filter(grupo=grupo_ativo, usuario=usuario).exists():
+        messages.error(request, 'Usuario nao e membro do grupo ativo.')
+        return redirect('lista_usuarios')
+
+    # Otimizar query com select_related e prefetch_related - FILTRADO POR GRUPO
+    presentes_list = Presente.objects.filter(
+        grupo=grupo_ativo,
+        usuario=usuario
+    ).select_related('usuario').prefetch_related('sugestoes', 'compra')
 
     # Estatísticas
     total_presentes = presentes_list.count()
@@ -708,15 +769,17 @@ def presentes_usuario_view(request, user_id):
         'presentes_comprados': presentes_comprados,
     })
 
-@login_required
+@requer_grupo_ativo
 @transaction.atomic
 def marcar_comprado_view(request, pk):
+    grupo_ativo = request.user.grupo_ativo
+
     # Usar select_for_update para criar um lock no banco de dados
     # Isso previne race condition quando dois usuários tentam comprar o mesmo presente
     try:
-        presente = Presente.objects.select_for_update().get(pk=pk)
+        presente = Presente.objects.select_for_update().get(pk=pk, grupo=grupo_ativo)
     except Presente.DoesNotExist:
-        messages.error(request, 'Presente não encontrado!')
+        messages.error(request, 'Presente não encontrado neste grupo!')
         return redirect('lista_usuarios')
 
     # Não pode comprar seu próprio presente
@@ -743,12 +806,14 @@ def marcar_comprado_view(request, pk):
 
     # Registrar compra
     Compra.objects.create(
+        grupo=grupo_ativo,
         presente=presente,
         comprador=request.user
     )
 
     # Criar notificação
     Notificacao.objects.create(
+        grupo=grupo_ativo,
         usuario=presente.usuario,
         mensagem=f'🎁 Um dos seus presentes foi comprado: {presente.descricao[:50]}!'
     )
@@ -761,10 +826,15 @@ def marcar_comprado_view(request, pk):
         return redirect('lista_usuarios')
     return redirect('presentes_usuario', user_id=presente.usuario.id)
 
-@login_required
+@requer_grupo_ativo
 def notificacoes_view(request):
-    # Otimizar query com select_related
-    notificacoes_list = Notificacao.objects.filter(usuario=request.user).select_related('usuario').order_by('-data_notificacao')
+    grupo_ativo = request.user.grupo_ativo
+
+    # Otimizar query com select_related - FILTRADO POR GRUPO
+    notificacoes_list = Notificacao.objects.filter(
+        grupo=grupo_ativo,
+        usuario=request.user
+    ).select_related('usuario').order_by('-data_notificacao')
 
     # Contar notificações não lidas antes de marcar como lidas
     total_nao_lidas = notificacoes_list.filter(lida=False).count()
@@ -790,12 +860,20 @@ def notificacoes_view(request):
         'total_lidas': total_lidas,
     })
 
-@login_required
+@requer_grupo_ativo
 def notificacoes_nao_lidas_json(request):
     """API para buscar notificações não lidas"""
-    count = Notificacao.objects.filter(usuario=request.user, lida=False).count()
+    grupo_ativo = request.user.grupo_ativo
+
+    count = Notificacao.objects.filter(
+        grupo=grupo_ativo,
+        usuario=request.user,
+        lida=False
+    ).count()
+
     notificacoes = Notificacao.objects.filter(
-        usuario=request.user, 
+        grupo=grupo_ativo,
+        usuario=request.user,
         lida=False
     ).values('id', 'mensagem', 'data_notificacao')[:5]
     
@@ -914,3 +992,330 @@ def gerar_dados_teste_view(request):
         'presentes_ativos': presentes_ativos,
         'presentes_comprados': presentes_comprados,
     })
+
+
+# =====================================================================
+# VIEWS DE GRUPOS
+# =====================================================================
+
+@login_required
+def grupos_lista_view(request):
+    """
+    Lista todos os grupos do usuario.
+    Permite selecionar grupo ativo.
+    """
+    grupos = request.user.get_grupos()
+    grupo_ativo = request.user.grupo_ativo
+
+    # Se usuario nao tem grupos, redirecionar para criar
+    if not grupos.exists():
+        messages.info(request, 'Voce ainda nao faz parte de nenhum grupo. Crie ou junte-se a um!')
+        return redirect('criar_grupo')
+
+    context = {
+        'grupos': grupos,
+        'grupo_ativo': grupo_ativo,
+    }
+    return render(request, 'presentes/grupos/lista.html', context)
+
+
+@login_required
+def criar_grupo_view(request):
+    """Cria um novo grupo e adiciona o usuario como mantenedor"""
+    if request.method == 'POST':
+        form = GrupoForm(request.POST)
+        if form.is_valid():
+            try:
+                with transaction.atomic():
+                    # Criar grupo
+                    grupo = form.save()
+
+                    # Processar imagem se URL fornecida
+                    url_imagem = request.POST.get('url_imagem', '').strip()
+                    if url_imagem:
+                        imagem_base64, imagem_nome, imagem_tipo = baixar_imagem_da_url(url_imagem)
+                        if imagem_base64:
+                            grupo.imagem_base64 = imagem_base64
+                            grupo.imagem_nome = imagem_nome
+                            grupo.imagem_tipo = imagem_tipo
+                            grupo.save()
+
+                    # Adicionar usuario como mantenedor
+                    GrupoMembro.objects.create(
+                        grupo=grupo,
+                        usuario=request.user,
+                        e_mantenedor=True
+                    )
+
+                    # Definir como grupo ativo
+                    request.user.grupo_ativo = grupo
+                    request.user.save()
+
+                    messages.success(request, f'Grupo "{grupo.nome}" criado com sucesso!')
+                    logger.info(f"Grupo {grupo.id} criado por {request.user.email}")
+                    return redirect('grupos_lista')
+
+            except Exception as e:
+                logger.error(f"Erro ao criar grupo: {str(e)}")
+                messages.error(request, f'Erro ao criar grupo: {str(e)}')
+    else:
+        form = GrupoForm()
+
+    return render(request, 'presentes/grupos/criar.html', {'form': form})
+
+
+@login_required
+def editar_grupo_view(request, pk):
+    """Edita informacoes do grupo (apenas mantenedores)"""
+    grupo = get_object_or_404(Grupo, pk=pk)
+
+    # Verificar se usuario e mantenedor
+    if not GrupoMembro.objects.filter(grupo=grupo, usuario=request.user, e_mantenedor=True).exists():
+        messages.error(request, 'Apenas mantenedores podem editar o grupo.')
+        return redirect('grupos_lista')
+
+    if request.method == 'POST':
+        form = GrupoForm(request.POST, instance=grupo)
+        if form.is_valid():
+            grupo = form.save()
+
+            # Processar imagem se URL fornecida
+            url_imagem = request.POST.get('url_imagem', '').strip()
+            if url_imagem:
+                imagem_base64, imagem_nome, imagem_tipo = baixar_imagem_da_url(url_imagem)
+                if imagem_base64:
+                    grupo.imagem_base64 = imagem_base64
+                    grupo.imagem_nome = imagem_nome
+                    grupo.imagem_tipo = imagem_tipo
+                    grupo.save()
+
+            messages.success(request, f'Grupo "{grupo.nome}" atualizado com sucesso!')
+            logger.info(f"Grupo {grupo.id} editado por {request.user.email}")
+            return redirect('gerenciar_membros', pk=grupo.pk)
+    else:
+        form = GrupoForm(instance=grupo)
+
+    context = {
+        'form': form,
+        'grupo': grupo,
+    }
+    return render(request, 'presentes/grupos/editar.html', context)
+
+
+@login_required
+def ativar_grupo_view(request, pk):
+    """Define o grupo ativo do usuario"""
+    grupo = get_object_or_404(Grupo, pk=pk)
+
+    # Verificar se usuario e membro
+    if not GrupoMembro.objects.filter(grupo=grupo, usuario=request.user).exists():
+        messages.error(request, 'Voce nao e membro deste grupo.')
+        return redirect('grupos_lista')
+
+    # Verificar se grupo esta ativo
+    if not grupo.ativo:
+        messages.error(request, 'Este grupo esta desativado.')
+        return redirect('grupos_lista')
+
+    # Definir como grupo ativo
+    request.user.grupo_ativo = grupo
+    request.user.save()
+
+    messages.success(request, f'Grupo "{grupo.nome}" ativado!')
+    logger.info(f"Usuario {request.user.email} ativou grupo {grupo.id}")
+
+    # Redirecionar para dashboard ou de onde veio
+    next_url = request.GET.get('next', 'dashboard')
+    return redirect(next_url)
+
+
+@login_required
+def gerenciar_membros_view(request, pk):
+    """Gerencia membros do grupo (apenas mantenedores)"""
+    grupo = get_object_or_404(Grupo, pk=pk)
+
+    # Verificar se usuario e mantenedor
+    e_mantenedor = GrupoMembro.objects.filter(
+        grupo=grupo,
+        usuario=request.user,
+        e_mantenedor=True
+    ).exists()
+
+    if not e_mantenedor:
+        messages.error(request, 'Apenas mantenedores podem gerenciar membros.')
+        return redirect('grupos_lista')
+
+    # Listar membros
+    membros = grupo.membros.select_related('usuario').all()
+    link_convite = grupo.get_link_convite()
+
+    context = {
+        'grupo': grupo,
+        'membros': membros,
+        'link_convite': link_convite,
+        'e_mantenedor': e_mantenedor,
+    }
+    return render(request, 'presentes/grupos/membros.html', context)
+
+
+@login_required
+def remover_membro_view(request, pk, user_id):
+    """Remove um membro do grupo (apenas mantenedores)"""
+    grupo = get_object_or_404(Grupo, pk=pk)
+    usuario_remover = get_object_or_404(Usuario, pk=user_id)
+
+    # Verificar se usuario e mantenedor
+    if not GrupoMembro.objects.filter(grupo=grupo, usuario=request.user, e_mantenedor=True).exists():
+        messages.error(request, 'Apenas mantenedores podem remover membros.')
+        return redirect('grupos_lista')
+
+    # Nao pode remover a si mesmo
+    if usuario_remover == request.user:
+        messages.error(request, 'Voce nao pode remover a si mesmo. Use a opcao de sair do grupo.')
+        return redirect('gerenciar_membros', pk=pk)
+
+    try:
+        membro = GrupoMembro.objects.get(grupo=grupo, usuario=usuario_remover)
+        membro.delete()
+
+        # Se o usuario removido tinha esse grupo como ativo, limpar
+        if usuario_remover.grupo_ativo == grupo:
+            usuario_remover.grupo_ativo = None
+            usuario_remover.save()
+
+        messages.success(request, f'Usuario {usuario_remover} removido do grupo.')
+        logger.info(f"Usuario {usuario_remover.email} removido do grupo {grupo.id} por {request.user.email}")
+    except GrupoMembro.DoesNotExist:
+        messages.error(request, 'Usuario nao e membro deste grupo.')
+
+    return redirect('gerenciar_membros', pk=pk)
+
+
+@login_required
+def toggle_mantenedor_view(request, pk, user_id):
+    """Alterna status de mantenedor de um membro (apenas mantenedores)"""
+    grupo = get_object_or_404(Grupo, pk=pk)
+    usuario_alvo = get_object_or_404(Usuario, pk=user_id)
+
+    # Verificar se usuario e mantenedor
+    if not GrupoMembro.objects.filter(grupo=grupo, usuario=request.user, e_mantenedor=True).exists():
+        messages.error(request, 'Apenas mantenedores podem alterar permissoes.')
+        return redirect('grupos_lista')
+
+    try:
+        membro = GrupoMembro.objects.get(grupo=grupo, usuario=usuario_alvo)
+
+        # Alternar status
+        membro.e_mantenedor = not membro.e_mantenedor
+        membro.save()
+
+        status = "mantenedor" if membro.e_mantenedor else "membro comum"
+        messages.success(request, f'Usuario {usuario_alvo} agora e {status}.')
+        logger.info(f"Usuario {usuario_alvo.email} agora e {status} do grupo {grupo.id}")
+    except GrupoMembro.DoesNotExist:
+        messages.error(request, 'Usuario nao e membro deste grupo.')
+
+    return redirect('gerenciar_membros', pk=pk)
+
+
+@login_required
+def toggle_ativo_grupo_view(request, pk):
+    """Ativa/Desativa um grupo (apenas mantenedores)"""
+    grupo = get_object_or_404(Grupo, pk=pk)
+
+    # Verificar se usuario e mantenedor
+    if not GrupoMembro.objects.filter(grupo=grupo, usuario=request.user, e_mantenedor=True).exists():
+        messages.error(request, 'Apenas mantenedores podem ativar/desativar o grupo.')
+        return redirect('grupos_lista')
+
+    # Alternar status
+    grupo.ativo = not grupo.ativo
+    grupo.save()
+
+    status = "ativado" if grupo.ativo else "desativado"
+    messages.success(request, f'Grupo "{grupo.nome}" {status}.')
+    logger.info(f"Grupo {grupo.id} {status} por {request.user.email}")
+
+    return redirect('gerenciar_membros', pk=pk)
+
+
+@login_required
+def sair_grupo_view(request, pk):
+    """Usuario sai do grupo"""
+    grupo = get_object_or_404(Grupo, pk=pk)
+
+    try:
+        membro = GrupoMembro.objects.get(grupo=grupo, usuario=request.user)
+
+        # Verificar se e o ultimo mantenedor
+        if membro.e_mantenedor:
+            mantenedores_count = GrupoMembro.objects.filter(grupo=grupo, e_mantenedor=True).count()
+            if mantenedores_count == 1:
+                messages.error(request, 'Voce e o ultimo mantenedor. Promova outro membro antes de sair.')
+                return redirect('gerenciar_membros', pk=pk)
+
+        membro.delete()
+
+        # Limpar grupo ativo se for este
+        if request.user.grupo_ativo == grupo:
+            request.user.grupo_ativo = None
+            request.user.save()
+
+        messages.success(request, f'Voce saiu do grupo "{grupo.nome}".')
+        logger.info(f"Usuario {request.user.email} saiu do grupo {grupo.id}")
+    except GrupoMembro.DoesNotExist:
+        messages.error(request, 'Voce nao e membro deste grupo.')
+
+    return redirect('grupos_lista')
+
+
+@login_required
+def convite_grupo_view(request, codigo):
+    """Aceita convite para entrar em um grupo"""
+    grupo = get_object_or_404(Grupo, codigo_convite=codigo)
+
+    # Verificar se grupo esta ativo
+    if not grupo.ativo:
+        messages.error(request, 'Este grupo esta desativado.')
+        return redirect('grupos_lista')
+
+    # Verificar se ja e membro
+    if GrupoMembro.objects.filter(grupo=grupo, usuario=request.user).exists():
+        messages.info(request, f'Voce ja e membro do grupo "{grupo.nome}".')
+        return redirect('grupos_lista')
+
+    # Adicionar como membro
+    GrupoMembro.objects.create(
+        grupo=grupo,
+        usuario=request.user,
+        e_mantenedor=False
+    )
+
+    # Se usuario nao tem grupo ativo, definir este
+    if not request.user.grupo_ativo:
+        request.user.grupo_ativo = grupo
+        request.user.save()
+
+    messages.success(request, f'Bem-vindo ao grupo "{grupo.nome}"!')
+    logger.info(f"Usuario {request.user.email} entrou no grupo {grupo.id} via convite")
+
+    return redirect('grupos_lista')
+
+
+def servir_imagem_grupo_view(request, pk):
+    """Serve a imagem do grupo em base64"""
+    grupo = get_object_or_404(Grupo, pk=pk)
+
+    if not grupo.imagem_base64:
+        return HttpResponse('Sem imagem', status=404)
+
+    try:
+        # Decodificar base64
+        imagem_data = base64.b64decode(grupo.imagem_base64)
+
+        # Retornar imagem com content-type correto
+        content_type = grupo.imagem_tipo or 'image/jpeg'
+        return HttpResponse(imagem_data, content_type=content_type)
+    except Exception as e:
+        logger.error(f"Erro ao servir imagem do grupo {pk}: {str(e)}")
+        return HttpResponse('Erro ao carregar imagem', status=500)
