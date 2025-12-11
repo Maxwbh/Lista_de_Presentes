@@ -38,4 +38,17 @@ urlpatterns = [
 
     # API para extrair informações de produto via URL
     path('api/extrair-info-produto/', views.extrair_info_produto_view, name='extrair_info_produto'),
+
+    # Grupos
+    path('grupos/', views.grupos_lista_view, name='grupos_lista'),
+    path('grupos/criar/', views.criar_grupo_view, name='criar_grupo'),
+    path('grupos/editar/<int:pk>/', views.editar_grupo_view, name='editar_grupo'),
+    path('grupos/ativar/<int:pk>/', views.ativar_grupo_view, name='ativar_grupo'),
+    path('grupos/<int:pk>/membros/', views.gerenciar_membros_view, name='gerenciar_membros'),
+    path('grupos/<int:pk>/membros/remover/<int:user_id>/', views.remover_membro_view, name='remover_membro'),
+    path('grupos/<int:pk>/membros/toggle-mantenedor/<int:user_id>/', views.toggle_mantenedor_view, name='toggle_mantenedor'),
+    path('grupos/<int:pk>/toggle-ativo/', views.toggle_ativo_grupo_view, name='toggle_ativo_grupo'),
+    path('grupos/<int:pk>/sair/', views.sair_grupo_view, name='sair_grupo'),
+    path('grupos/convite/<str:codigo>/', views.convite_grupo_view, name='convite_grupo'),
+    path('grupo/<int:pk>/imagem/', views.servir_imagem_grupo_view, name='servir_imagem_grupo'),
 ]

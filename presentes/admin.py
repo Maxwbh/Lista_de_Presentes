@@ -1,19 +1,19 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
-from .models import Usuario, Presente, Compra, SugestaoCompra, Notificacao
+from .models import Usuario, Presente, Compra, SugestaoCompra, Notificacao, Grupo, GrupoMembro
 
 
 @admin.register(Usuario)
 class UsuarioAdmin(UserAdmin):
     """Admin customizado para o modelo Usuario"""
-    list_display = ['email', 'username', 'first_name', 'last_name', 'ativo', 'data_cadastro']
-    list_filter = ['ativo', 'is_staff', 'is_superuser', 'data_cadastro']
+    list_display = ['email', 'username', 'first_name', 'last_name', 'grupo_ativo', 'ativo', 'data_cadastro']
+    list_filter = ['ativo', 'grupo_ativo', 'is_staff', 'is_superuser', 'data_cadastro']
     search_fields = ['email', 'username', 'first_name', 'last_name']
     ordering = ['-data_cadastro']
 
     fieldsets = UserAdmin.fieldsets + (
         ('Informações Adicionais', {
-            'fields': ('telefone', 'ativo', 'data_cadastro')
+            'fields': ('telefone', 'ativo', 'grupo_ativo', 'data_cadastro')
         }),
     )
 
@@ -164,6 +164,57 @@ class NotificacaoAdmin(admin.ModelAdmin):
         queryset = super().get_queryset(request)
         # Otimizar query
         return queryset.select_related('usuario')
+
+
+@admin.register(Grupo)
+class GrupoAdmin(admin.ModelAdmin):
+    """Admin para gerenciar Grupos"""
+    list_display = ['nome', 'codigo_convite', 'ativo', 'total_membros', 'data_criacao']
+    list_filter = ['ativo', 'data_criacao']
+    search_fields = ['nome', 'descricao', 'codigo_convite']
+    ordering = ['-data_criacao']
+    date_hierarchy = 'data_criacao'
+
+    fieldsets = (
+        ('Informações do Grupo', {
+            'fields': ('nome', 'descricao', 'ativo')
+        }),
+        ('Convite', {
+            'fields': ('codigo_convite',)
+        }),
+        ('Metadata', {
+            'fields': ('data_criacao',),
+            'classes': ('collapse',)
+        }),
+    )
+
+    readonly_fields = ['codigo_convite', 'data_criacao']
+
+    def total_membros(self, obj):
+        """Mostrar total de membros do grupo"""
+        return obj.membros.count()
+    total_membros.short_description = 'Membros'
+
+    def get_queryset(self, request):
+        queryset = super().get_queryset(request)
+        return queryset.prefetch_related('membros')
+
+
+@admin.register(GrupoMembro)
+class GrupoMembroAdmin(admin.ModelAdmin):
+    """Admin para gerenciar Membros de Grupos"""
+    list_display = ['usuario', 'grupo', 'e_mantenedor', 'data_entrada']
+    list_filter = ['e_mantenedor', 'data_entrada', 'grupo']
+    search_fields = ['usuario__email', 'usuario__first_name', 'grupo__nome']
+    ordering = ['-data_entrada']
+    date_hierarchy = 'data_entrada'
+
+    fields = ['grupo', 'usuario', 'e_mantenedor', 'data_entrada']
+    readonly_fields = ['data_entrada']
+
+    def get_queryset(self, request):
+        queryset = super().get_queryset(request)
+        return queryset.select_related('grupo', 'usuario')
 
 
 # Customizar o site admin
