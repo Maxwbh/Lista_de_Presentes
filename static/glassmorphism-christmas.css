@@ -310,21 +310,52 @@ body.dark-theme .card-text {
    GLASSMORPHISM FORMS
    =================================== */
 
+/* Forms - Tema Claro */
 .form-control, .form-select {
-    background: rgba(255, 255, 255, 0.15) !important;
+    background: rgba(255, 255, 255, 0.8) !important;
     backdrop-filter: blur(10px);
-    border: 2px solid var(--glass-border) !important;
+    border: 2px solid rgba(45, 80, 22, 0.3) !important;
     border-radius: 12px;
-    color: var(--snow-white) !important;
+    color: #2c3e50 !important;
     padding: 0.75rem 1rem;
     transition: all 0.3s ease;
+    font-weight: 500;
 }
 
 .form-control::placeholder {
-    color: rgba(240, 248, 255, 0.6);
+    color: rgba(108, 117, 125, 0.7);
 }
 
 .form-control:focus, .form-select:focus {
+    background: rgba(255, 255, 255, 0.95) !important;
+    border-color: var(--christmas-green) !important;
+    box-shadow:
+        0 0 0 0.2rem rgba(45, 80, 22, 0.15),
+        inset 0 1px 0 rgba(255, 255, 255, 0.2);
+    color: #2c3e50 !important;
+}
+
+.form-label {
+    color: #2c3e50;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+    text-shadow: none;
+}
+
+/* Forms - Tema Escuro */
+body.dark-theme .form-control,
+body.dark-theme .form-select {
+    background: rgba(255, 255, 255, 0.15) !important;
+    border: 2px solid var(--glass-border) !important;
+    color: var(--snow-white) !important;
+}
+
+body.dark-theme .form-control::placeholder {
+    color: rgba(240, 248, 255, 0.6);
+}
+
+body.dark-theme .form-control:focus,
+body.dark-theme .form-select:focus {
     background: rgba(255, 255, 255, 0.2) !important;
     border-color: var(--gold) !important;
     box-shadow:
@@ -333,10 +364,8 @@ body.dark-theme .card-text {
     color: white !important;
 }
 
-.form-label {
+body.dark-theme .form-label {
     color: var(--gold-light);
-    font-weight: 600;
-    margin-bottom: 0.5rem;
     text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
 }
 
@@ -344,34 +373,66 @@ body.dark-theme .card-text {
    GLASSMORPHISM MODALS
    =================================== */
 
+/* Modals - Tema Claro */
 .modal-content {
-    background: var(--glass-bg) !important;
+    background: rgba(255, 255, 255, 0.95) !important;
     backdrop-filter: blur(25px) saturate(180%);
     -webkit-backdrop-filter: blur(25px) saturate(180%);
-    border: 2px solid var(--glass-border) !important;
+    border: 2px solid rgba(45, 80, 22, 0.3) !important;
     border-radius: 20px;
-    box-shadow: 0 15px 50px rgba(13, 61, 13, 0.5);
-    color: var(--snow-white);
+    box-shadow: 0 15px 50px rgba(13, 61, 13, 0.3);
+    color: #2c3e50;
 }
 
 .modal-header {
-    background: rgba(26, 92, 26, 0.3);
+    background: rgba(165, 214, 167, 0.5);
     backdrop-filter: blur(10px);
-    border-bottom: 1px solid var(--glass-border) !important;
+    border-bottom: 2px solid rgba(45, 80, 22, 0.2) !important;
     border-radius: 18px 18px 0 0;
-    color: var(--gold-bright);
+    color: var(--christmas-green);
 }
 
 .modal-title {
-    color: var(--gold-bright);
+    color: var(--christmas-green);
     font-weight: 700;
 }
 
 .modal-footer {
-    background: rgba(26, 92, 26, 0.2);
+    background: rgba(232, 245, 233, 0.5);
     backdrop-filter: blur(10px);
-    border-top: 1px solid var(--glass-border) !important;
+    border-top: 2px solid rgba(45, 80, 22, 0.2) !important;
     border-radius: 0 0 18px 18px;
+}
+
+.modal-body {
+    color: #2c3e50;
+}
+
+/* Modals - Tema Escuro */
+body.dark-theme .modal-content {
+    background: var(--glass-bg) !important;
+    border: 2px solid var(--glass-border) !important;
+    box-shadow: 0 15px 50px rgba(13, 61, 13, 0.5);
+    color: var(--snow-white);
+}
+
+body.dark-theme .modal-header {
+    background: rgba(26, 92, 26, 0.3);
+    border-bottom: 1px solid var(--glass-border) !important;
+    color: var(--gold-bright);
+}
+
+body.dark-theme .modal-title {
+    color: var(--gold-bright);
+}
+
+body.dark-theme .modal-footer {
+    background: rgba(26, 92, 26, 0.2);
+    border-top: 1px solid var(--glass-border) !important;
+}
+
+body.dark-theme .modal-body {
+    color: var(--snow-white);
 }
 
 /* ===================================
@@ -380,30 +441,57 @@ body.dark-theme .card-text {
 
 .alert {
     backdrop-filter: blur(15px);
-    border: 2px solid var(--glass-border);
+    border: 2px solid;
     border-radius: 15px;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    font-weight: 500;
 }
 
+/* Alerts - Tema Claro */
 .alert-success {
+    background: rgba(212, 237, 218, 0.95) !important;
+    color: #155724 !important;
+    border-color: #4a7c2c !important;
+}
+
+.alert-danger {
+    background: rgba(248, 215, 218, 0.95) !important;
+    color: #721c24 !important;
+    border-color: #c92a2a !important;
+}
+
+.alert-info {
+    background: rgba(209, 236, 241, 0.95) !important;
+    color: #0c5460 !important;
+    border-color: #3fa76f !important;
+}
+
+.alert-warning {
+    background: rgba(255, 243, 205, 0.95) !important;
+    color: #856404 !important;
+    border-color: #d4af37 !important;
+}
+
+/* Alerts - Tema Escuro */
+body.dark-theme .alert-success {
     background: rgba(109, 219, 147, 0.25) !important;
     color: var(--christmas-green-bright) !important;
     border-color: var(--christmas-green-bright) !important;
 }
 
-.alert-danger {
+body.dark-theme .alert-danger {
     background: rgba(201, 42, 42, 0.25) !important;
     color: #ff6b6b !important;
     border-color: var(--red-bright) !important;
 }
 
-.alert-info {
+body.dark-theme .alert-info {
     background: rgba(63, 167, 111, 0.25) !important;
     color: #7ae5a8 !important;
     border-color: var(--christmas-green-soft) !important;
 }
 
-.alert-warning {
+body.dark-theme .alert-warning {
     background: rgba(212, 175, 55, 0.25) !important;
     color: var(--gold-bright) !important;
     border-color: var(--gold) !important;
