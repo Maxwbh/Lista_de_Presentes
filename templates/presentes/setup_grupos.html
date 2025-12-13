@@ -1,0 +1,342 @@
+{% extends 'base.html' %}
+
+{% block title %}Setup de Grupos - Lista de Presentes{% endblock %}
+
+{% block extra_css %}
+<style>
+    .page-header {
+        background: linear-gradient(135deg, var(--christmas-green) 0%, var(--christmas-green-light) 100%);
+        color: white;
+        padding: 40px 0;
+        margin: -20px -15px 30px;
+        border-radius: 0 0 30px 30px;
+        text-align: center;
+    }
+
+    .stats-card {
+        background: white;
+        border-radius: 20px;
+        box-shadow: 0 5px 20px rgba(0,0,0,0.08);
+        padding: 30px;
+        margin-bottom: 30px;
+    }
+
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 20px;
+        margin-top: 20px;
+    }
+
+    .stat-item {
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        padding: 20px;
+        border-radius: 15px;
+        text-align: center;
+        border-left: 4px solid var(--christmas-green);
+    }
+
+    .stat-item.warning {
+        border-left-color: #ffc107;
+    }
+
+    .stat-item.success {
+        border-left-color: #28a745;
+    }
+
+    .stat-value {
+        font-size: 2.5rem;
+        font-weight: 800;
+        color: var(--christmas-green);
+        line-height: 1;
+    }
+
+    .stat-value.warning {
+        color: #ffc107;
+    }
+
+    .stat-value.success {
+        color: #28a745;
+    }
+
+    .stat-label {
+        font-size: 0.9rem;
+        color: #6c757d;
+        margin-top: 8px;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+
+    .action-card {
+        background: white;
+        border-radius: 20px;
+        box-shadow: 0 5px 20px rgba(0,0,0,0.08);
+        padding: 30px;
+        margin-bottom: 20px;
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    .action-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 30px rgba(0,0,0,0.12);
+    }
+
+    .action-header {
+        display: flex;
+        align-items: center;
+        margin-bottom: 15px;
+    }
+
+    .action-icon {
+        font-size: 2rem;
+        margin-right: 15px;
+    }
+
+    .action-title {
+        font-size: 1.3rem;
+        font-weight: 700;
+        color: var(--christmas-green);
+        margin: 0;
+    }
+
+    .action-description {
+        color: #6c757d;
+        margin-bottom: 20px;
+        line-height: 1.6;
+    }
+
+    .btn-action {
+        width: 100%;
+        padding: 15px;
+        font-size: 1.1rem;
+        font-weight: 600;
+        border-radius: 15px;
+        transition: all 0.3s ease;
+    }
+
+    .btn-setup-complete {
+        background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+        border: none;
+        color: white;
+    }
+
+    .btn-setup-complete:hover {
+        background: linear-gradient(135deg, #20c997 0%, #28a745 100%);
+        transform: scale(1.02);
+    }
+
+    .status-badge {
+        display: inline-block;
+        padding: 8px 15px;
+        border-radius: 20px;
+        font-weight: 600;
+        font-size: 0.9rem;
+        margin-top: 10px;
+    }
+
+    .status-badge.success {
+        background: #d4edda;
+        color: #155724;
+    }
+
+    .status-badge.warning {
+        background: #fff3cd;
+        color: #856404;
+    }
+
+    .status-badge.info {
+        background: #d1ecf1;
+        color: #0c5460;
+    }
+
+    .info-box {
+        background: #e7f3ff;
+        border-left: 4px solid #2196F3;
+        padding: 20px;
+        border-radius: 10px;
+        margin: 20px 0;
+    }
+
+    .info-box h5 {
+        color: #2196F3;
+        margin-top: 0;
+    }
+
+    .info-box ul {
+        margin-bottom: 0;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="container">
+        <h1 style="font-weight: 800; font-size: 2.5rem; margin: 0;">
+            🚀 Setup de Grupos
+        </h1>
+        <p style="margin: 10px 0 0; opacity: 0.9; font-size: 1.1rem;">
+            Configure o grupo "Natal Família Cruz e Credos 2025"
+        </p>
+    </div>
+</div>
+
+<div class="container">
+    <!-- Status do Sistema -->
+    <div class="stats-card">
+        <h3 style="color: var(--christmas-green); margin-bottom: 20px;">
+            📊 Status do Sistema
+        </h3>
+        
+        <div class="stats-grid">
+            <div class="stat-item">
+                <div class="stat-value">{{ total_usuarios }}</div>
+                <div class="stat-label">Usuários</div>
+            </div>
+            
+            <div class="stat-item {% if total_grupos > 0 %}success{% else %}warning{% endif %}">
+                <div class="stat-value {% if total_grupos > 0 %}success{% else %}warning{% endif %}">
+                    {{ total_grupos }}
+                </div>
+                <div class="stat-label">Grupos</div>
+            </div>
+            
+            <div class="stat-item">
+                <div class="stat-value">{{ total_presentes }}</div>
+                <div class="stat-label">Presentes</div>
+            </div>
+            
+            <div class="stat-item {% if presentes_sem_grupo == 0 %}success{% else %}warning{% endif %}">
+                <div class="stat-value {% if presentes_sem_grupo == 0 %}success{% else %}warning{% endif %}">
+                    {{ presentes_sem_grupo }}
+                </div>
+                <div class="stat-label">Sem Grupo</div>
+            </div>
+        </div>
+
+        {% if grupo_padrao %}
+        <div class="status-badge success">
+            ✓ Grupo Padrão Criado: {{ grupo_padrao.nome }} ({{ membros_grupo }} membros)
+        </div>
+        {% else %}
+        <div class="status-badge warning">
+            ⚠ Grupo padrão ainda não foi criado
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Informações -->
+    <div class="info-box">
+        <h5>ℹ️ Sobre este Setup</h5>
+        <p>Esta página permite executar o setup do sistema de grupos através da interface web, ideal para plataformas como <strong>Render</strong> onde não há acesso SSH.</p>
+        <p><strong>O que será feito:</strong></p>
+        <ul>
+            <li>Criar tabelas de grupos no banco de dados (migrations)</li>
+            <li>Criar grupo "Natal Família Cruz e Credos 2025"</li>
+            <li>Adicionar todos os usuários ao grupo</li>
+            <li>Tornar administradores em mantenedores do grupo</li>
+            <li>Migrar dados existentes para o grupo</li>
+        </ul>
+    </div>
+
+    <!-- Ações -->
+    <div class="row">
+        <!-- Setup Completo (Recomendado) -->
+        <div class="col-md-12">
+            <div class="action-card" style="border: 3px solid #28a745;">
+                <div class="action-header">
+                    <div class="action-icon">🎯</div>
+                    <h3 class="action-title">Setup Completo (Recomendado)</h3>
+                </div>
+                <div class="action-description">
+                    <strong>Executa tudo de uma vez:</strong> Migrations + Criar Grupo + Migrar Dados
+                    <br>
+                    <small style="color: #28a745;">✓ Este é o caminho mais fácil e rápido!</small>
+                </div>
+                <form method="post" onsubmit="return confirm('Executar setup completo? Isso pode levar alguns segundos.')">
+                    {% csrf_token %}
+                    <input type="hidden" name="acao" value="setup_completo">
+                    <button type="submit" class="btn btn-setup-complete">
+                        🚀 Executar Setup Completo
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Opções Individuais -->
+        <div class="col-md-12">
+            <h4 style="color: var(--christmas-green); margin: 30px 0 20px;">
+                Ou execute passo a passo:
+            </h4>
+        </div>
+
+        <div class="col-md-4">
+            <div class="action-card">
+                <div class="action-header">
+                    <div class="action-icon">1️⃣</div>
+                    <h3 class="action-title">Migrations</h3>
+                </div>
+                <div class="action-description">
+                    Cria as tabelas de grupos no banco de dados.
+                </div>
+                <form method="post">
+                    {% csrf_token %}
+                    <input type="hidden" name="acao" value="migrations">
+                    <button type="submit" class="btn btn-action btn-primary">
+                        Executar Migrations
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="action-card">
+                <div class="action-header">
+                    <div class="action-icon">2️⃣</div>
+                    <h3 class="action-title">Criar Grupo</h3>
+                </div>
+                <div class="action-description">
+                    Cria o grupo padrão e adiciona todos os usuários.
+                </div>
+                <form method="post">
+                    {% csrf_token %}
+                    <input type="hidden" name="acao" value="criar_grupo">
+                    <button type="submit" class="btn btn-action btn-success">
+                        Criar Grupo Padrão
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="action-card">
+                <div class="action-header">
+                    <div class="action-icon">3️⃣</div>
+                    <h3 class="action-title">Migrar Dados</h3>
+                </div>
+                <div class="action-description">
+                    Vincula presentes, compras e notificações ao grupo.
+                </div>
+                <form method="post">
+                    {% csrf_token %}
+                    <input type="hidden" name="acao" value="migrar_dados">
+                    <button type="submit" class="btn btn-action btn-warning">
+                        Migrar Dados
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Link de Volta -->
+    <div class="text-center" style="margin: 40px 0;">
+        <a href="{% url 'dashboard' %}" class="btn btn-outline-secondary btn-lg">
+            ← Voltar ao Dashboard
+        </a>
+        {% if grupo_padrao %}
+        <a href="{% url 'grupos_lista' %}" class="btn btn-outline-success btn-lg" style="margin-left: 10px;">
+            Ver Grupos →
+        </a>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

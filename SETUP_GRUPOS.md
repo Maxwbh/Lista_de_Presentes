@@ -206,3 +206,76 @@ python manage.py shell
 **Desenvolvido por**: Maxwell da Silva Oliveira (@maxwbh)  
 **Empresa**: M&S do Brasil LTDA  
 **Email**: maxwbh@gmail.com
+
+---
+
+## 🌐 Setup via Interface Web (RENDER / Plataformas sem SSH)
+
+Para ambientes como **Render.com** onde não há acesso SSH direto, use a interface web:
+
+### 1. Acesse a página de setup
+
+```
+https://seu-app.onrender.com/setup/
+```
+
+Ou localmente:
+```
+http://localhost:8000/setup/
+```
+
+### 2. Faça login como administrador
+
+Você precisa estar logado com uma conta de **superusuário** (`is_superuser=True`).
+
+### 3. Execute o Setup Completo
+
+Na página de setup, clique em:
+
+**🎯 Executar Setup Completo**
+
+Este botão irá:
+1. ✅ Criar migrations
+2. ✅ Aplicar migrations
+3. ✅ Criar grupo padrão
+4. ✅ Adicionar todos os usuários
+5. ✅ Tornar admins em mantenedores
+6. ✅ Migrar todos os dados
+
+### 4. Ou execute passo a passo
+
+Se preferir controle individual, use os botões:
+- **1️⃣ Executar Migrations** - Cria tabelas
+- **2️⃣ Criar Grupo Padrão** - Cria grupo e adiciona usuários
+- **3️⃣ Migrar Dados** - Vincula dados ao grupo
+
+### Status do Sistema
+
+A página mostra em tempo real:
+- Total de usuários
+- Total de grupos
+- Total de presentes
+- Dados sem grupo (que precisam ser migrados)
+- Status do grupo padrão
+
+---
+
+## 🔐 Segurança
+
+A página `/setup/` é protegida:
+- ✅ Requer login
+- ✅ Apenas **superusuários** podem acessar
+- ✅ Tentativas não autorizadas são redirecionadas ao dashboard com erro
+
+---
+
+## 📊 Monitoramento
+
+Após executar o setup, você verá mensagens de sucesso/erro detalhadas no topo da página, incluindo:
+- ✓ Quantos usuários foram adicionados
+- ✓ Quantos dados foram migrados
+- ✓ Código de convite do grupo
+- ⚠ Avisos de dados já existentes
+- ❌ Erros, se houver
+
+---

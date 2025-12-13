@@ -995,6 +995,163 @@ def gerar_dados_teste_view(request):
 
 
 # =====================================================================
+# VIEW DE SETUP (PARA RENDER E OUTRAS PLATAFORMAS SEM SHELL)
+# =====================================================================
+
+@login_required
+def setup_grupos_view(request):
+    """
+    Interface web para executar setup do grupo padrao.
+    Util para plataformas como Render onde nao ha acesso SSH.
+    Apenas superusuarios podem acessar.
+    """
+    # Verificar se usuario e superusuario
+    if not request.user.is_superuser:
+        messages.error(request, 'Acesso negado. Apenas administradores podem executar o setup.')
+        return redirect('dashboard')
+
+    if request.method == 'POST':
+        acao = request.POST.get('acao')
+
+        try:
+            if acao == 'migrations':
+                # Executar migrations
+                from django.core.management import call_command
+                from io import StringIO
+
+                output = StringIO()
+
+                # Makemigrations
+                call_command('makemigrations', stdout=output, interactive=False)
+                output_make = output.getvalue()
+
+                # Migrate
+                output = StringIO()
+                call_command('migrate', stdout=output, interactive=False)
+                output_migrate = output.getvalue()
+
+                messages.success(request, 'Migrations executadas com sucesso!')
+                messages.info(request, f'Makemigrations: {output_make}')
+                messages.info(request, f'Migrate: {output_migrate}')
+
+            elif acao == 'criar_grupo':
+                # Criar grupo padrao
+                from django.core.management import call_command
+                from io import StringIO
+
+                output = StringIO()
+                call_command('criar_grupo_padrao', stdout=output)
+                resultado = output.getvalue()
+
+                messages.success(request, 'Comando criar_grupo_padrao executado!')
+
+                # Parsear resultado para exibir em mensagens separadas
+                for linha in resultado.split('\n'):
+                    if linha.strip():
+                        if '✓' in linha or '✅' in linha:
+                            messages.success(request, linha)
+                        elif '⚠' in linha or '❌' in linha:
+                            messages.warning(request, linha)
+                        else:
+                            messages.info(request, linha)
+
+            elif acao == 'migrar_dados':
+                # Migrar dados existentes
+                from django.core.management import call_command
+                from io import StringIO
+
+                output = StringIO()
+                call_command('migrar_dados_para_grupo', stdout=output)
+                resultado = output.getvalue()
+
+                messages.success(request, 'Comando migrar_dados_para_grupo executado!')
+
+                # Parsear resultado
+                for linha in resultado.split('\n'):
+                    if linha.strip():
+                        if '✓' in linha or '✅' in linha:
+                            messages.success(request, linha)
+                        elif '⚠' in linha or '❌' in linha:
+                            messages.warning(request, linha)
+                        else:
+                            messages.info(request, linha)
+
+            elif acao == 'setup_completo':
+                # Executar setup completo
+                from django.core.management import call_command
+                from io import StringIO
+
+                # 1. Migrations
+                output = StringIO()
+                call_command('makemigrations', stdout=output, interactive=False)
+                call_command('migrate', stdout=output, interactive=False)
+                messages.success(request, '1/3 Migrations aplicadas')
+
+                # 2. Criar grupo
+                output = StringIO()
+                call_command('criar_grupo_padrao', stdout=output)
+                resultado_grupo = output.getvalue()
+                messages.success(request, '2/3 Grupo criado e usuarios adicionados')
+
+                # 3. Migrar dados
+                output = StringIO()
+                call_command('migrar_dados_para_grupo', stdout=output)
+                resultado_dados = output.getvalue()
+                messages.success(request, '3/3 Dados migrados para o grupo')
+
+                messages.success(request, '✅ SETUP COMPLETO EXECUTADO COM SUCESSO!')
+
+                # Exibir resumo
+                for linha in resultado_grupo.split('\n'):
+                    if 'Resumo:' in linha or '•' in linha:
+                        messages.info(request, linha)
+
+        except Exception as e:
+            logger.error(f"Erro ao executar setup: {str(e)}")
+            messages.error(request, f'Erro ao executar: {str(e)}')
+
+    # Buscar informacoes do sistema
+    try:
+        total_usuarios = Usuario.objects.count()
+        total_grupos = Grupo.objects.count()
+        total_presentes = Presente.objects.count()
+        presentes_sem_grupo = Presente.objects.filter(grupo__isnull=True).count()
+        compras_sem_grupo = Compra.objects.filter(grupo__isnull=True).count()
+        notificacoes_sem_grupo = Notificacao.objects.filter(grupo__isnull=True).count()
+
+        # Verificar se existe grupo padrao
+        grupo_padrao = None
+        try:
+            grupo_padrao = Grupo.objects.get(nome='Natal Família Cruz e Credos 2025')
+            membros_grupo = grupo_padrao.membros.count()
+        except Grupo.DoesNotExist:
+            membros_grupo = 0
+
+    except Exception as e:
+        total_usuarios = 0
+        total_grupos = 0
+        total_presentes = 0
+        presentes_sem_grupo = 0
+        compras_sem_grupo = 0
+        notificacoes_sem_grupo = 0
+        grupo_padrao = None
+        membros_grupo = 0
+
+    context = {
+        'total_usuarios': total_usuarios,
+        'total_grupos': total_grupos,
+        'total_presentes': total_presentes,
+        'presentes_sem_grupo': presentes_sem_grupo,
+        'compras_sem_grupo': compras_sem_grupo,
+        'notificacoes_sem_grupo': notificacoes_sem_grupo,
+        'grupo_padrao': grupo_padrao,
+        'membros_grupo': membros_grupo,
+    }
+
+    return render(request, 'presentes/setup_grupos.html', context)
+
+
+# =====================================================================
 # VIEWS DE GRUPOS
 # =====================================================================
 
