@@ -1,0 +1,61 @@
+═══════════════════════════════════════════════════════════════════════════════
+  QUICK START - Criar Grupo "Natal Família Cruz e Credos 2025"
+═══════════════════════════════════════════════════════════════════════════════
+
+🚀 OPÇÃO 1: Script Automatizado (MAIS FÁCIL)
+────────────────────────────────────────────────────────────────────────────────
+
+Com Docker:
+  docker compose up -d
+  docker compose exec web ./setup_grupo_padrao.sh
+
+Sem Docker (com ambiente virtual):
+  source venv/bin/activate  # ou venv\Scripts\activate no Windows
+  ./setup_grupo_padrao.sh
+
+
+🔧 OPÇÃO 2: Comandos Manuais
+────────────────────────────────────────────────────────────────────────────────
+
+Com Docker:
+  docker compose up -d
+  docker compose exec web python manage.py makemigrations
+  docker compose exec web python manage.py migrate
+  docker compose exec web python manage.py criar_grupo_padrao
+  docker compose exec web python manage.py migrar_dados_para_grupo
+
+Sem Docker (com ambiente virtual):
+  source venv/bin/activate  # ou venv\Scripts\activate no Windows
+  python manage.py makemigrations
+  python manage.py migrate
+  python manage.py criar_grupo_padrao
+  python manage.py migrar_dados_para_grupo
+
+
+✅ O QUE VAI ACONTECER
+────────────────────────────────────────────────────────────────────────────────
+
+1. ✓ Banco de dados será atualizado com as novas tabelas de grupos
+2. ✓ Grupo "Natal Família Cruz e Credos 2025" será criado
+3. ✓ TODOS os usuários existentes serão adicionados ao grupo
+4. ✓ Administradores virarão MANTENEDORES do grupo
+5. ✓ Todos os presentes, compras e notificações serão vinculados ao grupo
+6. ✓ Grupo será definido como ativo para todos
+
+
+📋 APÓS EXECUTAR
+────────────────────────────────────────────────────────────────────────────────
+
+Acesse:
+  http://localhost:8000/grupos/           - Ver grupos
+  http://localhost:8000/admin/            - Django Admin
+  http://localhost:8000/dashboard/        - Dashboard (deve funcionar normal)
+
+
+📖 DOCUMENTAÇÃO COMPLETA
+────────────────────────────────────────────────────────────────────────────────
+
+Leia: SETUP_GRUPOS.md
+
+
+═══════════════════════════════════════════════════════════════════════════════
