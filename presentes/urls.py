@@ -36,6 +36,9 @@ urlpatterns = [
     # Dados de teste (apenas superusuários)
     path('gerar-dados-teste/', views.gerar_dados_teste_view, name='gerar_dados_teste'),
 
+    # Setup de Grupos (para Render e outras plataformas)
+    path('setup/', views.setup_grupos_view, name='setup_grupos'),
+
     # API para extrair informações de produto via URL
     path('api/extrair-info-produto/', views.extrair_info_produto_view, name='extrair_info_produto'),
 
