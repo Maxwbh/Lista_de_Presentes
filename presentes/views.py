@@ -13,6 +13,7 @@ from django.contrib.auth.hashers import make_password
 from .models import Usuario, Presente, Compra, Notificacao, SugestaoCompra, Grupo, GrupoMembro
 from .forms import UsuarioRegistroForm, PresenteForm, LoginForm, GrupoForm
 from .services import IAService
+from .github_helper import criar_issue_falha_imagem
 import base64
 import logging
 import secrets
@@ -389,9 +390,43 @@ def adicionar_presente_view(request):
                         presente.imagem = None
                         logger.info(f"Imagem baixada e convertida para base64: {nome_arquivo}")
                     else:
+                        # Falha ao baixar imagem - marcar para criar issue no GitHub depois
                         logger.warning(f"Não foi possível baixar imagem da URL: {url_imagem}")
+                        # Guardar info para criar issue depois (após salvar presente)
+                        falha_imagem = {
+                            'url': url_imagem,
+                            'erro': "Falha ao baixar imagem da URL fornecida. Possíveis causas: URL inacessível, formato não suportado, timeout, restrições de CORS."
+                        }
+                else:
+                    falha_imagem = None
+            else:
+                falha_imagem = None
 
+            # Salvar presente
             presente.save()
+
+            # Se houve falha no download da imagem, criar issue no GitHub
+            if 'falha_imagem' in locals() and falha_imagem:
+                try:
+                    resultado_issue = criar_issue_falha_imagem(
+                        presente=presente,
+                        url_imagem=falha_imagem['url'],
+                        erro_descricao=falha_imagem['erro'],
+                        usuario=request.user
+                    )
+
+                    if resultado_issue and resultado_issue.get('success'):
+                        issue_url = resultado_issue.get('issue_url')
+                        issue_num = resultado_issue.get('issue_number')
+                        logger.info(f"Issue #{issue_num} criada automaticamente: {issue_url}")
+                        messages.info(
+                            request,
+                            f'⚠️ Imagem não pôde ser carregada. '
+                            f'Uma <a href="{issue_url}" target="_blank">issue #{issue_num}</a> '
+                            f'foi criada automaticamente para investigação.'
+                        )
+                except Exception as e:
+                    logger.error(f"Erro ao criar issue no GitHub: {str(e)}")
 
             # Buscar preços REAIS automaticamente (Zoom + Buscapé)
             try:
