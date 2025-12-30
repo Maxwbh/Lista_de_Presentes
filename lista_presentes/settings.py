@@ -253,3 +253,17 @@ if not DEBUG:
     SECURE_HSTS_SECONDS = 31536000  # 1 ano
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     SECURE_HSTS_PRELOAD = True
+
+# ==============================================================================
+# GitHub Integration - Auto-create issues for failed image downloads
+# ==============================================================================
+GITHUB_TOKEN = os.getenv('GITHUB_TOKEN', '')  # Token de acesso pessoal do GitHub
+GITHUB_REPO_OWNER = os.getenv('GITHUB_REPO_OWNER', 'Maxwbh')  # Dono do repositório
+GITHUB_REPO_NAME = os.getenv('GITHUB_REPO_NAME', 'Lista_de_Presentes')  # Nome do repositório
+GITHUB_AUTO_CREATE_ISSUES = os.getenv('GITHUB_AUTO_CREATE_ISSUES', 'True') == 'True'  # Habilitar/desabilitar
+
+# URL base da API do GitHub
+GITHUB_API_BASE_URL = 'https://api.github.com'
+
+# Site URL para links em issues
+SITE_URL = os.getenv('SITE_URL', 'http://localhost:8000')

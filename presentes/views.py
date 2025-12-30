@@ -13,6 +13,7 @@ from django.contrib.auth.hashers import make_password
 from .models import Usuario, Presente, Compra, Notificacao, SugestaoCompra, Grupo, GrupoMembro
 from .forms import UsuarioRegistroForm, PresenteForm, LoginForm, GrupoForm
 from .services import IAService
+from .github_helper import criar_issue_falha_imagem
 import base64
 import logging
 import secrets
@@ -389,9 +390,43 @@ def adicionar_presente_view(request):
                         presente.imagem = None
                         logger.info(f"Imagem baixada e convertida para base64: {nome_arquivo}")
                     else:
+                        # Falha ao baixar imagem - marcar para criar issue no GitHub depois
                         logger.warning(f"Não foi possível baixar imagem da URL: {url_imagem}")
+                        # Guardar info para criar issue depois (após salvar presente)
+                        falha_imagem = {
+                            'url': url_imagem,
+                            'erro': "Falha ao baixar imagem da URL fornecida. Possíveis causas: URL inacessível, formato não suportado, timeout, restrições de CORS."
+                        }
+                else:
+                    falha_imagem = None
+            else:
+                falha_imagem = None
 
+            # Salvar presente
             presente.save()
+
+            # Se houve falha no download da imagem, criar issue no GitHub
+            if 'falha_imagem' in locals() and falha_imagem:
+                try:
+                    resultado_issue = criar_issue_falha_imagem(
+                        presente=presente,
+                        url_imagem=falha_imagem['url'],
+                        erro_descricao=falha_imagem['erro'],
+                        usuario=request.user
+                    )
+
+                    if resultado_issue and resultado_issue.get('success'):
+                        issue_url = resultado_issue.get('issue_url')
+                        issue_num = resultado_issue.get('issue_number')
+                        logger.info(f"Issue #{issue_num} criada automaticamente: {issue_url}")
+                        messages.info(
+                            request,
+                            f'⚠️ Imagem não pôde ser carregada. '
+                            f'Uma <a href="{issue_url}" target="_blank">issue #{issue_num}</a> '
+                            f'foi criada automaticamente para investigação.'
+                        )
+                except Exception as e:
+                    logger.error(f"Erro ao criar issue no GitHub: {str(e)}")
 
             # Buscar preços REAIS automaticamente (Zoom + Buscapé)
             try:
@@ -887,6 +922,9 @@ def extrair_info_produto_view(request):
     """
     Extrai informações de um produto a partir de uma URL.
     Retorna JSON com título, imagem e preço do produto.
+
+    Em caso de falha de scraping (site acessível mas dados não extraídos),
+    cria automaticamente uma issue no GitHub.
     """
     if request.method != 'POST':
         return JsonResponse({'error': 'Método não permitido'}, status=405)
@@ -902,33 +940,90 @@ def extrair_info_produto_view(request):
 
     try:
         from .scrapers import ScraperFactory
+        from .github_helper import criar_issue_falha_scraping
 
         logger.info(f"Extraindo informações de: {url}")
 
-        # Usar o factory para obter o scraper apropriado
+        # Usar o factory para obter o scraper apropriado (retorna dict agora)
         result = ScraperFactory.extract_product_info(url)
 
-        if result:
-            titulo, preco, imagem_url = result
-
+        if result.get('success'):
+            # Extração bem-sucedida
             response_data = {
                 'success': True,
-                'titulo': titulo or '',
-                'imagem_url': imagem_url or '',
-                'preco': preco if preco else '',
+                'titulo': result.get('titulo', ''),
+                'imagem_url': result.get('imagem_url', ''),
+                'preco': result.get('preco', ''),
             }
 
-            logger.info(f"Extração bem-sucedida: título={bool(titulo)}, imagem={bool(imagem_url)}, preco={preco}")
+            logger.info(f"Extração bem-sucedida: título={bool(result.get('titulo'))}, imagem={bool(result.get('imagem_url'))}, preco={result.get('preco')}")
             return JsonResponse(response_data)
+
         else:
-            logger.warning(f"Não foi possível extrair informações de {url}")
-            return JsonResponse({
-                'error': 'Não foi possível extrair informações desta página.',
-                'success': False
-            }, status=400)
+            # Extração falhou
+            error_type = result.get('error_type')
+            error_message = result.get('error_message', 'Erro desconhecido')
+
+            if error_type == 'network':
+                # Erro de rede/HTTP (404, 500, timeout, etc.)
+                # Apenas informar ao usuário, NÃO criar issue
+                logger.warning(f"Erro de rede ao acessar {url}: {error_message}")
+                return JsonResponse({
+                    'success': False,
+                    'error': f'Não foi possível acessar o site: {error_message}',
+                    'error_type': 'network'
+                }, status=400)
+
+            elif error_type == 'parsing':
+                # Erro de parsing (site acessível mas dados não extraídos)
+                # Criar issue no GitHub
+                logger.warning(f"Falha de scraping para {url}: {error_message}")
+
+                # Criar issue no GitHub
+                partial_data = result.get('partial_data', {})
+                dados_extraidos = {
+                    'titulo': partial_data.get('titulo'),
+                    'preco': partial_data.get('preco'),
+                    'imagem_url': partial_data.get('imagem_url')
+                }
+
+                resultado_issue = criar_issue_falha_scraping(
+                    url_produto=url,
+                    dados_extraidos=dados_extraidos,
+                    usuario=request.user,
+                    grupo=request.user.grupo_ativo if hasattr(request.user, 'grupo_ativo') else None
+                )
+
+                # Preparar mensagem de resposta
+                mensagem_erro = 'Não foi possível extrair as informações desta página. '
+
+                if resultado_issue and resultado_issue.get('success'):
+                    issue_number = resultado_issue.get('issue_number')
+                    issue_url = resultado_issue.get('issue_url')
+                    mensagem_erro += f'Uma <a href="{issue_url}" target="_blank">issue #{issue_number}</a> foi criada automaticamente para investigação.'
+                    logger.info(f"Issue #{issue_number} criada para falha de scraping: {url}")
+                else:
+                    mensagem_erro += 'Tente preencher os campos manualmente.'
+
+                return JsonResponse({
+                    'success': False,
+                    'error': mensagem_erro,
+                    'error_type': 'parsing',
+                    'issue_created': bool(resultado_issue and resultado_issue.get('success'))
+                }, status=400)
+
+            else:
+                # Erro desconhecido
+                logger.error(f"Erro desconhecido ao extrair {url}: {error_message}")
+                return JsonResponse({
+                    'success': False,
+                    'error': 'Erro ao processar a página. Tente preencher os campos manualmente.',
+                    'error_type': 'unknown',
+                    'details': error_message
+                }, status=500)
 
     except Exception as e:
-        logger.error(f"Erro ao extrair informações de {url}: {str(e)}")
+        logger.error(f"Erro inesperado ao extrair informações de {url}: {str(e)}")
         import traceback
         logger.error(traceback.format_exc())
         return JsonResponse({

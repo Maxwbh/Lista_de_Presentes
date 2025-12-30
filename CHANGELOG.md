@@ -5,6 +5,163 @@ Todas as mudanças notáveis neste projeto serão documentadas neste arquivo.
 O formato é baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/),
 e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
+## [1.1.2] - 2025-12-30
+
+### Adicionado - Auto-criação de GitHub Issues para Falhas de Scraping/Extração
+
+**Funcionalidade Inteligente**
+- 🤖 Sistema automatico diferencia entre erros de rede e falhas de scraping
+- ✅ **Erros de rede/HTTP (404, 500, timeout)**: Apenas informa o usuario (comportamento normal)
+- 🐛 **Falhas de scraping/parsing**: Cria issue automatica no GitHub para investigacao
+- 📊 Deteccao inteligente de quando site esta acessivel mas dados nao podem ser extraidos
+- 🔍 Indicador claro de qual dado falhou: Titulo, Preco ou Imagem
+
+**Quando GitHub Issues SÃO Criadas**
+- Site acessivel (200 OK) MAS titulo nao pode ser extraido
+- Site acessivel MAS estrutura HTML nao reconhecida
+- Site novo/desconhecido que precisa de scraper especifico
+- Site conhecido que mudou estrutura HTML
+- Template de extracao precisa ser atualizado
+
+**Quando GitHub Issues NÃO SÃO Criadas**
+- Erro 404 (pagina nao encontrada)
+- Erro 500 (erro interno do servidor)
+- Timeout de conexao
+- Erro de DNS/conexao
+- Site fora do ar temporariamente
+- Qualquer erro de rede/HTTP
+
+**Dados Incluidos na Issue de Scraping**
+- URL completa do produto
+- Dominio detectado
+- Quais dados falharam (Titulo, Preco, Imagem)
+- Dados extraidos parcialmente (se houver)
+- Usuario que tentou adicionar
+- Grupo ao qual pertence
+- Data e hora da tentativa
+- Sugestoes de acoes para resolver
+- Como reproduzir o erro
+
+**Labels Dinamicas nas Issues**
+- `auto-generated`: Issue criada automaticamente
+- `enhancement`: Melhoria no sistema de scraping
+- `scraping`: Relacionado a extracao de dados
+- `needs-triage`: Precisa ser revisada
+- `extracao-titulo`: Se titulo nao foi extraido
+- `extracao-preco`: Se preco nao foi extraido
+- `extracao-imagem`: Se imagem nao foi extraida
+
+### Arquivos Adicionados
+- **Excecoes customizadas em `scrapers.py`**:
+  - `ScrapingError`: Excecao base para erros de scraping
+  - `NetworkError`: Erros de rede/HTTP (NAO gera issue)
+  - `ParsingError`: Erros de parsing/extracao (GERA issue)
+
+### Arquivos Modificados
+- `presentes/github_helper.py`:
+  - Nova funcao `criar_issue_falha_scraping()`: Cria issues especificas para falhas de scraping
+  - Analisa quais dados falharam e gera labels dinamicas
+  - Corpo da issue com sugestoes de resolucao
+
+- `presentes/scrapers.py`:
+  - `BaseScraper.get_soup()`: Lanca `NetworkError` para erros HTTP/rede
+  - `AmazonScraper.extract()`: Lanca `ParsingError` se titulo nao extraido
+  - `MercadoLivreScraper.extract()`: Lanca `ParsingError` se titulo nao extraido
+  - `KabumScraper.extract()`: Lanca `ParsingError` se titulo nao extraido
+  - `GenericScraper.extract()`: Lanca `ParsingError` se titulo nao extraido
+  - `ScraperFactory.extract_product_info()`: Retorna dict com tipo de erro e dados parciais
+
+- `presentes/views.py`:
+  - `extrair_info_produto_view()`: Diferencia erros de rede vs parsing
+  - Cria issue automatica apenas para falhas de parsing
+  - Retorna mensagem clara com link para issue criada
+
+### Comportamento
+- **Erro de rede**: Usuario ve mensagem "Nao foi possivel acessar o site: [erro]"
+- **Erro de parsing**: Usuario ve "Nao foi possivel extrair as informacoes desta pagina. Uma issue #123 foi criada automaticamente para investigacao."
+- **Transparencia total**: Link direto para issue criada no GitHub
+
+### Beneficios
+- 🎯 Identificacao automatica de sites que precisam de suporte
+- 📈 Rastreamento de falhas de scraping para melhoria continua
+- 🔧 Dados suficientes para desenvolvedores implementarem solucoes
+- 👥 Usuarios sabem que problema esta sendo investigado
+- ⚡ Nao gera ruido com erros temporarios de rede
+
+### Performance
+- Operacao nao-bloqueante: falha na criacao de issue nao afeta usuario
+- Timeout de 10 segundos em requisicoes ao GitHub
+- Deteccao rapida de tipo de erro
+
+### UX (User Experience)
+- Mensagens claras e distintas para cada tipo de erro
+- Link direto para acompanhar investigacao
+- Sistema continua funcionando normalmente (preenchimento manual)
+- Feedback automatico sobre problemas de scraping
+
+## [1.1.1] - 2025-12-30
+
+### Adicionado - Auto-criação de GitHub Issues para Falhas de Download de Imagem
+
+**Funcionalidade Automatica**
+- 🤖 Sistema automatico de criacao de issues no GitHub quando imagens de presentes nao podem ser carregadas
+- ⚠️ Presente e salvo normalmente (sem imagem) mesmo quando download falha
+- 📋 Issue criada automaticamente com todos os detalhes do presente
+- 🔔 Usuario recebe notificacao com link direto para a issue criada no GitHub
+- 🏷️ Issues automaticamente marcadas com labels: `auto-generated`, `bug`, `imagem`, `needs-triage`
+
+**Dados Incluidos na Issue Automatica**
+- ID do presente
+- Descricao completa
+- Preco (se informado)
+- URL do produto (se informado)
+- URL da imagem que falhou ao carregar
+- Usuario que tentou adicionar o presente
+- Grupo ao qual o presente pertence
+- Data e hora da tentativa
+- Status do presente
+- Descricao detalhada do erro
+- Link direto para o presente no sistema
+- Checklist de acoes sugeridas para resolucao
+- Versao do aplicativo
+
+**Configuracao**
+- Requer variaveis de ambiente:
+  - `GITHUB_TOKEN`: Personal Access Token do GitHub (permissoes de repo)
+  - `GITHUB_REPO_OWNER`: Dono do repositorio (default: Maxwbh)
+  - `GITHUB_REPO_NAME`: Nome do repositorio (default: Lista_de_Presentes)
+  - `GITHUB_AUTO_CREATE_ISSUES`: True/False para habilitar/desabilitar (default: True)
+  - `SITE_URL`: URL base do site para links nas issues
+- Funcionalidade pode ser desabilitada sem afetar o funcionamento do app
+- Falhas na criacao de issues nao impedem a criacao do presente
+
+### Arquivos Adicionados
+- `presentes/github_helper.py`: Modulo de integracao com GitHub API
+  - `criar_issue_falha_imagem()`: Criacao de issues para falhas de imagem
+  - `criar_issue_erro_geral()`: Criacao de issues genericas
+  - `_get_app_version()`: Helper para incluir versao nas issues
+
+### Arquivos Alterados
+- `lista_presentes/settings.py`: Configuracoes de integracao com GitHub
+- `presentes/views.py`: `adicionar_presente_view()` atualizada para chamar criacao de issues
+
+### Seguranca
+- Token de acesso armazenado em variavel de ambiente (nunca no codigo)
+- Timeout de 10 segundos em requisicoes ao GitHub (nao bloqueia o app)
+- Tratamento de erros completo (rede, autenticacao, API)
+- Logging detalhado de todas as operacoes
+
+### Performance
+- Operacao nao-bloqueante: falhas nao afetam criacao do presente
+- Timeout configurado para evitar travamentos
+- Requisicoes assincronas via requests
+
+### UX (User Experience)
+- Usuario informado claramente quando imagem nao pode ser carregada
+- Link direto para issue criada (transparencia)
+- Presente continua funcional mesmo sem imagem
+- Processo transparente e automatico
+
 ## [1.1.0] - 2025-12-11
 
 ### NOVO RECURSO PRINCIPAL: Sistema de Grupos
