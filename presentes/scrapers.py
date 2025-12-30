@@ -11,6 +11,21 @@ from urllib.parse import urlparse
 logger = logging.getLogger(__name__)
 
 
+class ScrapingError(Exception):
+    """Excecao base para erros de scraping"""
+    pass
+
+
+class NetworkError(ScrapingError):
+    """Erro de rede/HTTP (timeout, 404, 500, etc.) - NAO gera issue"""
+    pass
+
+
+class ParsingError(ScrapingError):
+    """Erro de parsing/extracao de dados (site acessivel mas dados nao extraidos) - GERA issue"""
+    pass
+
+
 class BaseScraper:
     """Classe base para scrapers de lojas"""
 
@@ -22,14 +37,34 @@ class BaseScraper:
         }
 
     def get_soup(self, url, timeout=10):
-        """Obtém BeautifulSoup de uma URL"""
+        """
+        Obtém BeautifulSoup de uma URL.
+
+        Lanca NetworkError para erros HTTP/rede (404, 500, timeout, etc.)
+        Retorna BeautifulSoup se sucesso.
+        """
         try:
             response = requests.get(url, headers=self.headers, timeout=timeout)
             response.raise_for_status()
             return BeautifulSoup(response.content, 'html.parser')
+        except requests.exceptions.Timeout as e:
+            logger.error(f"Timeout ao acessar {url}: {str(e)}")
+            raise NetworkError(f"Timeout ao acessar URL: {str(e)}")
+        except requests.exceptions.HTTPError as e:
+            # Erros HTTP (404, 500, etc.)
+            logger.error(f"Erro HTTP ao acessar {url}: {str(e)}")
+            raise NetworkError(f"Erro HTTP {e.response.status_code}: {str(e)}")
+        except requests.exceptions.ConnectionError as e:
+            logger.error(f"Erro de conexao ao acessar {url}: {str(e)}")
+            raise NetworkError(f"Erro de conexao: {str(e)}")
+        except requests.exceptions.RequestException as e:
+            # Outros erros de request
+            logger.error(f"Erro de rede ao acessar {url}: {str(e)}")
+            raise NetworkError(f"Erro de rede: {str(e)}")
         except Exception as e:
-            logger.error(f"Erro ao obter página {url}: {str(e)}")
-            return None
+            # Erros inesperados (parsing HTML, etc.)
+            logger.error(f"Erro inesperado ao obter página {url}: {str(e)}")
+            raise NetworkError(f"Erro inesperado: {str(e)}")
 
     def clean_price(self, price_str):
         """Limpa e converte string de preço para float"""
@@ -59,10 +94,11 @@ class AmazonScraper(BaseScraper):
         """
         Extrai informações de produtos da Amazon.
         Retorna: (titulo, preco, imagem_url)
+        Lanca NetworkError para erros de rede/HTTP.
+        Lanca ParsingError se conseguir acessar mas nao extrair dados minimos.
         """
+        # get_soup() pode lancar NetworkError (propagamos)
         soup = self.get_soup(url)
-        if not soup:
-            return None
 
         titulo = None
         preco = None
@@ -118,7 +154,11 @@ class AmazonScraper(BaseScraper):
         # Log do resultado
         logger.info(f"Amazon - Título: {bool(titulo)}, Preço: {preco}, Imagem: {bool(imagem_url)}")
 
-        return (titulo, preco, imagem_url) if titulo else None
+        # Se nao conseguiu extrair NENHUM titulo, lancar ParsingError
+        if not titulo:
+            raise ParsingError(f"Nao foi possivel extrair titulo da Amazon. Dados parciais: preco={preco}, imagem={bool(imagem_url)}")
+
+        return (titulo, preco, imagem_url)
 
 
 class MercadoLivreScraper(BaseScraper):
@@ -128,10 +168,11 @@ class MercadoLivreScraper(BaseScraper):
         """
         Extrai informações de produtos do Mercado Livre.
         Retorna: (titulo, preco, imagem_url)
+        Lanca NetworkError para erros de rede/HTTP.
+        Lanca ParsingError se conseguir acessar mas nao extrair dados minimos.
         """
+        # get_soup() pode lancar NetworkError (propagamos)
         soup = self.get_soup(url)
-        if not soup:
-            return None
 
         titulo = None
         preco = None
@@ -190,7 +231,11 @@ class MercadoLivreScraper(BaseScraper):
         # Log do resultado
         logger.info(f"Mercado Livre - Título: {bool(titulo)}, Preço: {preco}, Imagem: {bool(imagem_url)}")
 
-        return (titulo, preco, imagem_url) if titulo else None
+        # Se nao conseguiu extrair NENHUM titulo, lancar ParsingError
+        if not titulo:
+            raise ParsingError(f"Nao foi possivel extrair titulo do Mercado Livre. Dados parciais: preco={preco}, imagem={bool(imagem_url)}")
+
+        return (titulo, preco, imagem_url)
 
 
 class KabumScraper(BaseScraper):
@@ -200,10 +245,11 @@ class KabumScraper(BaseScraper):
         """
         Extrai informações de produtos do Kabum.
         Retorna: (titulo, preco, imagem_url)
+        Lanca NetworkError para erros de rede/HTTP.
+        Lanca ParsingError se conseguir acessar mas nao extrair dados minimos.
         """
+        # get_soup() pode lancar NetworkError (propagamos)
         soup = self.get_soup(url)
-        if not soup:
-            return None
 
         titulo = None
         preco = None
@@ -241,7 +287,11 @@ class KabumScraper(BaseScraper):
 
         logger.info(f"Kabum - Título: {bool(titulo)}, Preço: {preco}, Imagem: {bool(imagem_url)}")
 
-        return (titulo, preco, imagem_url) if titulo else None
+        # Se nao conseguiu extrair NENHUM titulo, lancar ParsingError
+        if not titulo:
+            raise ParsingError(f"Nao foi possivel extrair titulo do Kabum. Dados parciais: preco={preco}, imagem={bool(imagem_url)}")
+
+        return (titulo, preco, imagem_url)
 
 
 class GenericScraper(BaseScraper):
@@ -251,10 +301,11 @@ class GenericScraper(BaseScraper):
         """
         Extrai informações usando meta tags genéricas.
         Retorna: (titulo, preco, imagem_url)
+        Lanca NetworkError para erros de rede/HTTP.
+        Lanca ParsingError se conseguir acessar mas nao extrair dados minimos.
         """
+        # get_soup() pode lancar NetworkError (propagamos)
         soup = self.get_soup(url)
-        if not soup:
-            return None
 
         titulo = None
         preco = None
@@ -321,7 +372,11 @@ class GenericScraper(BaseScraper):
 
         logger.info(f"Generic - Título: {bool(titulo)}, Preço: {preco}, Imagem: {bool(imagem_url)}")
 
-        return (titulo, preco, imagem_url) if titulo else None
+        # Se nao conseguiu extrair NENHUM titulo, lancar ParsingError
+        if not titulo:
+            raise ParsingError(f"Nao foi possivel extrair titulo (scraper generico). Dados parciais: preco={preco}, imagem={bool(imagem_url)}")
+
+        return (titulo, preco, imagem_url)
 
 
 class ScraperFactory:
@@ -351,11 +406,71 @@ class ScraperFactory:
     def extract_product_info(url):
         """
         Extrai informações de produto usando o scraper apropriado.
-        Retorna: (titulo, preco, imagem_url) ou None
+
+        Retorna:
+            - Em caso de sucesso: dict com {
+                'success': True,
+                'titulo': str,
+                'preco': float or None,
+                'imagem_url': str or None
+              }
+            - Em caso de erro de rede/HTTP: dict com {
+                'success': False,
+                'error_type': 'network',
+                'error_message': str
+              }
+            - Em caso de erro de parsing: dict com {
+                'success': False,
+                'error_type': 'parsing',
+                'error_message': str,
+                'partial_data': {'titulo': ..., 'preco': ..., 'imagem_url': ...}
+              }
         """
         try:
             scraper = ScraperFactory.get_scraper(url)
-            return scraper.extract(url)
+            titulo, preco, imagem_url = scraper.extract(url)
+
+            return {
+                'success': True,
+                'titulo': titulo,
+                'preco': preco,
+                'imagem_url': imagem_url
+            }
+
+        except NetworkError as e:
+            # Erro de rede/HTTP (404, 500, timeout, etc.)
+            # NAO deve gerar issue no GitHub
+            logger.warning(f"Erro de rede ao extrair {url}: {str(e)}")
+            return {
+                'success': False,
+                'error_type': 'network',
+                'error_message': str(e)
+            }
+
+        except ParsingError as e:
+            # Erro de parsing (site acessivel mas dados nao extraidos)
+            # DEVE gerar issue no GitHub
+            logger.warning(f"Erro de parsing ao extrair {url}: {str(e)}")
+
+            # Tentar extrair dados parciais da mensagem de erro (se houver)
+            # Formato da mensagem: "Nao foi possivel extrair titulo. Dados parciais: preco=123.45, imagem=True"
+            partial_data = {'titulo': None, 'preco': None, 'imagem_url': None}
+
+            return {
+                'success': False,
+                'error_type': 'parsing',
+                'error_message': str(e),
+                'partial_data': partial_data
+            }
+
         except Exception as e:
-            logger.error(f"Erro ao extrair informações de {url}: {str(e)}")
-            return None
+            # Outros erros inesperados
+            logger.error(f"Erro inesperado ao extrair {url}: {str(e)}")
+            import traceback
+            logger.error(traceback.format_exc())
+
+            return {
+                'success': False,
+                'error_type': 'unknown',
+                'error_message': str(e)
+            }
