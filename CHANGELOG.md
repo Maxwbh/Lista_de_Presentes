@@ -5,6 +5,69 @@ Todas as mudanças notáveis neste projeto serão documentadas neste arquivo.
 O formato é baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/),
 e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
+## [1.1.1] - 2025-12-30
+
+### Adicionado - Auto-criação de GitHub Issues para Falhas de Download de Imagem
+
+**Funcionalidade Automatica**
+- 🤖 Sistema automatico de criacao de issues no GitHub quando imagens de presentes nao podem ser carregadas
+- ⚠️ Presente e salvo normalmente (sem imagem) mesmo quando download falha
+- 📋 Issue criada automaticamente com todos os detalhes do presente
+- 🔔 Usuario recebe notificacao com link direto para a issue criada no GitHub
+- 🏷️ Issues automaticamente marcadas com labels: `auto-generated`, `bug`, `imagem`, `needs-triage`
+
+**Dados Incluidos na Issue Automatica**
+- ID do presente
+- Descricao completa
+- Preco (se informado)
+- URL do produto (se informado)
+- URL da imagem que falhou ao carregar
+- Usuario que tentou adicionar o presente
+- Grupo ao qual o presente pertence
+- Data e hora da tentativa
+- Status do presente
+- Descricao detalhada do erro
+- Link direto para o presente no sistema
+- Checklist de acoes sugeridas para resolucao
+- Versao do aplicativo
+
+**Configuracao**
+- Requer variaveis de ambiente:
+  - `GITHUB_TOKEN`: Personal Access Token do GitHub (permissoes de repo)
+  - `GITHUB_REPO_OWNER`: Dono do repositorio (default: Maxwbh)
+  - `GITHUB_REPO_NAME`: Nome do repositorio (default: Lista_de_Presentes)
+  - `GITHUB_AUTO_CREATE_ISSUES`: True/False para habilitar/desabilitar (default: True)
+  - `SITE_URL`: URL base do site para links nas issues
+- Funcionalidade pode ser desabilitada sem afetar o funcionamento do app
+- Falhas na criacao de issues nao impedem a criacao do presente
+
+### Arquivos Adicionados
+- `presentes/github_helper.py`: Modulo de integracao com GitHub API
+  - `criar_issue_falha_imagem()`: Criacao de issues para falhas de imagem
+  - `criar_issue_erro_geral()`: Criacao de issues genericas
+  - `_get_app_version()`: Helper para incluir versao nas issues
+
+### Arquivos Alterados
+- `lista_presentes/settings.py`: Configuracoes de integracao com GitHub
+- `presentes/views.py`: `adicionar_presente_view()` atualizada para chamar criacao de issues
+
+### Seguranca
+- Token de acesso armazenado em variavel de ambiente (nunca no codigo)
+- Timeout de 10 segundos em requisicoes ao GitHub (nao bloqueia o app)
+- Tratamento de erros completo (rede, autenticacao, API)
+- Logging detalhado de todas as operacoes
+
+### Performance
+- Operacao nao-bloqueante: falhas nao afetam criacao do presente
+- Timeout configurado para evitar travamentos
+- Requisicoes assincronas via requests
+
+### UX (User Experience)
+- Usuario informado claramente quando imagem nao pode ser carregada
+- Link direto para issue criada (transparencia)
+- Presente continua funcional mesmo sem imagem
+- Processo transparente e automatico
+
 ## [1.1.0] - 2025-12-11
 
 ### NOVO RECURSO PRINCIPAL: Sistema de Grupos
