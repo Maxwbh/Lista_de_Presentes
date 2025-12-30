@@ -68,10 +68,12 @@ WSGI_APPLICATION = 'lista_presentes.wsgi.application'
 
 # Banco de Dados
 # Usa DATABASE_URL se disponível (Render.com, Heroku, etc.)
+# Ou USE_SQLITE=True para forçar SQLite (desenvolvimento com recursos mínimos)
 # Caso contrário, usa SQLite para desenvolvimento local
 DATABASE_URL = os.getenv('DATABASE_URL')
+USE_SQLITE = os.getenv('USE_SQLITE', 'False') == 'True'
 
-if DATABASE_URL:
+if DATABASE_URL and not USE_SQLITE:
     # Produção: PostgreSQL via DATABASE_URL
     DATABASES = {
         'default': dj_database_url.config(
@@ -82,10 +84,11 @@ if DATABASE_URL:
     }
 else:
     # Desenvolvimento: SQLite
+    # Use para ambientes com recursos mínimos (512MB-1GB RAM)
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.sqlite3',
-            'NAME': BASE_DIR / 'db.sqlite3',
+            'NAME': BASE_DIR / 'data' / 'db.sqlite3' if USE_SQLITE else BASE_DIR / 'db.sqlite3',
         }
     }
 

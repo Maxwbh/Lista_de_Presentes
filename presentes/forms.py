@@ -1,6 +1,6 @@
 from django import forms
 from django.contrib.auth.forms import UserCreationForm
-from .models import Usuario, Presente
+from .models import Usuario, Presente, Grupo, GrupoMembro
 
 class UsuarioRegistroForm(UserCreationForm):
     email = forms.EmailField(required=True, widget=forms.EmailInput(attrs={
@@ -77,3 +77,37 @@ class PresenteForm(forms.ModelForm):
         self.fields['url'].required = False
         # Reordenar campos
         self.order_fields(['descricao', 'url_imagem', 'imagem', 'url', 'preco'])
+
+
+class GrupoForm(forms.ModelForm):
+    """Form para criacao e edicao de grupos"""
+    url_imagem = forms.URLField(
+        required=False,
+        label='URL da Imagem do Grupo',
+        widget=forms.URLInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'https://exemplo.com/logo-grupo.jpg',
+            'id': 'grupo-url-imagem-input'
+        })
+    )
+
+    class Meta:
+        model = Grupo
+        fields = ['nome', 'descricao']
+        widgets = {
+            'nome': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Nome do grupo',
+                'maxlength': 200
+            }),
+            'descricao': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 3,
+                'placeholder': 'Descricao do grupo (opcional)'
+            }),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['descricao'].required = False
+        self.order_fields(['nome', 'descricao', 'url_imagem'])

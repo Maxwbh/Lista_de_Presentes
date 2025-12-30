@@ -45,6 +45,45 @@ services:
       db:
         condition: service_healthy
 
+    # Docker Compose File Watch Configuration
+    develop:
+      watch:
+        # Sincronizar código Python - reload automático com gunicorn --reload
+        - action: sync
+          path: ./lista_presentes
+          target: /app/lista_presentes
+          ignore:
+            - __pycache__/
+            - "*.pyc"
+            - "*.pyo"
+
+        - action: sync
+          path: ./presentes
+          target: /app/presentes
+          ignore:
+            - __pycache__/
+            - "*.pyc"
+            - "*.pyo"
+            - migrations/
+
+        # Sincronizar templates - mudanças refletidas imediatamente
+        - action: sync
+          path: ./templates
+          target: /app/templates
+
+        # Sincronizar arquivos estáticos
+        - action: sync
+          path: ./static
+          target: /app/static
+
+        # Rebuild container se requirements.txt mudar
+        - action: rebuild
+          path: ./requirements.txt
+
+        # Rebuild container se Dockerfile mudar
+        - action: rebuild
+          path: ./Dockerfile
+
 volumes:
   postgres_data:
   static_volume:
