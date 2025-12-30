@@ -581,10 +581,10 @@
                                     {% endfor %}
                                 </div>
 
-                                {% if usuario.presentes_ativos > 6 %}
+                                {% if usuario.total_presentes > 0 %}
                                     <div class="text-center mt-3">
                                         <a href="{% url 'presentes_usuario' usuario.id %}" class="btn btn-outline-success">
-                                            Ver todos os {{ usuario.presentes_ativos }} presentes
+                                            Ver todos os {{ usuario.total_presentes }} presentes!
                                             <i class="bi bi-arrow-right"></i>
                                         </a>
                                     </div>
