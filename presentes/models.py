@@ -157,7 +157,7 @@ class Presente(models.Model):
         verbose_name_plural = 'Presentes'
         ordering = ['-data_cadastro']
         indexes = [
-            models.Index(fields=['grupo', 'usuario', 'status'], name='presente_grupo_usuario_status_idx'),
+            models.Index(fields=['grupo', 'usuario', 'status'], name='presente_grp_user_status_idx'),
             models.Index(fields=['grupo', 'status', '-data_cadastro'], name='presente_grupo_status_data_idx'),
             models.Index(fields=['grupo', '-data_cadastro'], name='presente_grupo_data_idx'),
             models.Index(fields=['usuario', 'status'], name='presente_usuario_status_idx'),
@@ -198,7 +198,7 @@ class Compra(models.Model):
         verbose_name = 'Compra'
         verbose_name_plural = 'Compras'
         indexes = [
-            models.Index(fields=['grupo', 'comprador', '-data_compra'], name='compra_grupo_comprador_data_idx'),
+            models.Index(fields=['grupo', 'comprador', '-data_compra'], name='compra_grp_comprador_data_idx'),
             models.Index(fields=['grupo', '-data_compra'], name='compra_grupo_data_idx'),
             models.Index(fields=['comprador', '-data_compra'], name='compra_comprador_data_idx'),
             models.Index(fields=['-data_compra'], name='compra_data_idx'),
@@ -228,7 +228,7 @@ class SugestaoCompra(models.Model):
         verbose_name_plural = 'Sugestões de Compra'
         ordering = ['preco_sugerido']
         indexes = [
-            models.Index(fields=['grupo', 'presente', 'preco_sugerido'], name='sugestao_grupo_presente_preco_idx'),
+            models.Index(fields=['grupo', 'presente', 'preco_sugerido'], name='sugestao_grp_pres_preco_idx'),
             models.Index(fields=['grupo', '-data_busca'], name='sugestao_grupo_data_idx'),
             models.Index(fields=['presente', 'preco_sugerido'], name='sugestao_presente_preco_idx'),
             models.Index(fields=['-data_busca'], name='sugestao_data_idx'),
@@ -257,7 +257,7 @@ class Notificacao(models.Model):
         verbose_name_plural = 'Notificações'
         ordering = ['-data_notificacao']
         indexes = [
-            models.Index(fields=['grupo', 'usuario', 'lida', '-data_notificacao'], name='notif_grupo_usuario_lida_data_idx'),
+            models.Index(fields=['grupo', 'usuario', 'lida', '-data_notificacao'], name='notif_grp_user_lida_data_idx'),
             models.Index(fields=['grupo', 'lida', '-data_notificacao'], name='notif_grupo_lida_data_idx'),
             models.Index(fields=['usuario', 'lida', '-data_notificacao'], name='notif_usuario_lida_data_idx'),
             models.Index(fields=['lida', '-data_notificacao'], name='notif_lida_data_idx'),
