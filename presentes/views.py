@@ -1031,18 +1031,12 @@ def extrair_info_produto_view(request):
             'details': str(e)
         }, status=500)
 
-@login_required
 def gerar_dados_teste_view(request):
     """
     View para gerar dados de teste.
-    IMPORTANTE: Apenas superusuários podem acessar esta view.
+    IMPORTANTE: Acesso público permitido (útil para Render Free sem SSH).
     Acesso via: /gerar-dados-teste/
     """
-    # Verificar se o usuário é superusuário
-    if not request.user.is_superuser:
-        messages.error(request, 'Acesso negado. Apenas administradores podem gerar dados de teste.')
-        return redirect('index')
-
     if request.method == 'POST':
         try:
             from django.core.management import call_command
@@ -1065,7 +1059,9 @@ def gerar_dados_teste_view(request):
             messages.success(request, f'✓ Dados de teste gerados com sucesso!')
             messages.info(request, f'Total: {usuarios_count} usuários e {presentes_count} presentes ({presentes_ativos} ativos)')
 
-            logger.info(f"Dados de teste gerados por {request.user.email}")
+            # Log com email se usuário autenticado, senão "público"
+            user_identifier = request.user.email if request.user.is_authenticated else 'acesso público'
+            logger.info(f"Dados de teste gerados por {user_identifier}")
             logger.info(result)
 
             return redirect('gerar_dados_teste')
@@ -1097,18 +1093,12 @@ def gerar_dados_teste_view(request):
 # VIEW DE SETUP (PARA RENDER E OUTRAS PLATAFORMAS SEM SHELL)
 # =====================================================================
 
-@login_required
 def setup_grupos_view(request):
     """
     Interface web para executar setup do grupo padrao.
     Util para plataformas como Render onde nao ha acesso SSH.
-    Apenas superusuarios podem acessar.
+    IMPORTANTE: Acesso público permitido (útil para Render Free sem SSH).
     """
-    # Verificar se usuario e superusuario
-    if not request.user.is_superuser:
-        messages.error(request, 'Acesso negado. Apenas administradores podem executar o setup.')
-        return redirect('dashboard')
-
     if request.method == 'POST':
         acao = request.POST.get('acao')
 
