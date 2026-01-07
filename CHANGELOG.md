@@ -5,6 +5,81 @@ Todas as mudanças notáveis neste projeto serão documentadas neste arquivo.
 O formato é baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/),
 e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
+## [1.1.3] - 2025-01-07
+
+### Adicionado - Sistema de Auto-Versionamento e Atribuição de Commits
+
+**Automação Completa de Versionamento**
+- 🔧 Pre-commit hook que incrementa automaticamente o número da versão em CADA commit
+- 📦 Versão no arquivo `VERSION` atualizada automaticamente (PATCH +1)
+- 🚫 Hook força atualização da versão mesmo se desenvolvedor esquecer
+- ✅ Detecção inteligente: se VERSION já foi manualmente atualizado, não incrementa novamente
+- 👤 Todos os commits automaticamente atribuídos a @Maxwbh (Maxwell da Silva Oliveira)
+- 🔐 Configuração de autor e committer em TODOS os commits via hook
+
+**Como Funciona**
+1. Desenvolvedor faz alterações e executa `git commit`
+2. Pre-commit hook intercepta o commit ANTES de ser criado
+3. Hook lê versão atual do arquivo `VERSION` (ex: 1.1.2)
+4. Hook incrementa PATCH automaticamente (1.1.2 → 1.1.3)
+5. Hook atualiza arquivo `VERSION` com nova versão
+6. Hook adiciona `VERSION` ao staging automaticamente
+7. Hook configura autor como Maxwell da Silva Oliveira
+8. Commit é criado com versão atualizada e autor correto
+
+**Detecção Inteligente de Atualização Manual**
+- Se desenvolvedor já atualizou `VERSION` manualmente (arquivo staged), hook NÃO incrementa
+- Evita dupla incrementação (1.1.2 → 1.1.4 indevidamente)
+- Mensagem clara no console: "VERSION file already staged (manual update detected)"
+- Perfeito para releases MAJOR ou MINOR onde dev quer controle total
+
+**Configuração Git Automática**
+- `core.hooksPath` configurado para `.githooks/` (hooks customizados)
+- `user.name` definido como "Maxwell da Silva Oliveira"
+- `user.email` definido como "maxwbh@gmail.com"
+- Configurações aplicadas no repositório local
+
+**Benefícios**
+- 🎯 ZERO esquecimentos de atualização de versão
+- 📈 Histórico de versões sempre correto e rastreável
+- 👥 Atribuição consistente de commits
+- 🔄 Workflow Git simplificado (sem passos manuais)
+- 📊 Cada commit = incremento de versão (changelog preciso)
+- 🚀 Ideal para deploys automáticos baseados em versão
+
+**Transparência**
+- Hook exibe mensagens claras durante execução:
+  - "📦 Current version: X.Y.Z"
+  - "✅ Version auto-incremented: X.Y.Z → X.Y.Z+1"
+  - "👤 Commit author: Maxwell da Silva Oliveira"
+  - "✅ Pre-commit hook completed successfully"
+
+### Arquivos Adicionados
+- `.githooks/pre-commit`: Pre-commit hook executável com lógica de auto-versionamento
+
+### Arquivos Configurados
+- Git configurado para usar `.githooks/` ao invés de `.git/hooks/`
+- Autor padrão configurado no repositório
+
+### Segurança
+- Hook não pode ser ignorado acidentalmente (configurado via core.hooksPath)
+- Desenvolvedor ainda pode usar `--no-verify` se necessário (casos excepcionais)
+- Arquivo VERSION sempre em sync com commits
+
+### Versionamento
+- Incremento automático apenas em PATCH (terceiro número)
+- Para MAJOR ou MINOR: desenvolvedor atualiza VERSION manualmente antes do commit
+- Semantic Versioning totalmente respeitado
+
+### Compatibilidade
+- Bash script compatível com Linux, macOS e Windows (Git Bash)
+- Requer Git 2.9+ para core.hooksPath
+- Hook testado e funcional em ambiente Linux
+
+### Requisitos para Desenvolvedores
+- Nenhum! Sistema totalmente automático
+- (Opcional) Para releases MAJOR/MINOR: atualizar VERSION manualmente antes do commit
+
 ## [1.1.2] - 2025-12-30
 
 ### Adicionado - Auto-criação de GitHub Issues para Falhas de Scraping/Extração
