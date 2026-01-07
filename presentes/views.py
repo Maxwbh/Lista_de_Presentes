@@ -1250,16 +1250,21 @@ def grupos_lista_view(request):
     Lista todos os grupos do usuario.
     Permite selecionar grupo ativo.
     """
-    grupos = request.user.get_grupos()
+    # Buscar membros de grupos (não apenas grupos) para ter acesso a e_mantenedor
+    membros = GrupoMembro.objects.filter(
+        usuario=request.user,
+        grupo__ativo=True
+    ).select_related('grupo').order_by('-grupo__data_criacao')
+
     grupo_ativo = request.user.grupo_ativo
 
     # Se usuario nao tem grupos, redirecionar para criar
-    if not grupos.exists():
+    if not membros.exists():
         messages.info(request, 'Voce ainda nao faz parte de nenhum grupo. Crie ou junte-se a um!')
         return redirect('criar_grupo')
 
     context = {
-        'grupos': grupos,
+        'grupos': membros,  # Na verdade são GrupoMembro objects
         'grupo_ativo': grupo_ativo,
     }
     return render(request, 'presentes/grupos_lista.html', context)

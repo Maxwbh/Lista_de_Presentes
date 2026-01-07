@@ -26,10 +26,11 @@
             <div class="row">
                 {% for membro in grupos %}
                     {% with grupo=membro.grupo %}
+                    {% if grupo and grupo.pk %}
                     <div class="col-md-6 col-lg-4 mb-4">
                         <div class="card h-100 {% if grupo == grupo_ativo %}border-success border-3{% endif %}">
                             {% if grupo.imagem_base64 %}
-                                <img src="{% url 'servir_imagem_grupo' grupo.id %}" class="card-img-top" alt="{{ grupo.nome }}" style="height: 200px; object-fit: cover;">
+                                <img src="{% url 'servir_imagem_grupo' grupo.pk %}" class="card-img-top" alt="{{ grupo.nome }}" style="height: 200px; object-fit: cover;">
                             {% else %}
                                 <div class="card-img-top bg-light d-flex align-items-center justify-content-center" style="height: 200px;">
                                     <i class="bi bi-people-fill" style="font-size: 4rem; color: #ccc;"></i>
@@ -60,7 +61,7 @@
 
                             <div class="card-footer bg-transparent">
                                 {% if grupo != grupo_ativo %}
-                                    <a href="{% url 'ativar_grupo' grupo.id %}" class="btn btn-primary btn-sm w-100 mb-2">
+                                    <a href="{% url 'ativar_grupo' grupo.pk %}" class="btn btn-primary btn-sm w-100 mb-2">
                                         <i class="bi bi-check-circle"></i> Ativar Grupo
                                     </a>
                                 {% else %}
@@ -71,14 +72,14 @@
 
                                 <div class="btn-group w-100" role="group">
                                     {% if membro.e_mantenedor %}
-                                        <a href="{% url 'editar_grupo' grupo.id %}" class="btn btn-outline-secondary btn-sm">
+                                        <a href="{% url 'editar_grupo' grupo.pk %}" class="btn btn-outline-secondary btn-sm">
                                             <i class="bi bi-pencil"></i> Editar
                                         </a>
-                                        <a href="{% url 'gerenciar_membros' grupo.id %}" class="btn btn-outline-info btn-sm">
+                                        <a href="{% url 'gerenciar_membros' grupo.pk %}" class="btn btn-outline-info btn-sm">
                                             <i class="bi bi-people"></i> Membros
                                         </a>
                                     {% endif %}
-                                    <a href="{% url 'sair_grupo' grupo.id %}" class="btn btn-outline-danger btn-sm"
+                                    <a href="{% url 'sair_grupo' grupo.pk %}" class="btn btn-outline-danger btn-sm"
                                        onclick="return confirm('Deseja realmente sair do grupo {{ grupo.nome }}?')">
                                         <i class="bi bi-box-arrow-right"></i> Sair
                                     </a>
@@ -86,6 +87,7 @@
                             </div>
                         </div>
                     </div>
+                    {% endif %}
                     {% endwith %}
                 {% empty %}
                     <div class="col-12">
