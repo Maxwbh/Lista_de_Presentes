@@ -1398,7 +1398,11 @@ def gerenciar_membros_view(request, pk):
 
     # Listar membros
     membros = grupo.membros.select_related('usuario').all()
-    link_convite = grupo.get_link_convite()
+
+    # Construir link de convite usando a URL atual (funciona em qualquer ambiente)
+    from django.urls import reverse
+    link_convite_path = reverse('convite_grupo', args=[grupo.codigo_convite])
+    link_convite = request.build_absolute_uri(link_convite_path)
 
     context = {
         'grupo': grupo,
