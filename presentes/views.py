@@ -1262,7 +1262,7 @@ def grupos_lista_view(request):
         'grupos': grupos,
         'grupo_ativo': grupo_ativo,
     }
-    return render(request, 'presentes/grupos/lista.html', context)
+    return render(request, 'presentes/grupos_lista.html', context)
 
 
 @login_required
@@ -1307,7 +1307,7 @@ def criar_grupo_view(request):
     else:
         form = GrupoForm()
 
-    return render(request, 'presentes/grupos/criar.html', {'form': form})
+    return render(request, 'presentes/criar_grupo.html', {'form': form})
 
 
 @login_required
@@ -1345,7 +1345,7 @@ def editar_grupo_view(request, pk):
         'form': form,
         'grupo': grupo,
     }
-    return render(request, 'presentes/grupos/editar.html', context)
+    return render(request, 'presentes/editar_grupo.html', context)
 
 
 @login_required
@@ -1401,7 +1401,7 @@ def gerenciar_membros_view(request, pk):
         'link_convite': link_convite,
         'e_mantenedor': e_mantenedor,
     }
-    return render(request, 'presentes/grupos/membros.html', context)
+    return render(request, 'presentes/gerenciar_membros.html', context)
 
 
 @login_required
