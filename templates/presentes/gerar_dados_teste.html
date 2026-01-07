@@ -133,6 +133,10 @@
         </h3>
         <div class="stats-grid">
             <div class="stat-item">
+                <div class="stat-value">{{ grupos_count|default:0 }}</div>
+                <div class="stat-label">Grupos</div>
+            </div>
+            <div class="stat-item">
                 <div class="stat-value">{{ usuarios_count }}</div>
                 <div class="stat-label">Usuários</div>
             </div>
@@ -147,6 +151,10 @@
             <div class="stat-item">
                 <div class="stat-value">{{ presentes_comprados }}</div>
                 <div class="stat-label">Presentes Comprados</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value">{{ membros_count|default:0 }}</div>
+                <div class="stat-label">Membros em Grupos</div>
             </div>
         </div>
     </div>
@@ -167,12 +175,28 @@
 
         <ul class="info-list">
             <li>
+                <i class="bi bi-diagram-3-fill"></i>
+                <strong>1 grupo de teste</strong> chamado "Grupo de Testes"
+            </li>
+            <li>
                 <i class="bi bi-people-fill"></i>
                 <strong>4 usuários</strong> com nomes e emails diferentes
             </li>
             <li>
+                <i class="bi bi-person-badge"></i>
+                <strong>Primeiro usuário</strong> será Mantenedor do grupo
+            </li>
+            <li>
+                <i class="bi bi-person-check"></i>
+                <strong>Demais usuários</strong> serão Membros do grupo
+            </li>
+            <li>
                 <i class="bi bi-gift-fill"></i>
-                <strong>4 presentes</strong> aleatórios para cada usuário
+                <strong>4 presentes</strong> aleatórios para cada usuário (associados ao grupo)
+            </li>
+            <li>
+                <i class="bi bi-link-45deg"></i>
+                Dados extraídos automaticamente de <strong>URLs reais</strong> (Amazon, Mercado Livre, Kabum)
             </li>
             <li>
                 <i class="bi bi-check-circle"></i>
