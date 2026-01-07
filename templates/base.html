@@ -137,6 +137,42 @@
                     </li>
                 </ul>
                 <ul class="navbar-nav">
+                    <!-- Seletor de Grupo Ativo -->
+                    {% if user_grupos %}
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="bi bi-buildings"></i>
+                            {% if grupo_ativo %}
+                                {{ grupo_ativo.nome|truncatechars:20 }}
+                            {% else %}
+                                Selecionar Grupo
+                            {% endif %}
+                        </a>
+                        <ul class="dropdown-menu">
+                            <li><h6 class="dropdown-header">Grupos Disponíveis</h6></li>
+                            {% for membro in user_grupos %}
+                                <li>
+                                    <a class="dropdown-item {% if membro.grupo == grupo_ativo %}active{% endif %}"
+                                       href="{% url 'ativar_grupo' membro.grupo.pk %}?next={{ request.path }}">
+                                        <i class="bi bi-{% if membro.grupo == grupo_ativo %}check-circle-fill{% else %}circle{% endif %}"></i>
+                                        {{ membro.grupo.nome }}
+                                        {% if membro.e_mantenedor %}
+                                            <span class="badge bg-primary" style="font-size: 0.7em;">Admin</span>
+                                        {% endif %}
+                                    </a>
+                                </li>
+                            {% endfor %}
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="{% url 'grupos_lista' %}">
+                                <i class="bi bi-gear"></i> Gerenciar Grupos
+                            </a></li>
+                            <li><a class="dropdown-item" href="{% url 'criar_grupo' %}">
+                                <i class="bi bi-plus-circle"></i> Criar Novo Grupo
+                            </a></li>
+                        </ul>
+                    </li>
+                    {% endif %}
+
                     <li class="nav-item position-relative">
                         <a class="nav-link" href="{% url 'notificacoes' %}">
                             <i class="bi bi-bell"></i>
