@@ -1080,12 +1080,16 @@ def gerar_dados_teste_view(request):
     presentes_count = Presente.objects.count()
     presentes_ativos = Presente.objects.filter(status='ATIVO').count()
     presentes_comprados = Presente.objects.filter(status='COMPRADO').count()
+    grupos_count = Grupo.objects.count()
+    membros_count = GrupoMembro.objects.count()
 
     return render(request, 'presentes/gerar_dados_teste.html', {
         'usuarios_count': usuarios_count,
         'presentes_count': presentes_count,
         'presentes_ativos': presentes_ativos,
         'presentes_comprados': presentes_comprados,
+        'grupos_count': grupos_count,
+        'membros_count': membros_count,
     })
 
 
