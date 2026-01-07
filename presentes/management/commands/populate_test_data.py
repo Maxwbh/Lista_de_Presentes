@@ -1,5 +1,5 @@
 from django.core.management.base import BaseCommand
-from presentes.models import Usuario, Presente
+from presentes.models import Usuario, Presente, Grupo, GrupoMembro
 from django.contrib.auth.hashers import make_password
 import random
 import logging
@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 
 
 class Command(BaseCommand):
-    help = 'Cria usuários e presentes de teste para desenvolvimento com dados reais de lojas'
+    help = 'Cria usuários, grupos e presentes de teste para desenvolvimento com dados reais de lojas'
 
     def add_arguments(self, parser):
         parser.add_argument(
@@ -30,6 +30,20 @@ class Command(BaseCommand):
         gifts_per_user = options['gifts_per_user']
 
         self.stdout.write(self.style.WARNING(f'Criando {num_users} usuários com {gifts_per_user} presentes cada...'))
+
+        # Criar grupo de teste
+        grupo_teste, criado = Grupo.objects.get_or_create(
+            nome='Grupo de Testes',
+            defaults={
+                'descricao': 'Grupo criado automaticamente para testes de desenvolvimento',
+                'ativo': True
+            }
+        )
+
+        if criado:
+            self.stdout.write(self.style.SUCCESS(f'✓ Grupo de teste criado: {grupo_teste.nome}'))
+        else:
+            self.stdout.write(self.style.WARNING(f'  Grupo de teste já existe: {grupo_teste.nome}'))
 
         # Lista de nomes para usuários
         nomes = [
@@ -112,10 +126,22 @@ class Command(BaseCommand):
                 first_name=primeiro_nome,
                 last_name=ultimo_nome,
                 password=make_password('senha123'),  # Senha padrão para teste
-                ativo=True
+                ativo=True,
+                grupo_ativo=grupo_teste  # Definir grupo ativo
             )
             usuarios_criados += 1
             self.stdout.write(self.style.SUCCESS(f'✓ Criado usuário: {primeiro_nome} {ultimo_nome} ({email})'))
+
+            # Adicionar usuário ao grupo de teste
+            # Primeiro usuário é mantenedor, demais são membros
+            e_mantenedor = (i == 0)
+            GrupoMembro.objects.get_or_create(
+                grupo=grupo_teste,
+                usuario=usuario,
+                defaults={'e_mantenedor': e_mantenedor}
+            )
+            tipo_membro = 'Mantenedor' if e_mantenedor else 'Membro'
+            self.stdout.write(f'  → Adicionado ao grupo como {tipo_membro}')
 
             # Criar presentes para este usuário
             presentes_usuario = random.sample(presentes_exemplos, min(gifts_per_user, len(presentes_exemplos)))
@@ -129,26 +155,36 @@ class Command(BaseCommand):
                 imagem_url = None
 
                 self.stdout.write(f'  → Buscando informações de: {url[:50]}...')
-                info_extraida = ScraperFactory.extract_product_info(url)
 
-                if info_extraida:
-                    titulo_extraido, preco_extraido, img_extraida = info_extraida
-                    if titulo_extraido:
-                        descricao = titulo_extraido
-                    if preco_extraido:
-                        preco = preco_extraido
-                    if img_extraida:
-                        imagem_url = img_extraida
+                # Novo formato de retorno (dict ao invés de tupla)
+                resultado = ScraperFactory.extract_product_info(url)
+
+                if resultado and resultado.get('success'):
+                    # Extração bem-sucedida
+                    if resultado.get('titulo'):
+                        descricao = resultado.get('titulo')
+                    if resultado.get('preco'):
+                        preco = resultado.get('preco')
+                    if resultado.get('imagem_url'):
+                        imagem_url = resultado.get('imagem_url')
                     self.stdout.write(self.style.SUCCESS(f'    ✓ Dados extraídos com sucesso!'))
                 else:
-                    self.stdout.write(self.style.WARNING(f'    ⚠ Usando dados padrão (falha na extração)'))
+                    # Falha na extração (rede ou parsing)
+                    error_type = resultado.get('error_type', 'unknown') if resultado else 'unknown'
+                    if error_type == 'network':
+                        self.stdout.write(self.style.WARNING(f'    ⚠ Erro de rede: usando dados padrão'))
+                    elif error_type == 'parsing':
+                        self.stdout.write(self.style.WARNING(f'    ⚠ Erro de parsing: usando dados padrão'))
+                    else:
+                        self.stdout.write(self.style.WARNING(f'    ⚠ Usando dados padrão (falha na extração)'))
 
                 # 70% de chance de ser ATIVO, 30% de ser COMPRADO
                 status = 'ATIVO' if random.random() < 0.7 else 'COMPRADO'
 
-                # Criar presente
+                # Criar presente com associação ao grupo
                 presente = Presente.objects.create(
                     usuario=usuario,
+                    grupo=grupo_teste,  # Associar ao grupo
                     descricao=descricao,
                     url=url,
                     preco=preco,
@@ -164,7 +200,11 @@ class Command(BaseCommand):
 
         # Resumo
         self.stdout.write('\n' + '='*60)
+        self.stdout.write(self.style.SUCCESS(f'✓ Grupo: {grupo_teste.nome}'))
         self.stdout.write(self.style.SUCCESS(f'✓ Total de usuários criados: {usuarios_criados}'))
         self.stdout.write(self.style.SUCCESS(f'✓ Total de presentes criados: {presentes_criados}'))
-        self.stdout.write('\n' + self.style.WARNING('IMPORTANTE: Todos os usuários têm a senha: senha123'))
+        self.stdout.write('\n' + self.style.WARNING('IMPORTANTE:'))
+        self.stdout.write(self.style.WARNING('  • Todos os usuários têm a senha: senha123'))
+        self.stdout.write(self.style.WARNING('  • Todos foram adicionados ao grupo: ' + grupo_teste.nome))
+        self.stdout.write(self.style.WARNING('  • Primeiro usuário é Mantenedor, demais são Membros'))
         self.stdout.write('='*60)
