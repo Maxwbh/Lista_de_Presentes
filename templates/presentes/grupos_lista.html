@@ -1,0 +1,105 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Meus Grupos - Lista de Presentes{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2><i class="bi bi-people-fill"></i> Meus Grupos</h2>
+                <a href="{% url 'criar_grupo' %}" class="btn btn-success">
+                    <i class="bi bi-plus-circle"></i> Criar Novo Grupo
+                </a>
+            </div>
+
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+
+            <div class="row">
+                {% for membro in grupos %}
+                    {% with grupo=membro.grupo %}
+                    <div class="col-md-6 col-lg-4 mb-4">
+                        <div class="card h-100 {% if grupo == grupo_ativo %}border-success border-3{% endif %}">
+                            {% if grupo.imagem_base64 %}
+                                <img src="{% url 'servir_imagem_grupo' grupo.id %}" class="card-img-top" alt="{{ grupo.nome }}" style="height: 200px; object-fit: cover;">
+                            {% else %}
+                                <div class="card-img-top bg-light d-flex align-items-center justify-content-center" style="height: 200px;">
+                                    <i class="bi bi-people-fill" style="font-size: 4rem; color: #ccc;"></i>
+                                </div>
+                            {% endif %}
+
+                            <div class="card-body">
+                                <h5 class="card-title">
+                                    {{ grupo.nome }}
+                                    {% if grupo == grupo_ativo %}
+                                        <span class="badge bg-success">Ativo</span>
+                                    {% endif %}
+                                    {% if membro.e_mantenedor %}
+                                        <span class="badge bg-primary">Admin</span>
+                                    {% endif %}
+                                </h5>
+
+                                {% if grupo.descricao %}
+                                    <p class="card-text">{{ grupo.descricao|truncatewords:20 }}</p>
+                                {% endif %}
+
+                                <p class="card-text">
+                                    <small class="text-muted">
+                                        <i class="bi bi-people"></i> {{ grupo.membros.count }} membros
+                                    </small>
+                                </p>
+                            </div>
+
+                            <div class="card-footer bg-transparent">
+                                {% if grupo != grupo_ativo %}
+                                    <a href="{% url 'ativar_grupo' grupo.id %}" class="btn btn-primary btn-sm w-100 mb-2">
+                                        <i class="bi bi-check-circle"></i> Ativar Grupo
+                                    </a>
+                                {% else %}
+                                    <button class="btn btn-success btn-sm w-100 mb-2" disabled>
+                                        <i class="bi bi-check-circle-fill"></i> Grupo Ativo
+                                    </button>
+                                {% endif %}
+
+                                <div class="btn-group w-100" role="group">
+                                    {% if membro.e_mantenedor %}
+                                        <a href="{% url 'editar_grupo' grupo.id %}" class="btn btn-outline-secondary btn-sm">
+                                            <i class="bi bi-pencil"></i> Editar
+                                        </a>
+                                        <a href="{% url 'gerenciar_membros' grupo.id %}" class="btn btn-outline-info btn-sm">
+                                            <i class="bi bi-people"></i> Membros
+                                        </a>
+                                    {% endif %}
+                                    <a href="{% url 'sair_grupo' grupo.id %}" class="btn btn-outline-danger btn-sm"
+                                       onclick="return confirm('Deseja realmente sair do grupo {{ grupo.nome }}?')">
+                                        <i class="bi bi-box-arrow-right"></i> Sair
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endwith %}
+                {% empty %}
+                    <div class="col-12">
+                        <div class="alert alert-info">
+                            <h5><i class="bi bi-info-circle"></i> Você ainda não faz parte de nenhum grupo</h5>
+                            <p>Crie um novo grupo ou peça um convite para entrar em um grupo existente!</p>
+                            <a href="{% url 'criar_grupo' %}" class="btn btn-primary">
+                                <i class="bi bi-plus-circle"></i> Criar Meu Primeiro Grupo
+                            </a>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

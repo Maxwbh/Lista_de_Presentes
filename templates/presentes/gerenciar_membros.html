@@ -1,0 +1,211 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Gerenciar Membros - {{ grupo.nome }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2><i class="bi bi-people-fill"></i> Gerenciar Membros</h2>
+                <a href="{% url 'grupos_lista' %}" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left"></i> Voltar
+                </a>
+            </div>
+
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+
+            <!-- Informações do Grupo -->
+            <div class="card mb-4">
+                <div class="card-body">
+                    <h5 class="card-title">{{ grupo.nome }}</h5>
+                    {% if grupo.descricao %}
+                        <p class="card-text">{{ grupo.descricao }}</p>
+                    {% endif %}
+                    <p class="card-text">
+                        <small class="text-muted">
+                            <i class="bi bi-people"></i> {{ membros.count }} membros •
+                            <i class="bi bi-calendar"></i> Criado em {{ grupo.data_criacao|date:"d/m/Y" }}
+                        </small>
+                    </p>
+                </div>
+            </div>
+
+            <!-- Link de Convite -->
+            <div class="card mb-4 border-success">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0"><i class="bi bi-link-45deg"></i> Link de Convite</h5>
+                </div>
+                <div class="card-body">
+                    <p class="mb-3">Compartilhe este link para convidar novos membros:</p>
+
+                    <div class="input-group mb-3">
+                        <input type="text" class="form-control" id="linkConvite" value="{{ link_convite }}" readonly>
+                        <button class="btn btn-outline-secondary" type="button" onclick="copiarLink()">
+                            <i class="bi bi-clipboard"></i> Copiar
+                        </button>
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <a href="https://wa.me/?text={{ link_convite|urlencode }}"
+                           class="btn btn-success"
+                           target="_blank">
+                            <i class="bi bi-whatsapp"></i> Compartilhar via WhatsApp
+                        </a>
+
+                        <button class="btn btn-outline-primary" onclick="compartilharLink()">
+                            <i class="bi bi-share"></i> Compartilhar
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Lista de Membros -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-people"></i> Membros do Grupo ({{ membros.count }})</h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Membro</th>
+                                    <th>Email</th>
+                                    <th>Função</th>
+                                    <th>Desde</th>
+                                    <th class="text-end">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for membro in membros %}
+                                <tr>
+                                    <td>
+                                        <strong>{{ membro.usuario.get_full_name|default:membro.usuario.email }}</strong>
+                                        {% if membro.usuario == request.user %}
+                                            <span class="badge bg-info">Você</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ membro.usuario.email }}</td>
+                                    <td>
+                                        {% if membro.e_mantenedor %}
+                                            <span class="badge bg-primary">
+                                                <i class="bi bi-shield-fill-check"></i> Administrador
+                                            </span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">
+                                                <i class="bi bi-person"></i> Membro
+                                            </span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <small class="text-muted">{{ membro.data_entrada|date:"d/m/Y" }}</small>
+                                    </td>
+                                    <td class="text-end">
+                                        {% if membro.usuario != request.user %}
+                                            <div class="btn-group btn-group-sm" role="group">
+                                                <a href="{% url 'toggle_mantenedor' grupo.id membro.usuario.id %}"
+                                                   class="btn btn-outline-primary"
+                                                   title="{% if membro.e_mantenedor %}Remover como Admin{% else %}Promover a Admin{% endif %}">
+                                                    {% if membro.e_mantenedor %}
+                                                        <i class="bi bi-arrow-down-circle"></i>
+                                                    {% else %}
+                                                        <i class="bi bi-arrow-up-circle"></i>
+                                                    {% endif %}
+                                                </a>
+                                                <a href="{% url 'remover_membro' grupo.id membro.usuario.id %}"
+                                                   class="btn btn-outline-danger"
+                                                   onclick="return confirm('Deseja realmente remover {{ membro.usuario.get_full_name|default:membro.usuario.email }} do grupo?')"
+                                                   title="Remover do grupo">
+                                                    <i class="bi bi-person-x"></i> Banir
+                                                </a>
+                                            </div>
+                                        {% else %}
+                                            <span class="text-muted"><small>—</small></span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="5" class="text-center text-muted py-4">
+                                        Nenhum membro no grupo
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Ações do Grupo -->
+            <div class="card mt-4 border-warning">
+                <div class="card-header bg-warning">
+                    <h6 class="mb-0"><i class="bi bi-gear"></i> Configurações do Grupo</h6>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex gap-2">
+                        <a href="{% url 'editar_grupo' grupo.id %}" class="btn btn-outline-secondary">
+                            <i class="bi bi-pencil"></i> Editar Informações
+                        </a>
+
+                        <form method="post" action="{% url 'toggle_ativo_grupo' grupo.id %}" class="d-inline">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-outline-{% if grupo.ativo %}danger{% else %}success{% endif %}">
+                                <i class="bi bi-{% if grupo.ativo %}x-circle{% else %}check-circle{% endif %}"></i>
+                                {% if grupo.ativo %}Desativar{% else %}Ativar{% endif %} Grupo
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function copiarLink() {
+    const linkInput = document.getElementById('linkConvite');
+    linkInput.select();
+    linkInput.setSelectionRange(0, 99999); // Para mobile
+
+    navigator.clipboard.writeText(linkInput.value).then(function() {
+        // Feedback visual
+        const btn = event.target.closest('button');
+        const originalHTML = btn.innerHTML;
+        btn.innerHTML = '<i class="bi bi-check"></i> Copiado!';
+        btn.classList.remove('btn-outline-secondary');
+        btn.classList.add('btn-success');
+
+        setTimeout(function() {
+            btn.innerHTML = originalHTML;
+            btn.classList.remove('btn-success');
+            btn.classList.add('btn-outline-secondary');
+        }, 2000);
+    }).catch(function(err) {
+        alert('Erro ao copiar: ' + err);
+    });
+}
+
+function compartilharLink() {
+    if (navigator.share) {
+        navigator.share({
+            title: 'Convite para {{ grupo.nome }}',
+            text: 'Junte-se ao meu grupo na Lista de Presentes!',
+            url: '{{ link_convite }}'
+        }).catch(err => console.log('Erro ao compartilhar:', err));
+    } else {
+        copiarLink();
+        alert('Link copiado! Cole onde desejar compartilhar.');
+    }
+}
+</script>
+{% endblock %}
