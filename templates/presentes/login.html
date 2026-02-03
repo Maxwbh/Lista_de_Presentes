@@ -194,6 +194,30 @@
                 <span>OU</span>
             </div>
 
+            <!-- Social Login Buttons -->
+            {% load socialaccount %}
+            <div class="social-login mb-4">
+                <a href="{% provider_login_url 'google' %}" class="btn btn-outline-danger w-100 mb-2">
+                    <i class="bi bi-google me-2"></i>
+                    Entrar com Google
+                </a>
+
+                <a href="{% provider_login_url 'facebook' %}" class="btn btn-outline-primary w-100 mb-2">
+                    <i class="bi bi-facebook me-2"></i>
+                    Entrar com Facebook
+                </a>
+
+                <a href="{% provider_login_url 'linkedin_oauth2' %}" class="btn btn-outline-info w-100 mb-2">
+                    <i class="bi bi-linkedin me-2"></i>
+                    Entrar com LinkedIn
+                </a>
+
+                <a href="{% provider_login_url 'apple' %}" class="btn btn-outline-dark w-100 mb-2">
+                    <i class="bi bi-apple me-2"></i>
+                    Entrar com Apple
+                </a>
+            </div>
+
             <div class="register-link">
                 <p class="mb-0">
                     Ainda não tem uma conta?
