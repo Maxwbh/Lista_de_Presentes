@@ -203,8 +203,8 @@ python manage.py shell
 
 ---
 
-**Desenvolvido por**: Maxwell da Silva Oliveira (@maxwbh)  
-**Empresa**: M&S do Brasil LTDA  
+**Desenvolvido por**: Maxwell Oliveira (@maxwbh)
+**Empresa**: M&S do Brasil LTDA
 **Email**: maxwbh@gmail.com
 
 ---
