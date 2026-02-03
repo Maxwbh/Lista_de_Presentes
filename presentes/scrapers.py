@@ -441,21 +441,28 @@ class ScraperFactory:
     def get_scraper(url):
         """
         Retorna o scraper apropriado baseado na URL.
+        Retorna: (scraper, is_generic)
         """
         domain = urlparse(url).netloc.lower()
 
         if 'amazon.com' in domain:
-            logger.info(f"Usando AmazonScraper para {domain}")
-            return AmazonScraper()
+            logger.info(f"🛍️  Usando AmazonScraper para {domain}")
+            return AmazonScraper(), False
         elif 'mercadolivre.com' in domain or 'mercadolibre.com' in domain:
-            logger.info(f"Usando MercadoLivreScraper para {domain}")
-            return MercadoLivreScraper()
+            logger.info(f"🛒 Usando MercadoLivreScraper para {domain}")
+            return MercadoLivreScraper(), False
         elif 'kabum.com' in domain:
-            logger.info(f"Usando KabumScraper para {domain}")
-            return KabumScraper()
+            logger.info(f"🎮 Usando KabumScraper para {domain}")
+            return KabumScraper(), False
         else:
-            logger.info(f"Usando GenericScraper para {domain}")
-            return GenericScraper()
+            logger.warning("=" * 80)
+            logger.warning(f"⚠️  SITE NÃO MAPEADO: {domain}")
+            logger.warning(f"   URL: {url}")
+            logger.warning(f"   ")
+            logger.warning(f"   ℹ️  Usando scraper genérico (pode ter menor taxa de sucesso)")
+            logger.warning(f"   💡 Considere adicionar suporte específico para este site")
+            logger.warning("=" * 80)
+            return GenericScraper(), True
 
     @staticmethod
     def extract_product_info(url):
@@ -482,14 +489,107 @@ class ScraperFactory:
               }
         """
         try:
-            scraper = ScraperFactory.get_scraper(url)
+            scraper, is_generic = ScraperFactory.get_scraper(url)
             titulo, preco, imagem_url = scraper.extract(url)
+
+            # Se usou scraper genérico e teve sucesso, criar issue sugerindo suporte específico
+            if is_generic:
+                try:
+                    from .github_helper import criar_issue_erro_geral
+                    from urllib.parse import urlparse
+
+                    domain = urlparse(url).netloc
+                    titulo_issue = f"[AUTO] Site não mapeado: {domain}"
+                    descricao_issue = f"""## Site Não Mapeado Detectado
+
+O sistema conseguiu extrair dados usando o **scraper genérico**, mas este site não tem suporte específico implementado.
+
+### Domínio
+`{domain}`
+
+### URL de Exemplo
+```
+{url}
+```
+
+### Dados Extraídos com Scraper Genérico
+- **Título**: {titulo[:100] if titulo else 'N/A'}...
+- **Preço**: R$ {preco if preco else 'N/A'}
+- **Imagem**: {'Sim' if imagem_url else 'Não'}
+
+### Por Que Adicionar Suporte Específico?
+1. **Maior taxa de sucesso**: Scrapers específicos conhecem a estrutura exata do site
+2. **Mais dados**: Podem extrair informações adicionais (descrição, avaliações, etc.)
+3. **Mais confiável**: Menos propenso a falhas quando o site muda minimamente
+4. **Melhor performance**: Busca direta nos elementos corretos
+
+### Ações Sugeridas
+- [ ] Analisar estrutura HTML do site `{domain}`
+- [ ] Identificar padrões de classes CSS para título, preço, imagem
+- [ ] Criar classe `{domain.split('.')[0].title()}Scraper` em `scrapers.py`
+- [ ] Implementar método `extract()` específico
+- [ ] Adicionar ao `ScraperFactory.get_scraper()`
+- [ ] Testar com múltiplas URLs do site
+
+### Sites Populares que Merecem Suporte
+Se este for um dos sites abaixo, priorize a implementação:
+- Americanas
+- Submarino
+- Magazine Luiza
+- Casas Bahia
+- Shopee
+- AliExpress
+- Shein
+- Netshoes
+- Centauro
+
+### Exemplo de Implementação
+```python
+class {domain.split('.')[0].title()}Scraper(BaseScraper):
+    def extract(self, url):
+        soup = self.get_soup(url)
+
+        # Título
+        titulo = soup.find('h1', class_='product-title')
+
+        # Preço
+        preco = soup.find('span', class_='price')
+
+        # Imagem
+        imagem = soup.find('img', class_='product-image')
+
+        return (titulo, preco, imagem)
+```
+
+### Informações Técnicas
+- **Tipo**: Melhoria (Enhancement)
+- **Prioridade**: Média (se site popular) / Baixa (se site raro)
+- **Complexidade**: Baixa a Média
+"""
+
+                    criar_issue_erro_geral(
+                        titulo=titulo_issue,
+                        descricao=descricao_issue,
+                        contexto={
+                            'Domínio': domain,
+                            'URL': url,
+                            'Scraper usado': 'GenericScraper',
+                            'Status': 'Sucesso com scraper genérico'
+                        },
+                        labels=['auto-generated', 'enhancement', 'new-site-support', 'low-priority']
+                    )
+
+                    logger.info(f"💡 Issue criada sugerindo suporte específico para {domain}")
+
+                except Exception as e:
+                    logger.debug(f"Erro ao criar issue para site não mapeado: {str(e)}")
 
             return {
                 'success': True,
                 'titulo': titulo,
                 'preco': preco,
-                'imagem_url': imagem_url
+                'imagem_url': imagem_url,
+                'used_generic_scraper': is_generic
             }
 
         except NetworkError as e:
