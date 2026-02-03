@@ -1,54 +1,42 @@
+# GitHub Actions: Keep Render Free Tier Alive
+# Evita que o serviço desligue por inatividade (15 min)
+# Faz ping a cada 14 minutos
+
 name: Keep Render Alive
 
 on:
   schedule:
-    # Executa a cada 10 minutos (cron: minuto hora dia mês dia-da-semana)
-    # Render dorme após 15 minutos de inatividade, então 10min é seguro
-    - cron: '*/10 * * * *'
+    # Executa a cada 14 minutos
+    # Formato: minuto hora dia mês dia-da-semana
+    - cron: '*/14 * * * *'
 
-  # Permite execução manual via GitHub Actions UI
+  # Permite executar manualmente
   workflow_dispatch:
 
 jobs:
-  ping:
+  keep-alive:
+    name: Ping Render Service
     runs-on: ubuntu-latest
 
     steps:
-      - name: Ping health check endpoint
+      - name: Ping Health Endpoint
         run: |
-          echo "🏓 Fazendo ping no servidor para manter ativo..."
+          echo "🏓 Fazendo ping no serviço Render..."
+          echo "Timestamp: $(date)"
 
-          # Fazer requisição ao health check endpoint
-          RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" https://lista-presentes-0hbp.onrender.com/health/)
+          # Substitua pela URL do seu app
+          RENDER_URL="https://lista-presentes.onrender.com/health/"
 
-          if [ "$RESPONSE" -eq 200 ]; then
-            echo "✅ Servidor respondeu com sucesso! Status: $RESPONSE"
+          # Fazer request
+          response=$(curl -s -o /dev/null -w "%{http_code}" "$RENDER_URL")
+
+          if [ "$response" = "200" ]; then
+            echo "✅ Serviço respondeu: HTTP $response"
           else
-            echo "⚠️ Servidor respondeu com status: $RESPONSE"
-            exit 1
+            echo "⚠️  Resposta inesperada: HTTP $response"
           fi
 
-          echo "⏰ Próximo ping em 10 minutos..."
-          echo "📊 Timestamp: $(date '+%Y-%m-%d %H:%M:%S UTC')"
+          echo "Próximo ping em 14 minutos..."
 
-      - name: Verificar uptime
-        run: |
-          echo "📈 Estatísticas do servidor:"
-
-          # Medir tempo de resposta
-          START_TIME=$(date +%s%N)
-          curl -s https://lista-presentes-0hbp.onrender.com/health/ > /dev/null
-          END_TIME=$(date +%s%N)
-
-          # Calcular latência em milissegundos
-          LATENCY=$(( ($END_TIME - $START_TIME) / 1000000 ))
-
-          echo "⚡ Latência: ${LATENCY}ms"
-
-          if [ "$LATENCY" -lt 1000 ]; then
-            echo "🟢 Latência excelente (< 1s)"
-          elif [ "$LATENCY" -lt 3000 ]; then
-            echo "🟡 Latência boa (< 3s)"
-          else
-            echo "🔴 Latência alta (> 3s)"
-          fi
+      - name: Log Timestamp
+        run: echo "Last ping: $(date -u +"%Y-%m-%d %H:%M:%S UTC")"
