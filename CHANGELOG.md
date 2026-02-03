@@ -5,6 +5,194 @@ Todas as mudanças notáveis neste projeto serão documentadas neste arquivo.
 O formato é baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/),
 e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
+## [1.1.9] - 2026-02-03
+
+### Adicionado - Login Social e Melhorias no Scraper Amazon
+
+**Login por Redes Sociais (Django Allauth)**
+- 🔐 Login com Google OAuth 2.0
+- 🔐 Login com Facebook
+- 🔐 Login com LinkedIn OAuth 2.0
+- 🔐 Login com Apple (Sign in with Apple / iCloud)
+- 🎨 Botões de login social na página de login
+- 📚 Documentação completa em `SOCIAL_LOGIN_CONFIG.md`
+- ⚙️ Configuração via variáveis de ambiente
+
+**Melhorias no Scraper Amazon**
+- 🔍 Seletores de título expandidos: 2 → 5 alternativas
+- 💰 Seletores de preço expandidos: 3 → 8 alternativas
+- 🖼️ Seletores de imagem expandidos: 3 → 6 alternativas
+- 📊 Parsing JSON para atributo `data-a-dynamic-image`
+- 📝 Logging detalhado com símbolos ✓/✗
+- 🐛 Logging de snippets HTML em erros de parsing
+- 🌐 Headers HTTP aprimorados (Accept-Encoding, Referer, DNT)
+
+### Arquivos Adicionados
+- `SOCIAL_LOGIN_CONFIG.md`: Guia completo de configuração de OAuth
+
+### Arquivos Modificados
+- `requirements.txt`: Adicionado `django-allauth==0.61.1`
+- `lista_presentes/settings.py`: Configuração de allauth e providers
+- `lista_presentes/urls.py`: Incluído `allauth.urls`
+- `templates/presentes/login.html`: Adicionados botões de login social
+- `presentes/scrapers.py`: Melhorias substanciais no AmazonScraper
+
+### Segurança
+- OAuth 2.0 implementado seguindo melhores práticas
+- Credenciais armazenadas em variáveis de ambiente
+- Callback URLs validados pelas plataformas
+
+### Providers Suportados
+- Google: `allauth.socialaccount.providers.google`
+- Facebook: `allauth.socialaccount.providers.facebook`
+- LinkedIn: `allauth.socialaccount.providers.linkedin_oauth2`
+- Apple: `allauth.socialaccount.providers.apple`
+
+## [1.1.8] - 2026-02-03
+
+### Adicionado - Seletor de Grupo no Header
+
+**Seletor Rápido de Grupo Ativo**
+- 🎯 Dropdown no navbar mostrando grupo ativo
+- ⚡ Troca rápida entre grupos sem sair da página atual
+- 🎨 Badges visuais: "Ativo" e "Admin"
+- 🔗 Links rápidos: "Gerenciar Grupos" e "Criar Novo Grupo"
+- 🔄 Mantém contexto da página após troca (`?next={{request.path}}`)
+
+**Context Processor Global**
+- 📦 Novos arquivos: `presentes/context_processors.py`
+- 🌍 Variáveis globais disponíveis em todos os templates:
+  - `user_grupos`: Lista de grupos do usuário
+  - `grupo_ativo`: Grupo atualmente selecionado
+- ⚙️ Queries otimizadas com `select_related('grupo')`
+
+### Arquivos Adicionados
+- `presentes/context_processors.py`: Context processor para grupos
+
+### Arquivos Modificados
+- `lista_presentes/settings.py`: Registrado context processor
+- `templates/base.html`: Adicionado dropdown de seletor de grupo
+- `presentes/views.py`: Ajuste no `gerenciar_membros_view` para URLs dinâmicas
+
+### Corrigido
+- 🐛 Links de convite agora usam `request.build_absolute_uri()` ao invés de `settings.SITE_URL`
+- ✅ Geração dinâmica de URLs de convite (funciona em qualquer ambiente)
+
+### UX (User Experience)
+- Usuários veem claramente qual grupo está ativo
+- Troca de grupo em um clique
+- Navegação intuitiva entre funcionalidades de grupo
+
+## [1.1.7] - 2026-02-03
+
+### Corrigido - CRÍTICO: Erro 500 na Página de Grupos
+
+**Problema Resolvido**
+- 🔴 Erro `NoReverseMatch: Reverse for 'ativar_grupo' with arguments ('',) not found`
+- 🔴 Página `/grupos/` retornava HTTP 500
+
+**Causa Raiz**
+- View retornava objetos `Grupo` via `request.user.get_grupos()`
+- Template esperava objetos `GrupoMembro` para acessar `membro.grupo` e `membro.e_mantenedor`
+- Template usava `grupo.id` que estava vazio/None
+
+**Correção Implementada**
+- ✅ View agora retorna `GrupoMembro.objects` com `select_related('grupo')`
+- ✅ Template atualizado com verificação de segurança: `{% if grupo and grupo.pk %}`
+- ✅ Substituído `grupo.id` por `grupo.pk` (mais confiável)
+
+### Arquivos Modificados
+- `presentes/views.py`: `grupos_lista_view` corrigida
+- `templates/presentes/grupos_lista.html`: Verificações de segurança adicionadas
+
+### Performance
+- Queries otimizadas com `select_related` para evitar N+1
+
+## [1.1.6] - 2026-02-03
+
+### Adicionado - Interface Completa de Gerenciamento de Grupos
+
+**Para Administradores do Grupo (Mantenedores)**
+- 🚫 Banir/remover membros do grupo
+- 📋 Copiar link de convite com feedback visual
+- 📱 Compartilhar link via WhatsApp (integração direta)
+- 👥 Visualizar lista completa de membros
+- 🎯 Promover/rebaixar mantenedores
+
+**Para Usuários Comuns**
+- 🔄 Trocar de grupo ativo rapidamente
+- 🚪 Sair do grupo voluntariamente
+- 🛡️ Proteção: último mantenedor não pode sair
+
+**Templates Criados**
+- `templates/presentes/grupos_lista.html`: Lista de grupos com botão de ativação
+- `templates/presentes/gerenciar_membros.html`: Interface de gerenciamento
+- `templates/presentes/criar_grupo.html`: Formulário de criação
+- `templates/presentes/editar_grupo.html`: Formulário de edição
+
+### Arquivos Adicionados
+- 4 novos templates HTML completos com JavaScript
+
+### Arquivos Modificados
+- `presentes/views.py`: Caminhos de templates corrigidos
+- `templates/base.html`: Adicionado link "Meus Grupos" no navbar
+
+### Funcionalidades JavaScript
+- 📋 Copy to clipboard com `navigator.clipboard.writeText()`
+- ✅ Feedback visual: botão muda para "Copiado!" com ícone
+- 🔗 Integração WhatsApp: `https://wa.me/?text=...`
+
+### Segurança
+- Verificações de permissões em todas as ações
+- Apenas mantenedores podem remover membros
+- Confirmação antes de ações destrutivas
+
+## [1.1.5] - 2026-02-03
+
+### Alterado - Reversão do Tema
+
+**Tema Original v1.0 Restaurado**
+- 🎨 Removida importação de `glassmorphism-christmas.css` do `base.html`
+- 🔙 Retorno ao tema claro/escuro original
+- 🧹 Limpeza de estilos glassmorphism
+
+### Arquivos Modificados
+- `templates/base.html`: Referência ao CSS removida
+
+### Motivo
+- Feedback do usuário solicitando tema original
+- Melhor contraste e legibilidade
+
+## [1.1.4] - 2026-02-03
+
+### Adicionado - Páginas de Setup Público (Render Free)
+
+**Acesso Público para Ambientes Sem SSH**
+- 🌐 `/gerar-dados-teste/` agora acessível sem login
+- 🌐 `/setup/` também acessível sem login
+- 🔧 Útil para Render Free tier (sem acesso SSH)
+- 📝 Logging diferenciado para acesso público vs autenticado
+
+**Modificações de Segurança**
+- Removido decorator `@login_required` de views administrativas específicas
+- Removida verificação `is_superuser` em views de setup
+- Logging identifica: `user_identifier = request.user.email if request.user.is_authenticated else 'acesso público'`
+
+### Arquivos Modificados
+- `presentes/views.py`:
+  - `gerar_dados_teste_view()`: Acesso público permitido
+  - `setup_grupos_view()`: Acesso público permitido
+
+### Contexto
+- Render Free não oferece acesso SSH ao container
+- Impossível executar `python manage.py` commands remotamente
+- Interface web permite setup inicial do banco de dados
+
+### Segurança
+- Ainda requer conhecimento da URL
+- Dados de teste não comprometem segurança
+- Páginas documentadas em `GERAR_DADOS_TESTE_RENDER.md`
+
 ## [1.1.3] - 2025-01-07
 
 ### Adicionado - Sistema de Auto-Versionamento e Atribuição de Commits
@@ -562,7 +750,7 @@ Este projeto usa [Semantic Versioning](https://semver.org/lang/pt-BR/):
 
 ## Autor
 
-**Maxwell da Silva Oliveira**
+**Maxwell Oliveira** (@maxwbh)
 - 💼 Empresa: M&S do Brasil LTDA
 - 📧 Email: maxwbh@gmail.com
 - 💻 GitHub: [@Maxwbh](https://github.com/Maxwbh)

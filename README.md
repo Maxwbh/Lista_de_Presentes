@@ -10,7 +10,7 @@
 
 🌐 **Demo ao vivo**: [https://lista-presentes-0hbp.onrender.com](https://lista-presentes-0hbp.onrender.com)
 
-👨‍💻 **Desenvolvido por**: [Maxwell da Silva Oliveira](https://github.com/Maxwbh) - [M&S do Brasil LTDA](http://msbrasil.inf.br)
+👨‍💻 **Desenvolvido por**: [Maxwell Oliveira](https://github.com/Maxwbh) - [M&S do Brasil LTDA](http://msbrasil.inf.br)
 
 ---
 
@@ -28,6 +28,21 @@
 - ✅ Visualização por usuário ou por produto
 - ✅ Evitar presentes duplicados
 - ✅ Sistema de notificações em tempo real
+
+### 👥 Sistema de Grupos
+- ✅ Criar e gerenciar grupos familiares
+- ✅ Convites via link exclusivo ou WhatsApp
+- ✅ Seletor rápido de grupo no header
+- ✅ Isolamento completo de dados por grupo
+- ✅ Gerenciamento de membros (banir, promover)
+- ✅ Múltiplos grupos por usuário
+- ✅ Troca rápida entre grupos
+
+### 🔐 Login Social
+- ✅ Login com Google
+- ✅ Login com Facebook
+- ✅ Login com LinkedIn
+- ✅ Login com Apple (iCloud)
 
 ### 💰 Busca de Preços
 - ✅ Sugestões automáticas de lojas
@@ -70,6 +85,7 @@
 ### Backend
 - **Django 5.0** - Framework web Python
 - **PostgreSQL** - Banco de dados
+- **Django Allauth** - Autenticação social (Google, Facebook, LinkedIn, Apple)
 - **Pillow** - Manipulação de imagens
 - **BeautifulSoup4** - Web scraping para preços
 - **Whitenoise** - Servir arquivos estáticos
@@ -602,7 +618,7 @@ Este projeto está licenciado sob a Licença MIT - veja o arquivo [LICENSE](LICE
 
 ## 👥 Autor
 
-**Maxwell da Silva Oliveira**
+**Maxwell Oliveira** (@maxwbh)
 
 - 💼 Empresa: **M&S do Brasil LTDA**
 - 🌐 Site: [msbrasil.inf.br](http://msbrasil.inf.br)
@@ -632,7 +648,7 @@ Este projeto está licenciado sob a Licença MIT - veja o arquivo [LICENSE](LICE
 
 ## 🗺️ Roadmap
 
-### Versão 1.0 (Atual) ✅
+### Versão 1.0 (Base) ✅
 - [x] Sistema de autenticação
 - [x] CRUD de presentes
 - [x] Sistema de compra
@@ -645,13 +661,23 @@ Este projeto está licenciado sob a Licença MIT - veja o arquivo [LICENSE](LICE
 - [x] Keep-Alive (GitHub Actions)
 - [x] Auto-extração de produtos via URL
 
+### Versão 1.1 (Atual) ✅
+- [x] Sistema de grupos/famílias
+- [x] Gerenciamento de membros (banir, promover)
+- [x] Links de convite exclusivos por grupo
+- [x] Compartilhamento via WhatsApp
+- [x] Seletor de grupo no header
+- [x] Isolamento completo de dados por grupo
+- [x] Login social (Google, Facebook, LinkedIn, Apple)
+- [x] Setup via interface web (Render Free)
+- [x] Scraper Amazon melhorado
+
 ### Versão 2.0 (Planejada)
-- [ ] Sistema de grupos/famílias
 - [ ] Chat entre usuários
-- [ ] Compartilhamento em redes sociais
+- [ ] Compartilhamento em outras redes sociais
 - [ ] Notificações push (WebPush)
 - [ ] Gamificação
-- [ ] Relatórios e estatísticas
+- [ ] Relatórios e estatísticas avançadas
 - [ ] Integração com mais lojas (Magazine Luiza, Americanas)
 
 ---
@@ -665,6 +691,8 @@ Este projeto está licenciado sob a Licença MIT - veja o arquivo [LICENSE](LICE
 - [DEBUG_500_ERRORS.md](DEBUG_500_ERRORS.md) - Debug de erros 500
 - [MIGRACAO_IMAGENS_BASE64.md](MIGRACAO_IMAGENS_BASE64.md) - Migração de imagens
 - [GOOGLE_PLAY_STORE.md](GOOGLE_PLAY_STORE.md) - Publicação na Google Play
+- [SETUP_GRUPOS.md](SETUP_GRUPOS.md) - Configuração do sistema de grupos
+- [SOCIAL_LOGIN_CONFIG.md](SOCIAL_LOGIN_CONFIG.md) - Configuração de login social
 
 ---
 
@@ -672,5 +700,5 @@ Este projeto está licenciado sob a Licença MIT - veja o arquivo [LICENSE](LICE
 
 ---
 
-**Última atualização**: Dezembro 2025
-**Versão**: 1.1.0
+**Última atualização**: Fevereiro 2026
+**Versão**: 1.1.9
