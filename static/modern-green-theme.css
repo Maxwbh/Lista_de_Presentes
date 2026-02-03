@@ -1,0 +1,562 @@
+/* ===================================
+   MODERN GREEN THEME
+   Tema moderno verde natalino com design limpo
+   =================================== */
+
+:root {
+    /* Modern Green Colors */
+    --forest-green: #2d5016;
+    --emerald-green: #4a7c2c;
+    --lime-green: #6b9e4d;
+    --mint-green: #7dd3a0;
+    --sage-green: #a8d5ba;
+
+    /* Neutral Colors */
+    --bg-light: #f4f9f4;
+    --bg-white: #ffffff;
+    --text-dark: #1a3409;
+    --text-light: #4a5568;
+    --text-muted: #718096;
+
+    /* Accent Colors */
+    --gold: #d4af37;
+    --gold-bright: #ffd700;
+    --red-accent: #c92a2a;
+    --success: #48bb78;
+    --danger: #e53e3e;
+    --warning: #ed8936;
+
+    /* Effects */
+    --shadow-sm: 0 2px 4px rgba(45, 80, 22, 0.1);
+    --shadow-md: 0 4px 15px rgba(45, 80, 22, 0.15);
+    --shadow-lg: 0 10px 40px rgba(45, 80, 22, 0.2);
+}
+
+/* ===================================
+   GLOBAL STYLES
+   =================================== */
+
+body.green-theme {
+    background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 50%, #e8f5e9 100%);
+    background-size: 400% 400%;
+    animation: gradientMove 15s ease infinite;
+    min-height: 100vh;
+    color: var(--text-dark);
+    transition: all 0.3s ease;
+}
+
+@keyframes gradientMove {
+    0%, 100% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+}
+
+body.green-theme .container {
+    position: relative;
+    z-index: 1;
+}
+
+/* ===================================
+   NAVBAR
+   =================================== */
+
+body.green-theme .navbar-dark.bg-primary {
+    background: linear-gradient(135deg, var(--forest-green) 0%, var(--emerald-green) 100%) !important;
+    backdrop-filter: blur(15px);
+    box-shadow: 0 4px 20px rgba(45, 80, 22, 0.3);
+    border: none;
+    padding: 1rem 0;
+}
+
+body.green-theme .navbar-brand {
+    color: var(--gold-bright) !important;
+    font-weight: 800;
+    font-size: 1.4rem;
+    text-shadow: 0 2px 10px rgba(212, 175, 55, 0.5);
+    transition: all 0.3s ease;
+}
+
+body.green-theme .navbar-brand:hover {
+    transform: scale(1.05);
+    color: white !important;
+}
+
+body.green-theme .nav-link {
+    color: rgba(255, 255, 255, 0.9) !important;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    border-radius: 8px;
+    padding: 0.5rem 1rem !important;
+    margin: 0 0.2rem;
+}
+
+body.green-theme .nav-link:hover {
+    color: var(--gold-bright) !important;
+    background: rgba(255, 255, 255, 0.15);
+    transform: translateY(-2px);
+}
+
+body.green-theme .nav-link.active {
+    background: rgba(212, 175, 55, 0.3);
+    color: var(--gold-bright) !important;
+}
+
+body.green-theme .dropdown-menu {
+    background: white;
+    border: 2px solid rgba(45, 80, 22, 0.2);
+    border-radius: 12px;
+    box-shadow: var(--shadow-lg);
+    padding: 0.5rem;
+}
+
+body.green-theme .dropdown-item {
+    color: var(--text-dark) !important;
+    border-radius: 8px;
+    padding: 0.75rem 1rem;
+    transition: all 0.3s ease;
+}
+
+body.green-theme .dropdown-item:hover {
+    background: rgba(45, 80, 22, 0.1) !important;
+    color: var(--forest-green) !important;
+    transform: translateX(5px);
+}
+
+body.green-theme .dropdown-item.active {
+    background: linear-gradient(135deg, var(--emerald-green) 0%, var(--forest-green) 100%);
+    color: white !important;
+}
+
+/* ===================================
+   CARDS
+   =================================== */
+
+body.green-theme .card {
+    background: rgba(255, 255, 255, 0.95) !important;
+    border: 2px solid rgba(74, 124, 44, 0.2) !important;
+    border-radius: 16px !important;
+    box-shadow: var(--shadow-md);
+    transition: all 0.3s ease;
+    overflow: hidden;
+}
+
+body.green-theme .card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(212, 175, 55, 0.1), transparent);
+    transition: left 0.5s;
+}
+
+body.green-theme .card:hover {
+    transform: translateY(-5px);
+    box-shadow: var(--shadow-lg);
+    border-color: var(--gold) !important;
+}
+
+body.green-theme .card:hover::before {
+    left: 100%;
+}
+
+body.green-theme .card-header {
+    background: linear-gradient(135deg, var(--emerald-green) 0%, var(--lime-green) 100%) !important;
+    color: white !important;
+    font-weight: 600;
+    padding: 1.2rem 1.5rem;
+    border: none !important;
+}
+
+body.green-theme .card-body {
+    color: var(--text-dark);
+    padding: 1.5rem;
+}
+
+body.green-theme .card-title {
+    color: var(--forest-green) !important;
+    font-weight: 700;
+    margin-bottom: 1rem;
+}
+
+body.green-theme .card-text {
+    color: var(--text-light) !important;
+}
+
+body.green-theme .card-footer {
+    background: rgba(45, 80, 22, 0.05);
+    border-top: 1px solid rgba(45, 80, 22, 0.1);
+    padding: 1rem 1.5rem;
+}
+
+/* ===================================
+   BUTTONS
+   =================================== */
+
+body.green-theme .btn-primary {
+    background: linear-gradient(135deg, var(--emerald-green) 0%, var(--lime-green) 100%) !important;
+    border: none !important;
+    border-radius: 10px;
+    padding: 0.75rem 1.5rem;
+    font-weight: 600;
+    color: white !important;
+    box-shadow: 0 4px 15px rgba(74, 124, 44, 0.3);
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+body.green-theme .btn-primary::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.2);
+    transform: translate(-50%, -50%);
+    transition: width 0.6s, height 0.6s;
+}
+
+body.green-theme .btn-primary:hover::before {
+    width: 300px;
+    height: 300px;
+}
+
+body.green-theme .btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(74, 124, 44, 0.4);
+    background: linear-gradient(135deg, var(--forest-green) 0%, var(--emerald-green) 100%) !important;
+}
+
+body.green-theme .btn-primary:active {
+    transform: translateY(0);
+}
+
+body.green-theme .btn-success {
+    background: linear-gradient(135deg, var(--mint-green) 0%, var(--sage-green) 100%) !important;
+    border: none !important;
+    box-shadow: 0 4px 15px rgba(125, 211, 160, 0.3);
+}
+
+body.green-theme .btn-danger {
+    background: linear-gradient(135deg, #e53e3e 0%, #c53030 100%) !important;
+    border: none !important;
+    box-shadow: 0 4px 15px rgba(229, 62, 62, 0.3);
+}
+
+body.green-theme .btn-warning {
+    background: linear-gradient(135deg, var(--gold) 0%, var(--gold-bright) 100%) !important;
+    border: none !important;
+    box-shadow: 0 4px 15px rgba(212, 175, 55, 0.3);
+}
+
+body.green-theme .btn-outline-secondary {
+    border: 2px solid var(--emerald-green) !important;
+    color: var(--emerald-green) !important;
+    background: transparent !important;
+    border-radius: 10px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+body.green-theme .btn-outline-secondary:hover {
+    background: linear-gradient(135deg, var(--emerald-green) 0%, var(--lime-green) 100%) !important;
+    color: white !important;
+    transform: translateY(-2px);
+}
+
+/* ===================================
+   FORMS
+   =================================== */
+
+body.green-theme .form-control,
+body.green-theme .form-select {
+    background: rgba(255, 255, 255, 0.9) !important;
+    border: 2px solid rgba(74, 124, 44, 0.3) !important;
+    border-radius: 10px;
+    color: var(--text-dark) !important;
+    padding: 0.75rem 1rem;
+    transition: all 0.3s ease;
+}
+
+body.green-theme .form-control:focus,
+body.green-theme .form-select:focus {
+    background: white !important;
+    border-color: var(--emerald-green) !important;
+    box-shadow: 0 0 0 4px rgba(74, 124, 44, 0.15);
+    color: var(--text-dark) !important;
+}
+
+body.green-theme .form-label {
+    color: var(--forest-green);
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+}
+
+body.green-theme .form-control::placeholder {
+    color: var(--text-muted);
+}
+
+/* ===================================
+   ALERTS
+   =================================== */
+
+body.green-theme .alert {
+    border: none;
+    border-radius: 12px;
+    padding: 1rem 1.25rem;
+    box-shadow: var(--shadow-sm);
+}
+
+body.green-theme .alert-success {
+    background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+    color: #155724;
+    border-left: 4px solid var(--emerald-green);
+}
+
+body.green-theme .alert-danger {
+    background: linear-gradient(135deg, #fff5f5 0%, #fed7d7 100%);
+    color: #742a2a;
+    border-left: 4px solid #e53e3e;
+}
+
+body.green-theme .alert-info {
+    background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
+    color: #1a3409;
+    border-left: 4px solid var(--lime-green);
+}
+
+body.green-theme .alert-warning {
+    background: linear-gradient(135deg, #fff8e1 0%, #ffecb3 100%);
+    color: #744210;
+    border-left: 4px solid var(--gold);
+}
+
+/* ===================================
+   BADGES
+   =================================== */
+
+body.green-theme .badge {
+    padding: 0.5rem 0.75rem;
+    border-radius: 8px;
+    font-weight: 600;
+    box-shadow: var(--shadow-sm);
+}
+
+body.green-theme .badge.bg-primary {
+    background: linear-gradient(135deg, var(--emerald-green) 0%, var(--lime-green) 100%) !important;
+}
+
+body.green-theme .badge.bg-success {
+    background: linear-gradient(135deg, var(--mint-green) 0%, var(--sage-green) 100%) !important;
+}
+
+body.green-theme .badge.bg-danger {
+    background: linear-gradient(135deg, #e53e3e 0%, #c53030 100%) !important;
+}
+
+body.green-theme .badge.bg-warning {
+    background: linear-gradient(135deg, var(--gold) 0%, var(--gold-bright) 100%) !important;
+}
+
+/* ===================================
+   HEADINGS
+   =================================== */
+
+body.green-theme h1,
+body.green-theme h2,
+body.green-theme h3,
+body.green-theme h4,
+body.green-theme h5,
+body.green-theme h6 {
+    color: var(--forest-green) !important;
+    font-weight: 700;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+/* ===================================
+   LINKS
+   =================================== */
+
+body.green-theme a {
+    color: var(--emerald-green);
+    text-decoration: none;
+    transition: all 0.3s ease;
+}
+
+body.green-theme a:hover {
+    color: var(--forest-green);
+    text-decoration: underline;
+}
+
+/* ===================================
+   TEXT COLORS
+   =================================== */
+
+body.green-theme .text-muted {
+    color: var(--text-muted) !important;
+}
+
+/* ===================================
+   LIST GROUP
+   =================================== */
+
+body.green-theme .list-group-item {
+    background: rgba(255, 255, 255, 0.95) !important;
+    border: 1px solid rgba(74, 124, 44, 0.2) !important;
+    color: var(--text-dark) !important;
+    margin-bottom: 0.5rem;
+    border-radius: 10px !important;
+    transition: all 0.3s ease;
+}
+
+body.green-theme .list-group-item:hover {
+    background: rgba(74, 124, 44, 0.05) !important;
+    border-color: var(--emerald-green) !important;
+    transform: translateX(5px);
+}
+
+/* ===================================
+   MODALS
+   =================================== */
+
+body.green-theme .modal-content {
+    background: white;
+    border: none;
+    border-radius: 16px;
+    box-shadow: var(--shadow-lg);
+}
+
+body.green-theme .modal-header {
+    background: linear-gradient(135deg, var(--emerald-green) 0%, var(--lime-green) 100%);
+    color: white;
+    border: none;
+    border-radius: 16px 16px 0 0;
+    padding: 1.5rem;
+}
+
+body.green-theme .modal-title {
+    color: white !important;
+    font-weight: 700;
+}
+
+body.green-theme .modal-body {
+    color: var(--text-dark);
+    padding: 1.5rem;
+}
+
+body.green-theme .modal-footer {
+    background: rgba(45, 80, 22, 0.05);
+    border: none;
+    border-radius: 0 0 16px 16px;
+    padding: 1rem 1.5rem;
+}
+
+/* ===================================
+   SCROLLBAR
+   =================================== */
+
+body.green-theme ::-webkit-scrollbar {
+    width: 12px;
+}
+
+body.green-theme ::-webkit-scrollbar-track {
+    background: #e8f5e9;
+}
+
+body.green-theme ::-webkit-scrollbar-thumb {
+    background: linear-gradient(135deg, var(--emerald-green) 0%, var(--lime-green) 100%);
+    border-radius: 10px;
+    border: 2px solid #e8f5e9;
+}
+
+body.green-theme ::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(135deg, var(--forest-green) 0%, var(--emerald-green) 100%);
+}
+
+/* ===================================
+   NOTIFICATION BADGE
+   =================================== */
+
+body.green-theme .notification-badge {
+    background: linear-gradient(135deg, #e53e3e 0%, #c53030 100%) !important;
+    border: 2px solid white;
+    box-shadow: 0 2px 8px rgba(229, 62, 62, 0.5);
+    animation: pulse-green 2s ease-in-out infinite;
+}
+
+@keyframes pulse-green {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+}
+
+/* ===================================
+   THEME TOGGLE BUTTON
+   =================================== */
+
+body.green-theme .theme-toggle {
+    background: rgba(255, 255, 255, 0.2) !important;
+    border: 2px solid rgba(255, 255, 255, 0.3) !important;
+    border-radius: 8px;
+    padding: 0.5rem 0.8rem !important;
+    transition: all 0.3s ease;
+}
+
+body.green-theme .theme-toggle:hover {
+    background: rgba(255, 255, 255, 0.3) !important;
+    transform: rotate(20deg) scale(1.1);
+}
+
+/* ===================================
+   DECORATIVE ELEMENTS
+   =================================== */
+
+body.green-theme::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-image:
+        radial-gradient(circle at 20% 50%, rgba(212, 175, 55, 0.1) 0%, transparent 50%),
+        radial-gradient(circle at 80% 80%, rgba(74, 124, 44, 0.1) 0%, transparent 50%);
+    pointer-events: none;
+    z-index: 0;
+    opacity: 0.5;
+}
+
+/* ===================================
+   ANIMATIONS
+   =================================== */
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+body.green-theme .card {
+    animation: fadeInUp 0.5s ease-out;
+}
+
+/* ===================================
+   RESPONSIVE
+   =================================== */
+
+@media (max-width: 768px) {
+    body.green-theme .card {
+        border-radius: 12px !important;
+    }
+
+    body.green-theme .navbar {
+        padding: 0.75rem 0 !important;
+    }
+}
