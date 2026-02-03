@@ -26,83 +26,19 @@
     <link rel="icon" type="image/svg+xml" href="/static/icons/icon-192x192.svg">
     
     <style>
-        /* Tema de Natal - Tons de Verde */
-        :root {
-            --christmas-green: #2d5016;
-            --christmas-green-light: #4a7c2c;
-            --christmas-green-lighter: #6b9e4d;
-            --christmas-bg: #f4f9f4;
-            --christmas-accent: #8b0000; /* vermelho escuro apenas para erros */
-        }
-
-        body {
-            background-color: var(--christmas-bg);
-        }
-
-        .card {
-            box-shadow: 0 2px 4px rgba(45,80,22,0.1);
-            margin-bottom: 20px;
-            border: 1px solid rgba(74,124,44,0.1);
-        }
-
+        /* Estilos base mínimos */
         .notification-badge {
             position: absolute;
             top: -8px;
             right: -8px;
         }
 
-        /* Navbar com tema de Natal */
-        .navbar-dark.bg-primary {
-            background: linear-gradient(135deg, var(--christmas-green) 0%, var(--christmas-green-light) 100%) !important;
-        }
-
-        /* Botões primários em verde */
-        .btn-primary {
-            background-color: var(--christmas-green-light);
-            border-color: var(--christmas-green);
-        }
-
-        .btn-primary:hover {
-            background-color: var(--christmas-green);
-            border-color: var(--christmas-green);
-        }
-
-        /* Badges em verde (exceto danger para erros) */
-        .badge.bg-success {
-            background-color: var(--christmas-green-light) !important;
-        }
-
-        /* Links em verde */
-        a {
-            color: var(--christmas-green-light);
-        }
-
-        a:hover {
-            color: var(--christmas-green);
-        }
-
-        /* Alert de erro mantém vermelho */
-        .alert-danger {
-            background-color: #f8d7da;
-            border-color: #f5c2c7;
-            color: var(--christmas-accent);
-        }
-
-        /* Alerts de sucesso em verde */
-        .alert-success {
-            background-color: #d4edda;
-            border-color: #c3e6cb;
-            color: var(--christmas-green);
-        }
-
-        /* Alerts de info em verde claro */
-        .alert-info {
-            background-color: #e8f5e9;
-            border-color: var(--christmas-green-lighter);
-            color: var(--christmas-green);
+        /* Suavização de transições */
+        * {
+            transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
         }
     </style>
-    
+
     {% block extra_css %}{% endblock %}
 </head>
 <body>
