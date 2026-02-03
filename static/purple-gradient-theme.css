@@ -505,6 +505,136 @@ body.purple-theme .card {
 }
 
 /* ===================================
+   DARK MODE - PURPLE THEME
+   =================================== */
+
+body.purple-theme.dark-theme {
+    background: linear-gradient(135deg, #1a1625 0%, #2d1b4e 50%, #1a1625 100%);
+    background-size: 400% 400%;
+    animation: gradientMove 15s ease infinite;
+    color: #e0e0e0;
+}
+
+@keyframes gradientMove {
+    0%, 100% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+}
+
+/* Cards */
+body.purple-theme.dark-theme .card {
+    background: rgba(45, 27, 78, 0.6) !important;
+    backdrop-filter: blur(20px);
+    border-color: rgba(102, 126, 234, 0.3) !important;
+    color: #e0e0e0;
+}
+
+body.purple-theme.dark-theme .card-header {
+    background: rgba(102, 126, 234, 0.3) !important;
+    border-bottom-color: rgba(102, 126, 234, 0.4) !important;
+}
+
+body.purple-theme.dark-theme .card-body {
+    color: #e0e0e0;
+}
+
+body.purple-theme.dark-theme .card-title {
+    color: #a78bfa !important;
+}
+
+body.purple-theme.dark-theme .card-text {
+    color: #d1d5db !important;
+}
+
+/* Forms */
+body.purple-theme.dark-theme .form-control,
+body.purple-theme.dark-theme .form-select {
+    background: rgba(45, 27, 78, 0.5) !important;
+    border-color: rgba(102, 126, 234, 0.3) !important;
+    color: #e0e0e0 !important;
+}
+
+body.purple-theme.dark-theme .form-control::placeholder {
+    color: rgba(224, 224, 224, 0.5);
+}
+
+body.purple-theme.dark-theme .form-control:focus,
+body.purple-theme.dark-theme .form-select:focus {
+    background: rgba(45, 27, 78, 0.7) !important;
+    border-color: var(--primary-purple) !important;
+    color: #e0e0e0 !important;
+}
+
+body.purple-theme.dark-theme .form-label {
+    color: #c4b5fd;
+}
+
+/* Modals */
+body.purple-theme.dark-theme .modal-content {
+    background: rgba(26, 22, 37, 0.95);
+    border-color: rgba(102, 126, 234, 0.3);
+}
+
+body.purple-theme.dark-theme .modal-body {
+    color: #e0e0e0;
+}
+
+/* Alerts */
+body.purple-theme.dark-theme .alert-success {
+    background: rgba(72, 187, 120, 0.2);
+    color: #6ee7b7;
+    border-color: #48bb78;
+}
+
+body.purple-theme.dark-theme .alert-danger {
+    background: rgba(229, 62, 62, 0.2);
+    color: #fca5a5;
+    border-color: #e53e3e;
+}
+
+body.purple-theme.dark-theme .alert-info {
+    background: rgba(66, 153, 225, 0.2);
+    color: #93c5fd;
+    border-color: #4299e1;
+}
+
+body.purple-theme.dark-theme .alert-warning {
+    background: rgba(237, 137, 54, 0.2);
+    color: #fbbf24;
+    border-color: #ed8936;
+}
+
+/* List Group */
+body.purple-theme.dark-theme .list-group-item {
+    background: rgba(45, 27, 78, 0.5) !important;
+    border-color: rgba(102, 126, 234, 0.3) !important;
+    color: #e0e0e0 !important;
+}
+
+/* Headings */
+body.purple-theme.dark-theme h1,
+body.purple-theme.dark-theme h2,
+body.purple-theme.dark-theme h3,
+body.purple-theme.dark-theme h4,
+body.purple-theme.dark-theme h5,
+body.purple-theme.dark-theme h6 {
+    color: #a78bfa !important;
+}
+
+/* Links */
+body.purple-theme.dark-theme a {
+    color: #a78bfa;
+}
+
+body.purple-theme.dark-theme a:hover {
+    color: #c4b5fd;
+}
+
+/* Text */
+body.purple-theme.dark-theme .text-muted {
+    color: #9ca3af !important;
+}
+
+/* ===================================
    RESPONSIVE
    =================================== */
 
