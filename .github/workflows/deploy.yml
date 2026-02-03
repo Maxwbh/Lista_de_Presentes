@@ -1,0 +1,65 @@
+name: Deploy to Render
+
+on:
+  push:
+    branches: [ master ]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Notify deployment start
+        run: |
+          echo "🚀 Iniciando deploy para Render..."
+          echo "📦 Branch: ${{ github.ref_name }}"
+          echo "👤 Autor: ${{ github.actor }}"
+          echo "📝 Commit: ${{ github.sha }}"
+          echo "💬 Mensagem: ${{ github.event.head_commit.message }}"
+
+      - name: Trigger Render deployment
+        run: |
+          echo "📡 Render fará deploy automático ao detectar push no branch master"
+          echo "✅ Push detectado, aguarde o build no Render Dashboard"
+          echo "🔗 https://dashboard.render.com/"
+
+      - name: Wait for deployment
+        run: |
+          echo "⏳ Aguardando 30 segundos para Render iniciar o build..."
+          sleep 30
+
+      - name: Check deployment status
+        continue-on-error: true
+        run: |
+          echo "🔍 Verificando status do deployment..."
+
+          # Tentar fazer ping no health check
+          for i in {1..10}; do
+            echo "Tentativa $i de 10..."
+            RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" https://lista-presentes-1iwb.onrender.com/health/ || echo "000")
+
+            if [ "$RESPONSE" -eq 200 ]; then
+              echo "✅ Aplicação está respondendo! Status: $RESPONSE"
+              exit 0
+            else
+              echo "⏳ Aguardando... Status: $RESPONSE"
+              sleep 30
+            fi
+          done
+
+          echo "⚠️ Não foi possível confirmar o deploy. Verifique o Render Dashboard."
+          exit 1
+
+      - name: Deployment summary
+        if: always()
+        run: |
+          echo "📊 Resumo do Deploy:"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "🌐 URL: https://lista-presentes-1iwb.onrender.com"
+          echo "📋 Versão: $(cat VERSION 2>/dev/null || echo 'unknown')"
+          echo "📅 Data: $(date '+%Y-%m-%d %H:%M:%S UTC')"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
