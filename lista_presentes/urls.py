@@ -21,6 +21,7 @@ from django.conf.urls.static import static
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path('accounts/', include('allauth.urls')),  # Django-allauth URLs (login social)
     path('', include('pwa.urls')),  # PWA manifest e service worker
     path('', include('presentes.urls')),  # URLs do app presentes
 ]

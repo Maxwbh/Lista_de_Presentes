@@ -35,3 +35,6 @@ python-dotenv==1.0.0
 
 # Database URL parser
 dj-database-url==2.1.0
+
+# Social Authentication
+django-allauth==0.61.1

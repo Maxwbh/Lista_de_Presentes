@@ -90,6 +90,17 @@ class BaseScraper:
 class AmazonScraper(BaseScraper):
     """Scraper específico para Amazon Brasil"""
 
+    def __init__(self):
+        super().__init__()
+        # Headers mais completos para Amazon
+        self.headers.update({
+            'Accept-Encoding': 'gzip, deflate, br',
+            'Referer': 'https://www.amazon.com.br/',
+            'DNT': '1',
+            'Connection': 'keep-alive',
+            'Upgrade-Insecure-Requests': '1',
+        })
+
     def extract(self, url):
         """
         Extrai informações de produtos da Amazon.
@@ -104,18 +115,22 @@ class AmazonScraper(BaseScraper):
         preco = None
         imagem_url = None
 
-        # Título - Amazon tem IDs específicos
+        # Título - Amazon tem IDs específicos + mais alternativas
         title_candidates = [
             soup.find('span', id='productTitle'),
+            soup.find('h1', id='title'),
             soup.find('h1', class_='a-size-large'),
+            soup.find('span', {'class': 'product-title-word-break'}),
+            soup.find('h1', {'class': 'a-size-large a-spacing-none'}),
         ]
 
         for candidate in title_candidates:
             if candidate:
                 titulo = candidate.get_text(strip=True)
-                break
+                if titulo:  # Verifica se não está vazio
+                    break
 
-        # Preço - Amazon tem várias possibilidades
+        # Preço - Amazon tem várias possibilidades + mais alternativas
         price_candidates = [
             # Preço principal
             soup.find('span', class_='a-price-whole'),
@@ -123,6 +138,14 @@ class AmazonScraper(BaseScraper):
             soup.find('span', class_='a-offscreen'),
             # Preço no deal
             soup.find('span', class_='priceBlockBuyingPriceString'),
+            # Preço atual
+            soup.find('span', {'class': 'a-price aok-align-center reinventPricePriceToPayMargin priceToPay'}),
+            # Preço no elemento data
+            soup.find('span', {'data-a-color': 'price'}),
+            # Preço em divs específicas
+            soup.select_one('.a-price .a-offscreen'),
+            soup.select_one('#priceblock_ourprice'),
+            soup.select_one('#priceblock_dealprice'),
         ]
 
         for candidate in price_candidates:
@@ -132,30 +155,48 @@ class AmazonScraper(BaseScraper):
                 if preco:
                     break
 
-        # Imagem - Amazon tem imgTagWrapper
+        # Imagem - Amazon tem imgTagWrapper + mais alternativas
         img_candidates = [
             soup.find('img', id='landingImage'),
             soup.find('img', class_='a-dynamic-image'),
             soup.find('div', id='imgTagWrapperId'),
+            soup.find('img', {'data-a-image-name': 'landingImage'}),
+            soup.select_one('#imageBlock img'),
+            soup.select_one('.imgTagWrapper img'),
         ]
 
         for candidate in img_candidates:
             if candidate:
                 if candidate.name == 'img':
-                    imagem_url = candidate.get('src') or candidate.get('data-old-hires')
+                    imagem_url = candidate.get('src') or candidate.get('data-old-hires') or candidate.get('data-a-dynamic-image')
+                    # Se data-a-dynamic-image é um JSON, pegar a primeira URL
+                    if imagem_url and imagem_url.startswith('{'):
+                        try:
+                            import json
+                            images = json.loads(imagem_url)
+                            if images:
+                                imagem_url = list(images.keys())[0]
+                        except:
+                            pass
                 else:
                     img = candidate.find('img')
                     if img:
-                        imagem_url = img.get('src') or img.get('data-old-hires')
+                        imagem_url = img.get('src') or img.get('data-old-hires') or img.get('data-a-dynamic-image')
 
-                if imagem_url:
+                if imagem_url and imagem_url.startswith('http'):
                     break
 
-        # Log do resultado
-        logger.info(f"Amazon - Título: {bool(titulo)}, Preço: {preco}, Imagem: {bool(imagem_url)}")
+        # Log do resultado detalhado
+        logger.info(f"Amazon scraping - URL: {url[:100]}")
+        logger.info(f"Amazon - Título: {'✓' if titulo else '✗'} ({titulo[:50] if titulo else 'N/A'})")
+        logger.info(f"Amazon - Preço: {'✓' if preco else '✗'} (R$ {preco if preco else 'N/A'})")
+        logger.info(f"Amazon - Imagem: {'✓' if imagem_url else '✗'}")
 
         # Se nao conseguiu extrair NENHUM titulo, lancar ParsingError
         if not titulo:
+            # Log HTML para debug (primeiros 1000 chars)
+            html_snippet = str(soup)[:1000] if soup else 'N/A'
+            logger.error(f"Amazon ParsingError - HTML snippet: {html_snippet}")
             raise ParsingError(f"Nao foi possivel extrair titulo da Amazon. Dados parciais: preco={preco}, imagem={bool(imagem_url)}")
 
         return (titulo, preco, imagem_url)
