@@ -24,9 +24,21 @@ pip install -r requirements.txt
 echo "📁 Collecting static files..."
 python manage.py collectstatic --noinput
 
-# Run migrations
+# Create migrations (if any model changes)
+echo "🔄 Creating migrations..."
+python manage.py makemigrations --noinput || echo "⚠️  No migrations to create"
+
+# Check for pending migrations
+echo "🔍 Checking for pending migrations..."
+python manage.py showmigrations --plan || echo "⚠️  Could not show migrations"
+
+# Run migrations (force apply all)
 echo "🗄️  Running migrations..."
-python manage.py migrate --noinput
+python manage.py migrate --noinput --run-syncdb
+
+# Verify migrations applied
+echo "✅ Verifying migrations..."
+python manage.py showmigrations | grep "\[ \]" && echo "⚠️  WARNING: Some migrations not applied!" || echo "✅ All migrations applied successfully"
 
 # Create/fix admin user automatically
 echo "👤 Creating/fixing admin user..."

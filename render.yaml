@@ -13,9 +13,10 @@ services:
     # Build - Usar script para garantir DJANGO_SETTINGS_MODULE correto
     buildCommand: bash build.sh
 
-    # Start
+    # Start - Usa gunicorn.conf.py para configurações otimizadas
+    # Veja gunicorn.conf.py para detalhes de workers, threads, timeout, etc.
     startCommand: |
-      gunicorn --bind 0.0.0.0:$PORT --workers 2 --timeout 120 --log-level info --access-logfile - --error-logfile - lista_presentes.wsgi:application
+      gunicorn --config gunicorn.conf.py lista_presentes.wsgi:application
 
     # Variáveis de ambiente
     envVars:
@@ -47,6 +48,16 @@ services:
 
       - key: GEMINI_API_KEY
         sync: false  # Definir manualmente no dashboard
+
+      # Otimizações para Free Tier
+      - key: WEB_CONCURRENCY
+        value: 1  # Número de workers (Free: 1, Starter+: 2-4)
+
+      - key: GUNICORN_TIMEOUT
+        value: 120  # Timeout em segundos
+
+      - key: MAX_REQUESTS
+        value: 1000  # Reiniciar worker após N requests (previne memory leaks)
 
     # Health check
     healthCheckPath: /health/
