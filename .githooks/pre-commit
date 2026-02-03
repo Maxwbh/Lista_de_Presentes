@@ -37,12 +37,12 @@ else
 fi
 
 # Set commit author to @Maxwbh
-export GIT_AUTHOR_NAME="Maxwell Oliveira"
+export GIT_AUTHOR_NAME="Maxwell da Silva Oliveira"
 export GIT_AUTHOR_EMAIL="maxwbh@gmail.com"
-export GIT_COMMITTER_NAME="Maxwell Oliveira"
+export GIT_COMMITTER_NAME="Maxwell da Silva Oliveira"
 export GIT_COMMITTER_EMAIL="maxwbh@gmail.com"
 
-echo "👤 Commit author: Maxwell Oliveira <maxwbh@gmail.com>"
+echo "👤 Commit author: Maxwell da Silva Oliveira <maxwbh@gmail.com>"
 echo "✅ Pre-commit hook completed successfully"
 
 exit 0
