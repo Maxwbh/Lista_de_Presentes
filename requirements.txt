@@ -2,7 +2,7 @@
 Django==5.0
 
 # Database drivers
-mysqlclient==2.2.0  # MySQL/MariaDB
+# mysqlclient==2.2.0  # MySQL/MariaDB (desabilitado - usando apenas PostgreSQL)
 psycopg2-binary==2.9.9  # PostgreSQL (usado no Render.com)
 
 # API & REST
