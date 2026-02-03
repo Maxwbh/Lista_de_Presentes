@@ -186,17 +186,31 @@ class AmazonScraper(BaseScraper):
                 if imagem_url and imagem_url.startswith('http'):
                     break
 
-        # Log do resultado detalhado
-        logger.info(f"Amazon scraping - URL: {url[:100]}")
-        logger.info(f"Amazon - Título: {'✓' if titulo else '✗'} ({titulo[:50] if titulo else 'N/A'})")
-        logger.info(f"Amazon - Preço: {'✓' if preco else '✗'} (R$ {preco if preco else 'N/A'})")
-        logger.info(f"Amazon - Imagem: {'✓' if imagem_url else '✗'}")
+        # Log do resultado detalhado (visível no console Render)
+        logger.info("=" * 80)
+        logger.info(f"🛍️  AMAZON SCRAPING - URL: {url[:80]}...")
+        logger.info(f"   📝 Título:  {'✅ Extraído' if titulo else '❌ FALHOU'} - {titulo[:60] if titulo else 'N/A'}...")
+        logger.info(f"   💰 Preço:   {'✅ Extraído' if preco else '⚠️  Não encontrado'} - R$ {preco if preco else 'N/A'}")
+        logger.info(f"   🖼️  Imagem:  {'✅ Extraída' if imagem_url else '⚠️  Não encontrada'}")
+        logger.info("=" * 80)
 
         # Se nao conseguiu extrair NENHUM titulo, lancar ParsingError
         if not titulo:
+            # Log de erro crítico (visível no Render)
+            logger.error("!" * 80)
+            logger.error("❌ ERRO CRÍTICO DE SCRAPING - AMAZON")
+            logger.error(f"   URL: {url}")
+            logger.error(f"   Título: Não extraído ❌")
+            logger.error(f"   Preço: {f'R$ {preco}' if preco else 'Não extraído'}")
+            logger.error(f"   Imagem: {'Extraída ✅' if imagem_url else 'Não extraída'}")
+            logger.error("   ")
+            logger.error("   ⚠️  ATENÇÃO: Issue será criada automaticamente no GitHub")
+            logger.error("!" * 80)
+
             # Log HTML para debug (primeiros 1000 chars)
             html_snippet = str(soup)[:1000] if soup else 'N/A'
-            logger.error(f"Amazon ParsingError - HTML snippet: {html_snippet}")
+            logger.debug(f"Amazon ParsingError - HTML snippet: {html_snippet}")
+
             raise ParsingError(f"Nao foi possivel extrair titulo da Amazon. Dados parciais: preco={preco}, imagem={bool(imagem_url)}")
 
         return (titulo, preco, imagem_url)
@@ -491,11 +505,35 @@ class ScraperFactory:
         except ParsingError as e:
             # Erro de parsing (site acessivel mas dados nao extraidos)
             # DEVE gerar issue no GitHub
-            logger.warning(f"Erro de parsing ao extrair {url}: {str(e)}")
+            logger.warning("=" * 80)
+            logger.warning(f"⚠️  ERRO DE PARSING ao extrair dados de: {url}")
+            logger.warning(f"   Erro: {str(e)}")
+            logger.warning(f"   ")
+            logger.warning(f"   ℹ️  Tentando criar issue no GitHub automaticamente...")
+            logger.warning("=" * 80)
 
             # Tentar extrair dados parciais da mensagem de erro (se houver)
             # Formato da mensagem: "Nao foi possivel extrair titulo. Dados parciais: preco=123.45, imagem=True"
             partial_data = {'titulo': None, 'preco': None, 'imagem_url': None}
+
+            # Tentar criar issue no GitHub
+            try:
+                from .github_helper import criar_issue_falha_scraping
+
+                issue_result = criar_issue_falha_scraping(
+                    url_produto=url,
+                    dados_extraidos=partial_data,
+                    usuario=None,  # Usuario nao disponivel neste contexto
+                    grupo=None
+                )
+
+                if issue_result and issue_result.get('success'):
+                    logger.info(f"✅ Issue #{issue_result['issue_number']} criada: {issue_result['issue_url']}")
+                else:
+                    logger.warning(f"⚠️  Falha ao criar issue: {issue_result.get('error') if issue_result else 'N/A'}")
+
+            except Exception as issue_error:
+                logger.error(f"❌ Erro ao tentar criar issue no GitHub: {str(issue_error)}")
 
             return {
                 'success': False,
