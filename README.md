@@ -6,6 +6,10 @@
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 ![Status](https://img.shields.io/badge/status-active-success.svg)
 
+![Tests](https://github.com/Maxwbh/Lista_de_Presentes/actions/workflows/tests.yml/badge.svg)
+![Deploy](https://github.com/Maxwbh/Lista_de_Presentes/actions/workflows/deploy.yml/badge.svg)
+![Keep Alive](https://github.com/Maxwbh/Lista_de_Presentes/actions/workflows/keep-alive.yml/badge.svg)
+
 **Lista de Presentes de Natal** é um aplicativo web completo para organizar listas de presentes em família. Nunca mais erre no presente de Natal!
 
 🌐 **Demo ao vivo**: [https://lista-presentes-0hbp.onrender.com](https://lista-presentes-0hbp.onrender.com)
@@ -447,7 +451,32 @@ python manage.py test presentes
 # Testar com cobertura
 coverage run --source='.' manage.py test
 coverage report
+coverage html
 ```
+
+### CI/CD - Testes Automatizados
+
+O projeto possui workflows de GitHub Actions que executam automaticamente:
+
+✅ **Testes em múltiplas versões do Python** (3.11, 3.12)
+- Testes unitários completos
+- Cobertura de código (coverage reports)
+- Testes com PostgreSQL 15
+
+✅ **Análise de Qualidade de Código**
+- Formatação: black, isort
+- Linting: flake8
+- Complexidade: mccabe
+
+✅ **Segurança**
+- Scan de vulnerabilidades: safety
+- Análise de código: bandit
+
+✅ **Deploy Automático**
+- Deploy no Render após merge no `master`
+- Health checks automáticos
+
+**Ver detalhes em**: [`.github/workflows/README.md`](.github/workflows/README.md)
 
 ---
 
