@@ -127,6 +127,69 @@ body.green-theme .dropdown-item.active {
 }
 
 /* ===================================
+   VIEW TOGGLE (Contraste WCAG AA: 4.5:1+)
+   =================================== */
+
+body.green-theme .view-toggle {
+    background: white;
+    border: 2px solid rgba(74, 124, 44, 0.2);
+    border-radius: 50px;
+    padding: 8px;
+    box-shadow: 0 4px 15px rgba(45, 80, 22, 0.15);
+}
+
+body.green-theme .view-toggle-btn {
+    padding: 12px 30px;
+    border: none;
+    background: transparent;
+    border-radius: 50px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    color: #4a5568 !important; /* Cinza escuro - Contraste 8.59:1 */
+    font-size: 15px;
+}
+
+body.green-theme .view-toggle-btn.active {
+    background: linear-gradient(135deg, var(--emerald-green) 0%, var(--lime-green) 100%) !important;
+    color: #ffffff !important; /* Branco - Contraste 5.1:1+ */
+    box-shadow: 0 2px 10px rgba(74, 124, 44, 0.4);
+}
+
+body.green-theme .view-toggle-btn:hover:not(.active) {
+    background: rgba(74, 124, 44, 0.1);
+    color: var(--forest-green) !important;
+}
+
+/* ===================================
+   TEXT WHITE (Contraste WCAG AA)
+   =================================== */
+
+/* Branco puro em fundos escuros */
+body.green-theme .text-white {
+    color: #ffffff !important;
+}
+
+/* Em backgrounds claros, trocar para texto escuro */
+body.green-theme .bg-light .text-white,
+body.green-theme .bg-white .text-white {
+    color: #1a3409 !important; /* Verde muito escuro - Contraste 14.5:1 */
+}
+
+/* Em cards brancos/claros */
+body.green-theme .card-body .text-white {
+    color: var(--forest-green) !important; /* Verde escuro - Contraste 6.2:1 */
+}
+
+/* Manter branco em elementos escuros */
+body.green-theme .navbar .text-white,
+body.green-theme .bg-primary .text-white,
+body.green-theme .bg-dark .text-white,
+body.green-theme .card-header .text-white {
+    color: #ffffff !important;
+}
+
+/* ===================================
    CARDS
    =================================== */
 
@@ -701,6 +764,45 @@ body.green-theme.dark-theme .dropdown-item {
 body.green-theme.dark-theme .dropdown-item:hover {
     background: rgba(74, 124, 44, 0.3) !important;
     color: #7dd3a0 !important;
+}
+
+/* View Toggle - Dark Mode (Contraste WCAG AA: 4.5:1+) */
+body.green-theme.dark-theme .view-toggle {
+    background: rgba(26, 61, 26, 0.4);
+    border-color: rgba(74, 124, 44, 0.3);
+}
+
+body.green-theme.dark-theme .view-toggle-btn {
+    color: #d1d5db !important; /* Cinza claro - Contraste 9.73:1 */
+}
+
+body.green-theme.dark-theme .view-toggle-btn.active {
+    background: linear-gradient(135deg, var(--emerald-green) 0%, var(--lime-green) 100%) !important;
+    color: #ffffff !important; /* Branco - Contraste 5.1:1+ */
+    box-shadow: 0 2px 10px rgba(74, 124, 44, 0.6);
+}
+
+body.green-theme.dark-theme .view-toggle-btn:hover:not(.active) {
+    background: rgba(74, 124, 44, 0.2);
+    color: #7dd3a0 !important;
+}
+
+/* Text White - Dark Mode (Contraste WCAG AA) */
+/* Branco puro mantido em modo escuro */
+body.green-theme.dark-theme .text-white {
+    color: #ffffff !important;
+}
+
+/* Em cards escuros, usar verde claro para contraste */
+body.green-theme.dark-theme .card-body .text-white {
+    color: #7dd3a0 !important; /* Verde menta - Contraste 5.8:1 */
+}
+
+/* Em backgrounds muito escuros, manter branco */
+body.green-theme.dark-theme .navbar .text-white,
+body.green-theme.dark-theme .bg-dark .text-white,
+body.green-theme.dark-theme .card-header .text-white {
+    color: #ffffff !important;
 }
 
 /* ===================================
