@@ -97,6 +97,8 @@ body.purple-theme .dropdown-menu {
     border-radius: 12px;
     box-shadow: var(--shadow-lg);
     padding: 0.5rem;
+    z-index: 1050 !important; /* Sobrepor outros elementos */
+    position: absolute;
 }
 
 body.purple-theme .dropdown-item {
@@ -177,6 +179,17 @@ body.purple-theme .navbar .text-white,
 body.purple-theme .bg-primary .text-white,
 body.purple-theme .bg-dark .text-white,
 body.purple-theme .card-header .text-white {
+    color: #ffffff !important;
+}
+
+/* Manter branco em card-footer com backgrounds coloridos */
+body.purple-theme .card-footer.bg-success .text-white,
+body.purple-theme .card-footer.bg-primary .text-white,
+body.purple-theme .card-footer.bg-warning .text-white,
+body.purple-theme .card-footer.bg-danger .text-white,
+body.purple-theme .card-footer.bg-info .text-white,
+body.purple-theme .card .bg-success .text-white,
+body.purple-theme .card .bg-warning .text-white {
     color: #ffffff !important;
 }
 

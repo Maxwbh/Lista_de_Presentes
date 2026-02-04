@@ -106,6 +106,8 @@ body.green-theme .dropdown-menu {
     border-radius: 12px;
     box-shadow: var(--shadow-lg);
     padding: 0.5rem;
+    z-index: 1050 !important; /* Sobrepor outros elementos */
+    position: absolute;
 }
 
 body.green-theme .dropdown-item {
@@ -186,6 +188,17 @@ body.green-theme .navbar .text-white,
 body.green-theme .bg-primary .text-white,
 body.green-theme .bg-dark .text-white,
 body.green-theme .card-header .text-white {
+    color: #ffffff !important;
+}
+
+/* Manter branco em card-footer com backgrounds coloridos */
+body.green-theme .card-footer.bg-success .text-white,
+body.green-theme .card-footer.bg-primary .text-white,
+body.green-theme .card-footer.bg-warning .text-white,
+body.green-theme .card-footer.bg-danger .text-white,
+body.green-theme .card-footer.bg-info .text-white,
+body.green-theme .card .bg-success .text-white,
+body.green-theme .card .bg-warning .text-white {
     color: #ffffff !important;
 }
 
@@ -755,6 +768,7 @@ body.green-theme.dark-theme .text-muted {
 body.green-theme.dark-theme .dropdown-menu {
     background: rgba(13, 61, 13, 0.95);
     border-color: rgba(74, 124, 44, 0.3);
+    z-index: 1050 !important; /* Sobrepor outros elementos */
 }
 
 body.green-theme.dark-theme .dropdown-item {
