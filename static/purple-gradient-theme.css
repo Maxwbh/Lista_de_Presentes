@@ -160,7 +160,7 @@ body.purple-theme .view-toggle-btn:hover:not(.active) {
 
 /* Branco puro em fundos escuros */
 body.purple-theme .text-white {
-    color: #ffffff !important;
+    color: var(--primary-purple) !important;
 }
 
 /* Em backgrounds claros, trocar para texto escuro */
