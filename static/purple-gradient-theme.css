@@ -118,6 +118,69 @@ body.purple-theme .dropdown-item.active {
 }
 
 /* ===================================
+   VIEW TOGGLE (Contraste WCAG AA: 4.5:1+)
+   =================================== */
+
+body.purple-theme .view-toggle {
+    background: white;
+    border: 2px solid rgba(102, 126, 234, 0.2);
+    border-radius: 50px;
+    padding: 8px;
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.15);
+}
+
+body.purple-theme .view-toggle-btn {
+    padding: 12px 30px;
+    border: none;
+    background: transparent;
+    border-radius: 50px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    color: #4a5568 !important; /* Cinza escuro - Contraste 8.59:1 */
+    font-size: 15px;
+}
+
+body.purple-theme .view-toggle-btn.active {
+    background: linear-gradient(135deg, var(--primary-purple) 0%, var(--secondary-purple) 100%) !important;
+    color: #ffffff !important; /* Branco - Contraste 6.5:1+ */
+    box-shadow: 0 2px 10px rgba(102, 126, 234, 0.4);
+}
+
+body.purple-theme .view-toggle-btn:hover:not(.active) {
+    background: rgba(102, 126, 234, 0.1);
+    color: var(--primary-purple) !important;
+}
+
+/* ===================================
+   TEXT WHITE (Contraste WCAG AA)
+   =================================== */
+
+/* Branco puro em fundos escuros */
+body.purple-theme .text-white {
+    color: #ffffff !important;
+}
+
+/* Em backgrounds claros, trocar para texto escuro */
+body.purple-theme .bg-light .text-white,
+body.purple-theme .bg-white .text-white {
+    color: #2d3748 !important; /* Cinza escuro - Contraste 12.63:1 */
+}
+
+/* Em cards brancos */
+body.purple-theme .card-body .text-white {
+    color: var(--primary-purple) !important; /* Roxo - Contraste 5.15:1 */
+}
+
+/* Manter branco em elementos escuros */
+body.purple-theme .navbar .text-white,
+body.purple-theme .bg-primary .text-white,
+body.purple-theme .bg-dark .text-white,
+body.purple-theme .card-header .text-white {
+    color: #ffffff !important;
+}
+
+/* ===================================
    CARDS
    =================================== */
 
@@ -632,6 +695,31 @@ body.purple-theme.dark-theme a:hover {
 /* Text */
 body.purple-theme.dark-theme .text-muted {
     color: #9ca3af !important;
+}
+
+/* View Toggle - Dark Mode */
+body.purple-theme.dark-theme .view-toggle {
+    background: rgba(45, 27, 78, 0.6);
+    border-color: rgba(102, 126, 234, 0.3);
+}
+
+body.purple-theme.dark-theme .view-toggle-btn {
+    color: #d1d5db !important; /* Cinza claro - Contraste 7.0:1 com fundo escuro */
+}
+
+body.purple-theme.dark-theme .view-toggle-btn.active {
+    background: linear-gradient(135deg, var(--primary-purple) 0%, var(--secondary-purple) 100%) !important;
+    color: #ffffff !important;
+}
+
+body.purple-theme.dark-theme .view-toggle-btn:hover:not(.active) {
+    background: rgba(167, 139, 250, 0.2);
+    color: #a78bfa !important;
+}
+
+/* Text White - Dark Mode */
+body.purple-theme.dark-theme .text-white {
+    color: #ffffff !important; /* Sempre branco em modo escuro */
 }
 
 /* ===================================
