@@ -82,20 +82,37 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'lista_presentes.wsgi.application'
 
-# Banco de Dados
-# Usa DATABASE_URL se disponível (Render.com, Heroku, etc.)
-# Ou USE_SQLITE=True para forçar SQLite (desenvolvimento com recursos mínimos)
-# Caso contrário, usa SQLite para desenvolvimento local
+# ==============================================================================
+# Banco de Dados - Configuração Flexível
+# ==============================================================================
+# Suporta múltiplas opções de banco de dados:
+#
+# 1. PRODUÇÃO - Supabase PostgreSQL (Recomendado):
+#    DATABASE_URL=postgresql://postgres:senha@db.xxxxx.supabase.co:5432/postgres
+#
+# 2. PRODUÇÃO - Render PostgreSQL:
+#    DATABASE_URL será fornecido automaticamente pelo Render
+#
+# 3. DESENVOLVIMENTO - SQLite:
+#    Sem DATABASE_URL ou com USE_SQLITE=True
+#
+# O código abaixo detecta automaticamente qual usar baseado nas variáveis de ambiente
+# ==============================================================================
+
 DATABASE_URL = os.getenv('DATABASE_URL')
 USE_SQLITE = os.getenv('USE_SQLITE', 'False') == 'True'
 
+# Supabase - Variáveis adicionais (opcionais, para uso futuro com Supabase SDK)
+SUPABASE_URL = os.getenv('SUPABASE_URL', '')
+SUPABASE_KEY = os.getenv('SUPABASE_KEY', '')
+
 if DATABASE_URL and not USE_SQLITE:
-    # Produção: PostgreSQL via DATABASE_URL
+    # Produção: PostgreSQL via DATABASE_URL (Supabase, Render, Heroku, etc.)
     DATABASES = {
         'default': dj_database_url.config(
             default=DATABASE_URL,
-            conn_max_age=600,
-            conn_health_checks=True,
+            conn_max_age=600,  # Pool de conexões: mantém conexões por 10 minutos
+            conn_health_checks=True,  # Verifica saúde da conexão antes de usar
         )
     }
 else:
