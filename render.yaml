@@ -35,11 +35,24 @@ services:
       - key: ALLOWED_HOSTS
         value: .onrender.com,lista-presentes-0hbp.onrender.com
 
-      - key: DATABASE_URL
-        fromDatabase:
-          name: lista-presentes-db
-          property: connectionString
+      # ==============================================================================
+      # Supabase PostgreSQL Database
+      # ==============================================================================
+      # IMPORTANTE: Defina estas variáveis no Dashboard do Render.com
+      # Database URL format: postgresql://postgres:senha@db.xxxxx.supabase.co:5432/postgres
 
+      - key: DATABASE_URL
+        sync: false  # Definir manualmente no dashboard com a connection string do Supabase
+
+      - key: SUPABASE_URL
+        sync: false  # URL do projeto Supabase (opcional, para uso futuro)
+
+      - key: SUPABASE_KEY
+        sync: false  # Chave pública do Supabase (opcional, para uso futuro)
+
+      # ==============================================================================
+      # API Keys
+      # ==============================================================================
       - key: ANTHROPIC_API_KEY
         sync: false  # Definir manualmente no dashboard
 
@@ -62,11 +75,23 @@ services:
     # Health check
     healthCheckPath: /health/
 
-# Banco de dados PostgreSQL
-databases:
-  - name: lista-presentes-db
-    databaseName: lista_presentes
-    user: lista_presentes_user
-    region: oregon # mesma região do web service
-    plan: free # ou starter, standard, pro
-    ipAllowList: [] # vazio = permite todas as conexões
+# ==============================================================================
+# Database - Usando Supabase PostgreSQL Externo
+# ==============================================================================
+# Removemos a seção databases porque agora usamos Supabase ao invés do
+# PostgreSQL gerenciado pelo Render. Isso oferece:
+#
+# ✅ Vantagens do Supabase:
+#    - Free tier mais generoso (500MB vs 256MB do Render Free)
+#    - Backup automático
+#    - Interface web para gerenciar dados
+#    - API REST automática
+#    - Realtime subscriptions
+#    - Storage para arquivos
+#    - Authentication integrado
+#
+# 📝 Para configurar, adicione estas variáveis no Dashboard do Render:
+#    DATABASE_URL=postgresql://postgres:senha@db.xxxxx.supabase.co:5432/postgres
+#    SUPABASE_URL=https://xxxxx.supabase.co
+#    SUPABASE_KEY=sua_chave_publica
+# ==============================================================================
