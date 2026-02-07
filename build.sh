@@ -26,30 +26,82 @@ python manage.py collectstatic --noinput
 
 # Test database connection (Supabase)
 echo "🔌 Testing database connection..."
-if python -c "
+if ! python -c "
 import os, django
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'lista_presentes.settings')
 django.setup()
 from django.db import connection
-with connection.cursor() as cursor:
-    cursor.execute('SELECT 1')
-    result = cursor.fetchone()
-    if result[0] == 1:
-        print('✅ Database connection successful!')
-        # Check if Supabase
-        host = connection.settings_dict.get('HOST', '')
-        if 'supabase.co' in host:
-            print('✅ Connected to Supabase PostgreSQL')
-        exit(0)
+
+# Check backend
+backend = connection.settings_dict.get('ENGINE', '')
+
+if 'sqlite' in backend.lower():
+    print('❌ ERROR: Using SQLite instead of PostgreSQL!')
+    print('')
+    print('DATABASE_URL not configured in Render Dashboard!')
+    print('')
+    print('Action Required:')
+    print('1. Go to Render Dashboard > lista-presentes > Environment')
+    print('2. Add Environment Variable:')
+    print('   Key:   DATABASE_URL')
+    print('   Value: postgresql://postgres:123ewqasdcxz%21%40%23@db.szyouijmxhlbavkzibxa.supabase.co:6543/postgres')
+    print('')
+    print('📖 See: URGENTE_DATABASE_URL.md for instructions')
+    exit(1)
+
+# Test connection
+try:
+    with connection.cursor() as cursor:
+        cursor.execute('SELECT 1')
+        result = cursor.fetchone()
+        if result[0] == 1:
+            print('✅ Database connection successful!')
+            # Check if Supabase
+            host = connection.settings_dict.get('HOST', '')
+            if 'supabase.co' in host:
+                print('✅ Connected to Supabase PostgreSQL')
+            exit(0)
+        else:
+            print('❌ Database connection failed')
+            exit(1)
+except Exception as e:
+    import sys
+    error_msg = str(e)
+
+    # Network unreachable - IPv6 ou porta incorreta
+    if 'Network is unreachable' in error_msg or 'IPv6' in error_msg:
+        print('❌ ERROR: Network is unreachable')
+        print('')
+        print('This is usually caused by:')
+        print('  1. Using port 5432 (direct) instead of 6543 (pooling)')
+        print('  2. IPv6 routing issues')
+        print('  3. Newline character (\\n) in DATABASE_URL')
+        print('')
+        print('QUICK FIX:')
+        print('  1. Go to Render Dashboard > Environment')
+        print('  2. Edit DATABASE_URL')
+        print('  3. Change port from 5432 to 6543:')
+        print('     postgresql://postgres:123ewqasdcxz%21%40%23@db.szyouijmxhlbavkzibxa.supabase.co:6543/postgres')
+        print('  4. Make sure there is NO newline (\\n) at the end')
+        print('  5. Save Changes')
+        print('')
+        print('📖 See: NETWORK_UNREACHABLE_FIX.md for details')
     else:
-        print('❌ Database connection failed')
-        exit(1)
+        print(f'❌ ERROR: {error_msg}')
+        print('')
+        print('📖 Check logs and see: RENDER_SUPABASE_SETUP.md')
+
+    sys.exit(1)
 " 2>&1; then
     echo "✅ Database is ready"
 else
-    echo "❌ ERROR: Could not connect to database!"
-    echo "⚠️  Please check DATABASE_URL in Render Dashboard"
-    echo "📖 See RENDER_SUPABASE_SETUP.md for setup instructions"
+    echo ""
+    echo "================================================================"
+    echo "❌ CRITICAL ERROR: Database connection failed!"
+    echo "================================================================"
+    echo ""
+    echo "See error message above for specific solution"
+    echo ""
     exit 1
 fi
 

@@ -12,7 +12,7 @@ SUPABASE_URL=https://szyouijmxhlbavkzibxa.supabase.co
 SUPABASE_KEY=sb_publishable_aswPuvIXjzcejBTyYWObdQ_BpC5l903
 
 # Connection String PostgreSQL (COM URL ENCODING)
-DATABASE_URL=postgresql://postgres:123ewqasdcxz%21%40%23@db.szyouijmxhlbavkzibxa.supabase.co:5432/postgres
+DATABASE_URL=postgresql://postgres:123ewqasdcxz%21%40%23@db.szyouijmxhlbavkzibxa.supabase.co:6543/postgres
 ```
 
 ⚠️ **IMPORTANTE**: A senha contém caracteres especiais (`!@#`) que foram convertidos para URL encoding:
@@ -55,7 +55,7 @@ Clique em **Add Environment Variable** e adicione cada uma das seguintes variáv
 
 ```
 Key:   DATABASE_URL
-Value: postgresql://postgres:123ewqasdcxz%21%40%23@db.szyouijmxhlbavkzibxa.supabase.co:5432/postgres
+Value: postgresql://postgres:123ewqasdcxz%21%40%23@db.szyouijmxhlbavkzibxa.supabase.co:6543/postgres
 ```
 
 #### Variável 2: SUPABASE_URL (OPCIONAL)
@@ -134,7 +134,7 @@ Se você ver erros, verifique:
 
 **Solução**: Verifique se a DATABASE_URL está exatamente como:
 ```
-postgresql://postgres:123ewqasdcxz%21%40%23@db.szyouijmxhlbavkzibxa.supabase.co:5432/postgres
+postgresql://postgres:123ewqasdcxz%21%40%23@db.szyouijmxhlbavkzibxa.supabase.co:6543/postgres
 ```
 
 #### Erro: "no pg_hba.conf entry for host"
@@ -192,7 +192,7 @@ Se você tinha dados importantes no PostgreSQL antigo do Render:
 
 ```bash
 # 1. No seu computador local, com o backup feito no Passo 3.1
-psql "postgresql://postgres:123ewqasdcxz!@#@db.szyouijmxhlbavkzibxa.supabase.co:5432/postgres" < backup_render.sql
+psql "postgresql://postgres:123ewqasdcxz!@#@db.szyouijmxhlbavkzibxa.supabase.co:6543/postgres" < backup_render.sql
 ```
 
 ### Opção B: Via Supabase SQL Editor
@@ -212,7 +212,7 @@ python manage.py dumpdata --natural-foreign --natural-primary \
   -e contenttypes -e auth.Permission > fixtures.json
 
 # 2. Conectar ao Supabase
-export DATABASE_URL="postgresql://postgres:123ewqasdcxz!@#@db.szyouijmxhlbavkzibxa.supabase.co:5432/postgres"
+export DATABASE_URL="postgresql://postgres:123ewqasdcxz!@#@db.szyouijmxhlbavkzibxa.supabase.co:6543/postgres"
 python manage.py migrate
 python manage.py loaddata fixtures.json
 ```
@@ -411,7 +411,7 @@ Se você encontrar problemas:
 
 ```bash
 # 1. Adicione no Render Dashboard > Environment:
-DATABASE_URL=postgresql://postgres:123ewqasdcxz%21%40%23@db.szyouijmxhlbavkzibxa.supabase.co:5432/postgres
+DATABASE_URL=postgresql://postgres:123ewqasdcxz%21%40%23@db.szyouijmxhlbavkzibxa.supabase.co:6543/postgres
 SUPABASE_URL=https://szyouijmxhlbavkzibxa.supabase.co
 SUPABASE_KEY=sb_publishable_aswPuvIXjzcejBTyYWObdQ_BpC5l903
 

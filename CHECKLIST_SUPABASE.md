@@ -13,7 +13,7 @@
 ```bash
 SUPABASE_URL=https://szyouijmxhlbavkzibxa.supabase.co
 SUPABASE_KEY=sb_publishable_aswPuvIXjzcejBTyYWObdQ_BpC5l903
-DATABASE_URL=postgresql://postgres:123ewqasdcxz%21%40%23@db.szyouijmxhlbavkzibxa.supabase.co:5432/postgres
+DATABASE_URL=postgresql://postgres:123ewqasdcxz%21%40%23@db.szyouijmxhlbavkzibxa.supabase.co:6543/postgres
 ```
 
 ⚠️ **ATENÇÃO**: Note o URL encoding na senha (`%21%40%23` = `!@#`)
@@ -43,7 +43,7 @@ Clicar em **Add Environment Variable** 3 vezes e adicionar:
 #### Variável 1: DATABASE_URL (OBRIGATÓRIA)
 ```
 Key:   DATABASE_URL
-Value: postgresql://postgres:123ewqasdcxz%21%40%23@db.szyouijmxhlbavkzibxa.supabase.co:5432/postgres
+Value: postgresql://postgres:123ewqasdcxz%21%40%23@db.szyouijmxhlbavkzibxa.supabase.co:6543/postgres
 ```
 - [ ] Adicionada
 
