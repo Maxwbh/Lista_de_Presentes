@@ -31,6 +31,25 @@ import os, django
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'lista_presentes.settings')
 django.setup()
 from django.db import connection
+
+# Check backend
+backend = connection.settings_dict.get('ENGINE', '')
+
+if 'sqlite' in backend.lower():
+    print('❌ ERROR: Using SQLite instead of PostgreSQL!')
+    print('')
+    print('DATABASE_URL not configured in Render Dashboard!')
+    print('')
+    print('Action Required:')
+    print('1. Go to Render Dashboard > lista-presentes > Environment')
+    print('2. Add Environment Variable:')
+    print('   Key:   DATABASE_URL')
+    print('   Value: postgresql://postgres:123ewqasdcxz%21%40%23@db.szyouijmxhlbavkzibxa.supabase.co:5432/postgres')
+    print('')
+    print('📖 See: CHECKLIST_SUPABASE.md for step-by-step instructions')
+    exit(1)
+
+# Test connection
 with connection.cursor() as cursor:
     cursor.execute('SELECT 1')
     result = cursor.fetchone()
@@ -47,9 +66,21 @@ with connection.cursor() as cursor:
 " 2>&1; then
     echo "✅ Database is ready"
 else
-    echo "❌ ERROR: Could not connect to database!"
-    echo "⚠️  Please check DATABASE_URL in Render Dashboard"
-    echo "📖 See RENDER_SUPABASE_SETUP.md for setup instructions"
+    echo ""
+    echo "=" * 70
+    echo "❌ CRITICAL ERROR: Database not configured!"
+    echo "=" * 70
+    echo ""
+    echo "⚠️  The application is trying to use SQLite (wrong!)"
+    echo "⚠️  You must configure DATABASE_URL in Render Dashboard"
+    echo ""
+    echo "Quick Fix:"
+    echo "  1. Render Dashboard > lista-presentes > Environment"
+    echo "  2. Add: DATABASE_URL=postgresql://postgres:123ewqasdcxz%21%40%23@db.szyouijmxhlbavkzibxa.supabase.co:5432/postgres"
+    echo "  3. Save Changes (auto-deploys)"
+    echo ""
+    echo "📖 Full guide: RENDER_SUPABASE_SETUP.md"
+    echo ""
     exit 1
 fi
 
