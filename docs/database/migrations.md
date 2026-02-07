@@ -251,7 +251,7 @@ Após o deploy com sucesso:
 
 ### Verificar no Supabase Dashboard
 
-1. Acesse: https://app.supabase.com/project/szyouijmxhlbavkzibxa
+1. Acesse: https://app.supabase.com/project/YOUR_PROJECT_ID
 2. Menu: **Table Editor**
 3. Verifique tabelas:
    - `presentes_usuario` ✅

@@ -3,7 +3,7 @@
 ## 📋 Configuração
 
 ### Aplicação
-- **URL**: https://lista-presentes-1iwb.onrender.com
+- **URL**: https://your-app-name.onrender.com
 - **Dashboard**: https://dashboard.render.com/web/lista-presentes
 - **Branch**: Automático (main/production)
 
@@ -80,10 +80,10 @@ python manage.py shell < scripts/create_or_update_admin.py
 ```bash
 # Django
 SECRET_KEY=<gerado automaticamente>
-ALLOWED_HOSTS=.onrender.com,lista-presentes-1iwb.onrender.com
+ALLOWED_HOSTS=.onrender.com,your-app-name.onrender.com
 
 # Database (Supabase)
-DATABASE_URL=postgresql://postgres.szyouijmxhlbavkzibxa:123ewqasdcxz%21%40%23@aws-1-us-east-2.pooler.supabase.com:6543/postgres
+DATABASE_URL=postgresql://postgres.YOUR_PROJECT_ID:YOUR_PASSWORD_ENCODED@aws-1-us-east-2.pooler.supabase.com:6543/postgres
 
 # GitHub (Auto-create Issues)
 GITHUB_TOKEN=<fornecido pelo administrador>
@@ -131,7 +131,7 @@ python manage.py createsuperuser --username admin --email admin@example.com
 - Password: (de DJANGO_SUPERUSER_PASSWORD)
 - Email: (de DJANGO_SUPERUSER_EMAIL)
 
-**Admin URL:** https://lista-presentes-1iwb.onrender.com/admin/
+**Admin URL:** https://your-app-name.onrender.com/admin/
 
 ---
 
@@ -216,7 +216,7 @@ python manage.py migrate --fake-initial
 
 **Solução:** Verificar DATABASE_URL usa Connection Pooler:
 ```
-aws-1-us-east-2.pooler.supabase.com:6543  (não db.szyouijmxhlbavkzibxa:5432)
+aws-1-us-east-2.pooler.supabase.com:6543  (não db.YOUR_PROJECT_ID:5432)
 ```
 
 #### Erro: "Using SQLite instead of PostgreSQL"
@@ -299,10 +299,10 @@ STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 ```bash
 # 1. Verificar deployment
-https://lista-presentes-1iwb.onrender.com/
+https://your-app-name.onrender.com/
 
 # 2. Verificar admin
-https://lista-presentes-1iwb.onrender.com/admin/
+https://your-app-name.onrender.com/admin/
 
 # 3. Verificar logs
 https://dashboard.render.com/web/lista-presentes/logs
@@ -410,7 +410,7 @@ Ctrl+F: "Traceback"
 
 ## 🔗 Links Úteis
 
-- **Site**: https://lista-presentes-1iwb.onrender.com
+- **Site**: https://your-app-name.onrender.com
 - **Dashboard**: https://dashboard.render.com/web/lista-presentes
 - **Logs**: https://dashboard.render.com/web/lista-presentes/logs
 - **Environment**: https://dashboard.render.com/web/lista-presentes/environment

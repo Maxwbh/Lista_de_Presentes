@@ -12,11 +12,11 @@
 
 ```bash
 # Database Connection (Connection Pooler)
-DATABASE_URL=postgresql://postgres.szyouijmxhlbavkzibxa:123ewqasdcxz%21%40%23@aws-1-us-east-2.pooler.supabase.com:6543/postgres
+DATABASE_URL=postgresql://postgres.YOUR_PROJECT_ID:YOUR_PASSWORD_ENCODED@aws-1-us-east-2.pooler.supabase.com:6543/postgres
 
 # Supabase API (Opcional)
-SUPABASE_URL=https://szyouijmxhlbavkzibxa.supabase.co
-SUPABASE_KEY=sb_publishable_aswPuvIXjzcejBTyYWObdQ_BpC5l903
+SUPABASE_URL=https://YOUR_PROJECT_ID.supabase.co
+SUPABASE_KEY=sb_publishable_YOUR_ANON_KEY
 
 # GitHub (Auto-create Issues)
 GITHUB_TOKEN=<fornecido pelo administrador>
@@ -103,7 +103,7 @@ Django → Render → Internet → Supabase Pooler (PgBouncer) → PostgreSQL
 
 ### Alternativa (Não Recomendada)
 
-**URL Direta:** `db.szyouijmxhlbavkzibxa.supabase.co:5432`
+**URL Direta:** `db.YOUR_PROJECT_ID.supabase.co:5432`
 
 ```
 Django → Render → Internet → Supabase (IPv6) → PostgreSQL
@@ -128,10 +128,10 @@ Django → Render → Internet → Supabase (IPv6) → PostgreSQL
 
 ```bash
 # ✅ Correto
-postgresql://...senha:123ewqasdcxz%21%40%23@...
+postgresql://...senha:YOUR_PASSWORD_ENCODED@...
 
 # ❌ Errado
-postgresql://...senha:123ewqasdcxz!@#@...
+postgresql://...senha:YOUR_PASSWORD@...
 ```
 
 ### Erro: "Network is unreachable"
@@ -140,7 +140,7 @@ postgresql://...senha:123ewqasdcxz!@#@...
 
 **Solução:** Use Connection Pooler:
 ```
-aws-1-us-east-2.pooler.supabase.com:6543  (não db.szyouijmxhlbavkzibxa.supabase.co:5432)
+aws-1-us-east-2.pooler.supabase.com:6543  (não db.YOUR_PROJECT_ID.supabase.co:5432)
 ```
 
 ### Erro: "Using SQLite instead of PostgreSQL"
@@ -229,8 +229,8 @@ ORDER BY tablename;
 
 ```bash
 # Tentar acessar via API (deve retornar vazio)
-curl https://szyouijmxhlbavkzibxa.supabase.co/rest/v1/presentes_usuario \
-  -H "apikey: sb_publishable_aswPuvIXjzcejBTyYWObdQ_BpC5l903"
+curl https://YOUR_PROJECT_ID.supabase.co/rest/v1/presentes_usuario \
+  -H "apikey: sb_publishable_YOUR_ANON_KEY"
 ```
 
 **Resultado esperado:** `[]` (lista vazia)
@@ -239,9 +239,9 @@ curl https://szyouijmxhlbavkzibxa.supabase.co/rest/v1/presentes_usuario \
 
 ## 🔗 Links Úteis
 
-- **Supabase Dashboard**: https://app.supabase.com/project/szyouijmxhlbavkzibxa
-- **Supabase SQL Editor**: https://app.supabase.com/project/szyouijmxhlbavkzibxa/sql/new
-- **Database Linter**: https://app.supabase.com/project/szyouijmxhlbavkzibxa/database/linter
+- **Supabase Dashboard**: https://app.supabase.com/project/YOUR_PROJECT_ID
+- **Supabase SQL Editor**: https://app.supabase.com/project/YOUR_PROJECT_ID/sql/new
+- **Database Linter**: https://app.supabase.com/project/YOUR_PROJECT_ID/database/linter
 - **Supabase RLS Docs**: https://supabase.com/docs/guides/auth/row-level-security
 - **PostgreSQL RLS Docs**: https://www.postgresql.org/docs/current/ddl-rowsecurity.html
 
