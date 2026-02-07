@@ -38,31 +38,32 @@ services:
       # ==============================================================================
       # Database Configuration
       # ==============================================================================
-      # OPÇÃO 1 (RECOMENDADO): Render PostgreSQL
+      # OPÇÃO 1: Supabase PostgreSQL (Configuração Atual)
+      #   ✅ 500MB Free Tier
+      #   ✅ Interface web
+      #   ✅ Backup automático (7 dias)
+      #   ✅ Usando Connection Pooler (aws-1-us-east-2.pooler.supabase.com)
+      #   📝 Configurar DATABASE_URL manualmente no Dashboard
+
+      - key: DATABASE_URL
+        sync: false
+
+      - key: SUPABASE_URL
+        sync: false
+
+      - key: SUPABASE_KEY
+        sync: false
+
+      # OPÇÃO 2: Render PostgreSQL (Alternativa)
       #   ✅ Mesma rede (sem problemas IPv6)
       #   ✅ Confiável e rápido
       #   ✅ 256MB Free Tier
-      #   📝 Configurar: Criar database "lista-presentes-db" no Dashboard
-
-      - key: DATABASE_URL
-        fromDatabase:
-          name: lista-presentes-db
-          property: connectionString
-
-      # OPÇÃO 2: Supabase PostgreSQL (pode ter problemas IPv6 no Free Tier)
-      #   ⚠️  "Network is unreachable" em Render Free Tier
-      #   ✅ 500MB Free Tier
-      #   ✅ Interface web
       #   📝 Se usar, comente a configuração acima e descomente abaixo:
 
       # - key: DATABASE_URL
-      #   sync: false
-
-      # - key: SUPABASE_URL
-      #   sync: false
-
-      # - key: SUPABASE_KEY
-      #   sync: false
+      #   fromDatabase:
+      #     name: lista-presentes-db
+      #     property: connectionString
 
       # ==============================================================================
       # API Keys
@@ -108,33 +109,30 @@ services:
     healthCheckPath: /health/
 
 # ==============================================================================
-# Database - Render PostgreSQL (Recomendado para Free Tier)
+# Database - Supabase PostgreSQL (Configuração Atual)
 # ==============================================================================
-# Configurado para usar Render PostgreSQL gerenciado pela confiabilidade.
+# Usando Supabase PostgreSQL com Connection Pooler para melhor compatibilidade.
 #
-# ✅ Por que Render PostgreSQL:
-#    - Mesma rede interna (sem problemas IPv6)
-#    - Latência <1ms (vs 50-100ms externa)
-#    - 100% confiável (sem "Network is unreachable")
-#    - Setup automático via render.yaml
-#    - 256MB Free Tier
+# ✅ Configuração Atual:
+#    - Host: aws-1-us-east-2.pooler.supabase.com
+#    - Porta: 6543 (Connection Pooler)
+#    - Armazenamento: 500MB Free Tier
+#    - Backup: Automático (7 dias)
+#    - Interface: Web Dashboard
 #
-# 📝 Para configurar:
-#    1. Dashboard > New > PostgreSQL
-#    2. Name: lista-presentes-db
-#    3. Region: Oregon (mesma do web service)
-#    4. Plan: Free
-#    5. Create Database
-#    6. Deploy automático conectará via render.yaml
+# 📝 Variáveis no Render Dashboard:
+#    DATABASE_URL=postgresql://postgres.szyouijmxhlbavkzibxa:123ewqasdcxz%21%40%23@aws-1-us-east-2.pooler.supabase.com:6543/postgres
+#    SUPABASE_URL=https://szyouijmxhlbavkzibxa.supabase.co
+#    SUPABASE_KEY=sb_publishable_aswPuvIXjzcejBTyYWObdQ_BpC5l903
 #
-# ⚠️  Supabase tem problemas de IPv6 no Render Free Tier
-#    Se quiser usar Supabase, veja: USE_RENDER_POSTGRESQL.md
+# ⚠️  Alternativa: Render PostgreSQL
+#    Se Supabase apresentar problemas, veja: USE_RENDER_POSTGRESQL.md
 # ==============================================================================
 
-databases:
-  - name: lista-presentes-db
-    databaseName: lista_presentes
-    user: lista_presentes_user
-    region: oregon
-    plan: free
-    ipAllowList: []
+# databases:
+#   - name: lista-presentes-db
+#     databaseName: lista_presentes
+#     user: lista_presentes_user
+#     region: oregon
+#     plan: free
+#     ipAllowList: []
