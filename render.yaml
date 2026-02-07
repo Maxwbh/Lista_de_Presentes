@@ -36,19 +36,34 @@ services:
         value: .onrender.com,lista-presentes-0hbp.onrender.com
 
       # ==============================================================================
-      # Supabase PostgreSQL Database
+      # Database Configuration
       # ==============================================================================
-      # IMPORTANTE: Defina estas variáveis no Dashboard do Render.com
-      # Database URL format: postgresql://postgres:senha@db.xxxxx.supabase.co:5432/postgres
+      # OPÇÃO 1: Supabase PostgreSQL (Configuração Atual)
+      #   ✅ 500MB Free Tier
+      #   ✅ Interface web
+      #   ✅ Backup automático (7 dias)
+      #   ✅ Usando Connection Pooler (aws-1-us-east-2.pooler.supabase.com)
+      #   📝 Configurar DATABASE_URL manualmente no Dashboard
 
       - key: DATABASE_URL
-        sync: false  # Definir manualmente no dashboard com a connection string do Supabase
+        sync: false
 
       - key: SUPABASE_URL
-        sync: false  # URL do projeto Supabase (opcional, para uso futuro)
+        sync: false
 
       - key: SUPABASE_KEY
-        sync: false  # Chave pública do Supabase (opcional, para uso futuro)
+        sync: false
+
+      # OPÇÃO 2: Render PostgreSQL (Alternativa)
+      #   ✅ Mesma rede (sem problemas IPv6)
+      #   ✅ Confiável e rápido
+      #   ✅ 256MB Free Tier
+      #   📝 Se usar, comente a configuração acima e descomente abaixo:
+
+      # - key: DATABASE_URL
+      #   fromDatabase:
+      #     name: lista-presentes-db
+      #     property: connectionString
 
       # ==============================================================================
       # API Keys
@@ -94,22 +109,30 @@ services:
     healthCheckPath: /health/
 
 # ==============================================================================
-# Database - Usando Supabase PostgreSQL Externo
+# Database - Supabase PostgreSQL (Configuração Atual)
 # ==============================================================================
-# Removemos a seção databases porque agora usamos Supabase ao invés do
-# PostgreSQL gerenciado pelo Render. Isso oferece:
+# Usando Supabase PostgreSQL com Connection Pooler para melhor compatibilidade.
 #
-# ✅ Vantagens do Supabase:
-#    - Free tier mais generoso (500MB vs 256MB do Render Free)
-#    - Backup automático
-#    - Interface web para gerenciar dados
-#    - API REST automática
-#    - Realtime subscriptions
-#    - Storage para arquivos
-#    - Authentication integrado
+# ✅ Configuração Atual:
+#    - Host: aws-1-us-east-2.pooler.supabase.com
+#    - Porta: 6543 (Connection Pooler)
+#    - Armazenamento: 500MB Free Tier
+#    - Backup: Automático (7 dias)
+#    - Interface: Web Dashboard
 #
-# 📝 Para configurar, adicione estas variáveis no Dashboard do Render:
-#    DATABASE_URL=postgresql://postgres:senha@db.xxxxx.supabase.co:5432/postgres
-#    SUPABASE_URL=https://xxxxx.supabase.co
-#    SUPABASE_KEY=sua_chave_publica
+# 📝 Variáveis no Render Dashboard:
+#    DATABASE_URL=postgresql://postgres.szyouijmxhlbavkzibxa:123ewqasdcxz%21%40%23@aws-1-us-east-2.pooler.supabase.com:6543/postgres
+#    SUPABASE_URL=https://szyouijmxhlbavkzibxa.supabase.co
+#    SUPABASE_KEY=sb_publishable_aswPuvIXjzcejBTyYWObdQ_BpC5l903
+#
+# ⚠️  Alternativa: Render PostgreSQL
+#    Se Supabase apresentar problemas, veja: USE_RENDER_POSTGRESQL.md
 # ==============================================================================
+
+# databases:
+#   - name: lista-presentes-db
+#     databaseName: lista_presentes
+#     user: lista_presentes_user
+#     region: oregon
+#     plan: free
+#     ipAllowList: []
