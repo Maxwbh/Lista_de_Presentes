@@ -24,9 +24,9 @@ pip install -r requirements.txt
 echo "📁 Collecting static files..."
 python manage.py collectstatic --noinput
 
-# Test database connection (Supabase)
+# Test database connection
 echo "🔌 Testing database connection..."
-if ! python -c "
+if python -c "
 import os, django
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'lista_presentes.settings')
 django.setup()
@@ -44,9 +44,9 @@ if 'sqlite' in backend.lower():
     print('1. Go to Render Dashboard > lista-presentes > Environment')
     print('2. Add Environment Variable:')
     print('   Key:   DATABASE_URL')
-    print('   Value: postgresql://postgres:123ewqasdcxz%21%40%23@db.szyouijmxhlbavkzibxa.supabase.co:6543/postgres')
+    print('   Value: From your Supabase Dashboard or Render Database')
     print('')
-    print('📖 See: URGENTE_DATABASE_URL.md for instructions')
+    print('📖 See: USE_RENDER_POSTGRESQL.md for instructions')
     exit(1)
 
 # Test connection
@@ -58,11 +58,15 @@ try:
             print('✅ Database connection successful!')
             # Check if Supabase
             host = connection.settings_dict.get('HOST', '')
-            if 'supabase.co' in host:
+            if 'supabase' in host.lower():
                 print('✅ Connected to Supabase PostgreSQL')
+            elif '.internal' in host or 'render' in host.lower():
+                print('✅ Connected to Render PostgreSQL')
+            else:
+                print(f'✅ Connected to PostgreSQL at {host}')
             exit(0)
         else:
-            print('❌ Database connection failed')
+            print('❌ Database connection failed - unexpected result')
             exit(1)
 except Exception as e:
     import sys
@@ -72,24 +76,19 @@ except Exception as e:
     if 'Network is unreachable' in error_msg or 'IPv6' in error_msg:
         print('❌ ERROR: Network is unreachable')
         print('')
-        print('This is usually caused by:')
-        print('  1. Using port 5432 (direct) instead of 6543 (pooling)')
-        print('  2. IPv6 routing issues')
-        print('  3. Newline character (\\n) in DATABASE_URL')
+        print('This is usually caused by IPv6 routing issues.')
         print('')
-        print('QUICK FIX:')
-        print('  1. Go to Render Dashboard > Environment')
-        print('  2. Edit DATABASE_URL')
-        print('  3. Change port from 5432 to 6543:')
-        print('     postgresql://postgres:123ewqasdcxz%21%40%23@db.szyouijmxhlbavkzibxa.supabase.co:6543/postgres')
-        print('  4. Make sure there is NO newline (\\n) at the end')
-        print('  5. Save Changes')
+        print('SOLUTION: Use Render PostgreSQL instead of external database')
+        print('  1. Dashboard > New > PostgreSQL')
+        print('  2. Name: lista-presentes-db')
+        print('  3. Region: Oregon')
+        print('  4. Deploy will connect automatically')
         print('')
-        print('📖 See: NETWORK_UNREACHABLE_FIX.md for details')
+        print('📖 See: USE_RENDER_POSTGRESQL.md for details')
     else:
         print(f'❌ ERROR: {error_msg}')
         print('')
-        print('📖 Check logs and see: RENDER_SUPABASE_SETUP.md')
+        print('📖 Check logs and see: USE_RENDER_POSTGRESQL.md')
 
     sys.exit(1)
 " 2>&1; then
