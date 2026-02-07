@@ -267,20 +267,17 @@ Acesse: [http://localhost:8000](http://localhost:8000)
 Se preferir usar Docker:
 
 ```bash
-# Build
-docker-compose build
-
-# Rodar
-docker-compose up
+# Iniciar com auto-reload
+docker compose up --watch
 
 # Criar superusuário
-docker-compose exec web python manage.py createsuperuser
+docker compose exec web python manage.py createsuperuser
 
 # Gerar dados de teste
-docker-compose exec web python manage.py populate_test_data
+docker compose exec web python manage.py populate_test_data
 ```
 
-Ver documentação completa em [README_DOCKER.md](README_DOCKER.md).
+Ver documentação completa em [docs/deployment/DOCKER.md](docs/deployment/DOCKER.md).
 
 ---
 
@@ -711,17 +708,35 @@ Este projeto está licenciado sob a Licença MIT - veja o arquivo [LICENSE](LICE
 
 ---
 
-## 📚 Documentação Adicional
+## 📚 Documentação
 
-- [KEEP_ALIVE.md](KEEP_ALIVE.md) - Manter Render sempre ativo (Keep-Alive)
-- [README_DOCKER.md](README_DOCKER.md) - Deploy com Docker
-- [INSTALL_UBUNTU_SERVER.md](INSTALL_UBUNTU_SERVER.md) - Instalação em Ubuntu Server
-- [VERIFICACAO_RENDER.md](VERIFICACAO_RENDER.md) - Deploy no Render.com
-- [DEBUG_500_ERRORS.md](DEBUG_500_ERRORS.md) - Debug de erros 500
-- [MIGRACAO_IMAGENS_BASE64.md](MIGRACAO_IMAGENS_BASE64.md) - Migração de imagens
-- [GOOGLE_PLAY_STORE.md](GOOGLE_PLAY_STORE.md) - Publicação na Google Play
-- [SETUP_GRUPOS.md](SETUP_GRUPOS.md) - Configuração do sistema de grupos
-- [SOCIAL_LOGIN_CONFIG.md](SOCIAL_LOGIN_CONFIG.md) - Configuração de login social
+Toda documentação está organizada em `docs/`:
+
+### 🗄️ Database
+- [**SUPABASE.md**](docs/database/SUPABASE.md) - Configuração Supabase PostgreSQL, RLS, troubleshooting
+- [migrations.md](docs/database/migrations.md) - Correção de erros de migração
+- [MIGRACAO_IMAGENS_BASE64.md](docs/database/MIGRACAO_IMAGENS_BASE64.md) - Migração de imagens
+- [MIGRACAO_MYSQL_POSTGRESQL.md](docs/database/MIGRACAO_MYSQL_POSTGRESQL.md) - Migração MySQL → PostgreSQL
+
+### 🚀 Deployment
+- [**RENDER.md**](docs/deployment/RENDER.md) - Deploy Render.com, Free Tier, troubleshooting
+- [DOCKER.md](docs/deployment/DOCKER.md) - Desenvolvimento local com Docker
+
+### ✨ Features
+- [TEMAS.md](docs/features/TEMAS.md) - Sistema de temas (Purple Gradient, Modern Green)
+- [SCRAPING_LOGS.md](docs/features/SCRAPING_LOGS.md) - Logs de scraping e criação de issues
+- [SETUP_GRUPOS.md](docs/features/SETUP_GRUPOS.md) - Sistema de grupos
+- [SOCIAL_LOGIN_CONFIG.md](docs/features/SOCIAL_LOGIN_CONFIG.md) - Login social (Google, Facebook, etc)
+- [KEEP_ALIVE.md](docs/features/KEEP_ALIVE.md) - Manter Render sempre ativo
+
+### 🔧 Development
+- [VERSIONAMENTO.md](docs/development/VERSIONAMENTO.md) - Sistema de versionamento automático
+- [DEBUG_500_ERRORS.md](docs/development/DEBUG_500_ERRORS.md) - Debug de erros 500
+- [CONTRIBUTING.md](docs/development/CONTRIBUTING.md) - Como contribuir
+
+### 📜 Root
+- [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) - Código de conduta
+- [CHANGELOG.md](CHANGELOG.md) - Histórico de mudanças
 
 ---
 
@@ -730,4 +745,4 @@ Este projeto está licenciado sob a Licença MIT - veja o arquivo [LICENSE](LICE
 ---
 
 **Última atualização**: Fevereiro 2026
-**Versão**: 1.1.9
+**Versão**: 1.1.31
