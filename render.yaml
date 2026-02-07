@@ -62,6 +62,24 @@ services:
       - key: GEMINI_API_KEY
         sync: false  # Definir manualmente no dashboard
 
+      # ==============================================================================
+      # GitHub Integration
+      # ==============================================================================
+      - key: GITHUB_TOKEN
+        sync: false  # Token para criar issues automáticas
+
+      - key: GITHUB_REPO_OWNER
+        value: Maxwbh
+
+      - key: GITHUB_REPO_NAME
+        value: Lista_de_Presentes
+
+      - key: GITHUB_AUTO_CREATE_ISSUES
+        value: True
+
+      - key: SITE_URL
+        value: https://lista-presentes-1iwb.onrender.com
+
       # Otimizações para Free Tier
       - key: WEB_CONCURRENCY
         value: 1  # Número de workers (Free: 1, Starter+: 2-4)

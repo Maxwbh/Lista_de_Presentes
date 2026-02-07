@@ -61,9 +61,34 @@ python manage.py makemigrations --noinput || echo "⚠️  No migrations to crea
 echo "🔍 Checking for pending migrations..."
 python manage.py showmigrations --plan || echo "⚠️  Could not show migrations"
 
-# Run migrations (force apply all)
+# Run migrations with automatic fix for inconsistent history
 echo "🗄️  Running migrations..."
-python manage.py migrate --noinput --run-syncdb
+if ! python manage.py migrate --noinput --run-syncdb 2>&1 | tee /tmp/migrate_output.log; then
+    # Check if error is InconsistentMigrationHistory
+    if grep -q "InconsistentMigrationHistory" /tmp/migrate_output.log; then
+        echo ""
+        echo "⚠️  InconsistentMigrationHistory detected!"
+        echo "🔧 Auto-fixing migration history..."
+        echo ""
+
+        # Try to fix with --fake-initial first
+        if python manage.py migrate --fake-initial --noinput; then
+            echo "✅ Fixed with --fake-initial"
+        else
+            echo "⚠️  --fake-initial failed, trying full reset..."
+            # Use fix_migration_history command as last resort
+            python manage.py fix_migration_history --reset
+        fi
+
+        echo ""
+        echo "🔄 Retrying migrations after fix..."
+        python manage.py migrate --noinput --run-syncdb
+    else
+        echo "❌ Migration failed with different error"
+        cat /tmp/migrate_output.log
+        exit 1
+    fi
+fi
 
 # Verify migrations applied
 echo "✅ Verifying migrations..."
