@@ -29,7 +29,7 @@ Clique em **Add Environment Variable**:
 
 ```
 Key:   DATABASE_URL
-Value: postgresql://postgres:123ewqasdcxz%21%40%23@db.szyouijmxhlbavkzibxa.supabase.co:5432/postgres
+Value: postgresql://postgres:123ewqasdcxz%21%40%23@db.szyouijmxhlbavkzibxa.supabase.co:6543/postgres
 ```
 
 ⚠️ **COPIE EXATAMENTE COMO ESTÁ ACIMA!** (incluindo %21%40%23)
