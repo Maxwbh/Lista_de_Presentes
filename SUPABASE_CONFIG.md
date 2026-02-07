@@ -1,5 +1,21 @@
 # ✅ Configuração Supabase - Lista de Presentes
 
+## ⚠️ ATENÇÃO: Segurança Crítica
+
+**🔴 AÇÃO NECESSÁRIA:** Este banco de dados tem **27 alertas de segurança críticos** relacionados a Row Level Security (RLS).
+
+```
+❌ Senhas, tokens e sessões expostos via API Supabase
+❌ RLS não habilitado em 23 tabelas Django
+❌ Dados sensíveis acessíveis publicamente
+```
+
+**📖 Solução:** Veja instruções detalhadas em **[SUPABASE_SECURITY.md](SUPABASE_SECURITY.md)**
+
+**⚡ Quick Fix:** Execute `scripts/enable_rls_supabase.sql` no Supabase SQL Editor
+
+---
+
 ## 📋 Configuração Atual
 
 Este projeto está configurado para usar **Supabase PostgreSQL** como banco de dados.
@@ -248,14 +264,17 @@ Se a correção automática falhar, veja: `MIGRATION_FIX.md`
 
 ## 📚 Documentação Relacionada
 
+- 🔒 **`SUPABASE_SECURITY.md`** - **LEIA PRIMEIRO** - Segurança RLS (27 alertas críticos!)
 - `MIGRATION_FIX.md` - Correção de erros de migração
 - `USE_RENDER_POSTGRESQL.md` - Alternativa com Render PostgreSQL
 - `URGENTE_DATABASE_URL.md` - Guia rápido de configuração
 - `scripts/check_database_config.py` - Script de verificação
+- `scripts/enable_rls_supabase.sql` - **EXECUTAR URGENTE** - Habilitar RLS
 
 ---
 
 **Última atualização:** 2026-02-07
-**Status:** ✅ Configurado e Funcionando
+**Status:** ⚠️ Configurado mas **REQUER AÇÃO DE SEGURANÇA**
 **Database:** Supabase PostgreSQL (Connection Pooler)
-**Versão:** 1.1.27
+**Segurança:** 🔴 **RLS NÃO HABILITADO** - Execute `enable_rls_supabase.sql`
+**Versão:** 1.1.28

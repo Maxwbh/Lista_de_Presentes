@@ -1,0 +1,73 @@
+# 🔒 Row Level Security (RLS) - Ação Urgente
+
+## ⚠️ PROBLEMA CRÍTICO
+
+O banco de dados Supabase tem **27 alertas de segurança** relacionados a dados expostos via API:
+
+```
+❌ 23 tabelas sem Row Level Security (RLS)
+❌ 4 colunas sensíveis expostas:
+   - presentes_usuario.password (senhas!)
+   - django_session.session_key (sessões!)
+   - socialaccount_socialapp.secret (OAuth secrets!)
+   - socialaccount_socialtoken.token (OAuth tokens!)
+```
+
+## ✅ SOLUÇÃO (2 minutos)
+
+### 1️⃣ Abrir Supabase SQL Editor
+
+🔗 https://app.supabase.com/project/szyouijmxhlbavkzibxa/sql/new
+
+### 2️⃣ Copiar Script SQL
+
+Abra o arquivo: **`enable_rls_supabase.sql`** (nesta pasta)
+
+### 3️⃣ Colar e Executar
+
+1. Copiar todo o conteúdo do arquivo
+2. Colar no SQL Editor
+3. Clicar em **Run** (ou Ctrl+Enter)
+
+### 4️⃣ Verificar
+
+Após executar, você verá:
+
+```
+✅ ROW LEVEL SECURITY ON (23 vezes)
+```
+
+No Database Linter:
+```
+✅ 0 security issues found!
+```
+
+## 🎯 O Que Isso Faz?
+
+- ✅ **Bloqueia acesso via API Supabase** (PostgREST)
+- ✅ **Django continua funcionando normalmente**
+- ✅ **Protege senhas, tokens e dados sensíveis**
+- ✅ **Resolve todos os 27 alertas de segurança**
+
+## 📖 Documentação Completa
+
+Veja **`../SUPABASE_SECURITY.md`** para:
+- Explicação detalhada do problema
+- Como RLS funciona
+- Alternativas (desabilitar API, schema privado)
+- Troubleshooting
+
+## 🆘 Precisa de Ajuda?
+
+Se o script falhar ou tiver dúvidas:
+
+1. Verifique a documentação: `SUPABASE_SECURITY.md`
+2. Verifique os logs do Supabase
+3. Crie uma issue no GitHub
+
+---
+
+**Última atualização:** 2026-02-07
+**Tempo estimado:** 2 minutos
+**Impacto no Django:** Nenhum (continua funcionando normalmente)
+**Impacto na segurança:** CRÍTICO (bloqueia acesso não autorizado)
