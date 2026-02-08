@@ -83,20 +83,18 @@ TEMPLATES = [
 WSGI_APPLICATION = 'lista_presentes.wsgi.application'
 
 # ==============================================================================
-# Banco de Dados - Configuração Flexível
+# Banco de Dados - Configuração com Schema Isolado
 # ==============================================================================
 # Suporta múltiplas opções de banco de dados:
 #
-# 1. PRODUÇÃO - Supabase PostgreSQL (Recomendado):
-#    DATABASE_URL=postgresql://postgres:senha@db.xxxxx.supabase.co:5432/postgres
+# 1. PRODUÇÃO - Supabase PostgreSQL com Schema Isolado (Configuração Atual):
+#    DATABASE_URL=postgresql://postgres.PROJECT:PASS@aws-1-us-east-2.pooler.supabase.com:6543/postgres
+#    Schema: lista_presentes (isolado para evitar conflitos com outras apps Django)
 #
-# 2. PRODUÇÃO - Render PostgreSQL:
-#    DATABASE_URL será fornecido automaticamente pelo Render
-#
-# 3. DESENVOLVIMENTO - SQLite:
+# 2. DESENVOLVIMENTO - SQLite:
 #    Sem DATABASE_URL ou com USE_SQLITE=True
 #
-# O código abaixo detecta automaticamente qual usar baseado nas variáveis de ambiente
+# IMPORTANTE: Usa search_path=lista_presentes exclusivamente
 # ==============================================================================
 
 DATABASE_URL = os.getenv('DATABASE_URL')
@@ -116,28 +114,20 @@ if DATABASE_URL and not USE_SQLITE:
         )
     }
 
-    # Configurar search_path (obrigatório para Django funcionar)
-    #
-    # SUPABASE com múltiplas apps Django:
-    #   - Usa schema isolado 'lista_presentes' para evitar conflitos
-    #   - Configurar via ?options= na DATABASE_URL ou será aplicado automaticamente aqui
-    #
-    # RENDER PostgreSQL:
-    #   - Usa schema 'public' (padrão)
-    #   - Cada app tem banco isolado automaticamente
-    #
-    if 'OPTIONS' not in DATABASES['default']:
-        DATABASES['default']['OPTIONS'] = {}
+    # Usar schema separado para esta aplicação (compartilhamento de banco Supabase)
+    # IMPORTANTE: Usar APENAS lista_presentes (sem public) para evitar
+    # conflito com django_migrations de outras aplicações Django
+    DATABASES['default']['OPTIONS'] = {
+        'options': '-c search_path=lista_presentes'
+    }
 
-    # Se DATABASE_URL não tem options, detectar provider e aplicar search_path correto
-    if 'options' not in DATABASES['default']['OPTIONS']:
-        # Detectar se é Supabase pela hostname
-        if 'supabase' in DATABASE_URL.lower():
-            # Supabase: usar schema isolado lista_presentes
-            DATABASES['default']['OPTIONS']['options'] = '-c search_path=lista_presentes'
-        else:
-            # Render PostgreSQL ou outro: usar schema public (padrão)
-            DATABASES['default']['OPTIONS']['options'] = '-c search_path=public'
+    # Signal para garantir search_path em cada conexão
+    from django.db.backends.signals import connection_created
+    def set_search_path(sender, connection, **kwargs):
+        if connection.vendor == 'postgresql':
+            cursor = connection.cursor()
+            cursor.execute("SET search_path TO lista_presentes")
+    connection_created.connect(set_search_path)
 else:
     # Desenvolvimento: SQLite
     # Use para ambientes com recursos mínimos (512MB-1GB RAM)

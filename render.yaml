@@ -44,9 +44,10 @@ services:
       # ✅ Dashboard web para queries
       # ⚠️  Configurar DATABASE_URL manualmente no Render Dashboard
       #
-      # DATABASE_URL deve ter: ?options=-csearch_path%3Dlista_presentes
-      # Exemplo:
-      # postgresql://postgres.PROJECT:PASS@aws-1-us-east-2.pooler.supabase.com:6543/postgres?options=-csearch_path%3Dlista_presentes
+      # DATABASE_URL formato (schema configurado automaticamente no código):
+      # postgresql://postgres.PROJECT:PASS@aws-1-us-east-2.pooler.supabase.com:6543/postgres
+      #
+      # O search_path=lista_presentes é aplicado automaticamente via settings.py
 
       - key: DATABASE_URL
         sync: false  # Configurar manualmente no Dashboard

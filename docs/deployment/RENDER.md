@@ -87,7 +87,8 @@ SECRET_KEY=<gerado automaticamente>
 ALLOWED_HOSTS=.onrender.com,your-app-name.onrender.com
 
 # Database (Supabase PostgreSQL com Schema Isolado)
-DATABASE_URL=postgresql://postgres.YOUR_PROJECT:YOUR_PASSWORD_ENCODED@aws-1-us-east-2.pooler.supabase.com:6543/postgres?options=-csearch_path%3Dlista_presentes
+# IMPORTANTE: Não adicionar ?options= - search_path configurado automaticamente
+DATABASE_URL=postgresql://postgres.YOUR_PROJECT:YOUR_PASSWORD_ENCODED@aws-1-us-east-2.pooler.supabase.com:6543/postgres
 
 # Supabase (Opcional - para uso futuro com Supabase SDK)
 SUPABASE_URL=https://YOUR_PROJECT_ID.supabase.co
