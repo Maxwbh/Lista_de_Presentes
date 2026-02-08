@@ -107,7 +107,7 @@ SUPABASE_URL = os.getenv('SUPABASE_URL', '')
 SUPABASE_KEY = os.getenv('SUPABASE_KEY', '')
 
 if DATABASE_URL and not USE_SQLITE:
-    # Produção: PostgreSQL via DATABASE_URL (Supabase, Render, Heroku, etc.)
+    # Produção: PostgreSQL via DATABASE_URL (Render, Supabase, Heroku, etc.)
     DATABASES = {
         'default': dj_database_url.config(
             default=DATABASE_URL,
@@ -116,16 +116,10 @@ if DATABASE_URL and not USE_SQLITE:
         )
     }
 
-    # Schema Isolado: Configurar search_path para 'lista_presentes'
-    # Evita conflitos com outras aplicações Django no mesmo banco Supabase
-    # O search_path pode vir na URL (?options=-csearch_path%3Dlista_presentes)
-    # ou ser configurado aqui no OPTIONS
-    if 'OPTIONS' not in DATABASES['default']:
-        DATABASES['default']['OPTIONS'] = {}
-
-    # Se não tiver options na URL, adicionar aqui
-    if 'options' not in DATABASES['default']['OPTIONS']:
-        DATABASES['default']['OPTIONS']['options'] = '-c search_path=lista_presentes'
+    # Schema Isolado (apenas para Supabase com múltiplas apps)
+    # Render PostgreSQL não precisa: cada app tem seu próprio banco isolado
+    # Se DATABASE_URL do Supabase tem ?options=..., ele é usado automaticamente
+    # Caso contrário, Render PostgreSQL funciona sem configuração adicional
 else:
     # Desenvolvimento: SQLite
     # Use para ambientes com recursos mínimos (512MB-1GB RAM)

@@ -1,15 +1,31 @@
-# Supabase PostgreSQL - Guia Completo
+# Supabase PostgreSQL - Alternativa
 
-## 📋 Configuração
+## ⚠️ Aviso Importante
 
-### Status Atual
-- ✅ Database: Supabase PostgreSQL
-- ✅ Connection Pooler: Ativo (PgBouncer)
-- ✅ **Schema Isolado**: `lista_presentes` (múltiplas apps Django)
-- ✅ Row Level Security (RLS): Habilitado em 23 tabelas
-- ✅ Segurança: Protegido contra acesso não autorizado via API
+**Esta aplicação usa Render PostgreSQL Free como database padrão.**
 
-**⚠️ IMPORTANTE:** Esta aplicação usa schema isolado `lista_presentes`. Veja [SCHEMA_ISOLADO.md](SCHEMA_ISOLADO.md) para detalhes.
+Supabase é uma alternativa viável, mas requer configuração adicional:
+- ⚠️ Se múltiplas apps Django: precisa schema isolado (complexo)
+- ⚠️ Latência maior (50-100ms vs <1ms Render)
+- ⚠️ Setup manual vs automático
+
+**Recomendação:** Use Render PostgreSQL (já configurado no `render.yaml`)
+
+**Se mesmo assim quiser usar Supabase**, continue lendo.
+
+---
+
+## 📋 Configuração Supabase
+
+### Quando Usar
+- ✅ Única app Django no banco (sem conflitos)
+- ✅ Precisa de dashboard web para queries
+- ✅ Precisa de mais armazenamento (500 MB vs 256 MB)
+- ✅ Quer usar Supabase Storage/Auth/Realtime no futuro
+
+### Requisitos
+- ⚠️ **Múltiplas apps Django**: Requer schema isolado ([SCHEMA_ISOLADO.md](SCHEMA_ISOLADO.md))
+- ✅ **App única**: Pode usar schema `public` normalmente
 
 ### Variáveis de Ambiente (Render)
 

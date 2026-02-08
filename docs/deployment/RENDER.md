@@ -8,10 +8,13 @@
 - **Branch**: Automático (main/production)
 
 ### Database
-- **Provider**: Supabase PostgreSQL
-- **Armazenamento**: 500 MB Free Tier
-- **Connection Pooler**: Ativo (PgBouncer)
-- **Backup**: Automático (7 dias)
+- **Provider**: Render PostgreSQL (Recomendado)
+- **Armazenamento**: 256 MB Free Tier
+- **Latência**: <1ms (mesma rede)
+- **Isolamento**: Automático (1 banco por app)
+- **Setup**: Automático via render.yaml
+
+**Alternativa:** Supabase (veja [SUPABASE.md](../database/SUPABASE.md))
 
 ---
 
@@ -82,8 +85,9 @@ python manage.py shell < scripts/create_or_update_admin.py
 SECRET_KEY=<gerado automaticamente>
 ALLOWED_HOSTS=.onrender.com,your-app-name.onrender.com
 
-# Database (Supabase)
-DATABASE_URL=postgresql://postgres.YOUR_PROJECT_ID:YOUR_PASSWORD_ENCODED@aws-1-us-east-2.pooler.supabase.com:6543/postgres
+# Database (Render PostgreSQL - Automático)
+# DATABASE_URL é injetado automaticamente pelo Render
+# Não precisa configurar manualmente!
 
 # GitHub (Auto-create Issues)
 GITHUB_TOKEN=<fornecido pelo administrador>

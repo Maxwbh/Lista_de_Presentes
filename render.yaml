@@ -36,34 +36,41 @@ services:
         value: .onrender.com,lista-presentes-0hbp.onrender.com
 
       # ==============================================================================
-      # Database Configuration
+      # Database Configuration - Render PostgreSQL (RECOMENDADO)
       # ==============================================================================
-      # OPÇÃO 1: Supabase PostgreSQL (Configuração Atual)
-      #   ✅ 500MB Free Tier
-      #   ✅ Interface web
-      #   ✅ Backup automático (7 dias)
-      #   ✅ Usando Connection Pooler (aws-1-us-east-2.pooler.supabase.com)
-      #   📝 Configurar DATABASE_URL manualmente no Dashboard
+      # ✅ ISOLAMENTO AUTOMÁTICO: Cada app tem seu próprio banco Render
+      # ✅ Sem conflitos entre múltiplas apps Django
+      # ✅ Mesma rede (latência <1ms)
+      # ✅ 256MB Free Tier (suficiente para maioria dos casos)
+      # ✅ Setup automático via render.yaml
 
       - key: DATABASE_URL
-        sync: false
+        fromDatabase:
+          name: lista-presentes-db
+          property: connectionString
 
-      - key: SUPABASE_URL
-        sync: false
-
-      - key: SUPABASE_KEY
-        sync: false
-
-      # OPÇÃO 2: Render PostgreSQL (Alternativa)
-      #   ✅ Mesma rede (sem problemas IPv6)
-      #   ✅ Confiável e rápido
-      #   ✅ 256MB Free Tier
-      #   📝 Se usar, comente a configuração acima e descomente abaixo:
+      # ==============================================================================
+      # Supabase (Alternativa - NÃO RECOMENDADO para múltiplas apps)
+      # ==============================================================================
+      # ⚠️  Se múltiplas apps Django no mesmo Supabase:
+      #     - Requer schema isolado (complexo)
+      #     - Problemas de InconsistentMigrationHistory
+      #     - Latência maior (50-100ms vs <1ms)
+      #
+      # Se mesmo assim quiser usar Supabase:
+      #   1. Comentar DATABASE_URL acima
+      #   2. Descomentar linhas abaixo
+      #   3. Configurar DATABASE_URL manualmente no Dashboard
+      #   4. Ver docs/database/SCHEMA_ISOLADO.md
 
       # - key: DATABASE_URL
-      #   fromDatabase:
-      #     name: lista-presentes-db
-      #     property: connectionString
+      #   sync: false
+
+      # - key: SUPABASE_URL
+      #   sync: false
+
+      # - key: SUPABASE_KEY
+      #   sync: false
 
       # ==============================================================================
       # API Keys
@@ -109,30 +116,33 @@ services:
     healthCheckPath: /health/
 
 # ==============================================================================
-# Database - Supabase PostgreSQL (Configuração Atual)
+# Database - Render PostgreSQL Free (RECOMENDADO)
 # ==============================================================================
-# Usando Supabase PostgreSQL com Connection Pooler para melhor compatibilidade.
+# ✅ ISOLAMENTO AUTOMÁTICO POR APP
+#    - Cada aplicação Django tem seu próprio banco Render
+#    - Sem conflitos de django_migrations entre apps
+#    - Sem necessidade de schema isolado
+#    - Setup automático via render.yaml
 #
-# ✅ Configuração Atual:
-#    - Host: aws-1-us-east-2.pooler.supabase.com
-#    - Porta: 6543 (Connection Pooler)
-#    - Armazenamento: 500MB Free Tier
-#    - Backup: Automático (7 dias)
-#    - Interface: Web Dashboard
+# ✅ VANTAGENS:
+#    - Mesma rede interna (latência <1ms)
+#    - 100% confiável (sem "Network is unreachable")
+#    - Sem problemas de IPv6
+#    - 256MB Free Tier
 #
-# 📝 Variáveis no Render Dashboard:
-#    DATABASE_URL=postgresql://postgres.szyouijmxhlbavkzibxa:123ewqasdcxz%21%40%23@aws-1-us-east-2.pooler.supabase.com:6543/postgres
-#    SUPABASE_URL=https://szyouijmxhlbavkzibxa.supabase.co
-#    SUPABASE_KEY=sb_publishable_aswPuvIXjzcejBTyYWObdQ_BpC5l903
+# 📝 CONFIGURAÇÃO:
+#    O Render cria e conecta automaticamente o banco
+#    DATABASE_URL é injetado automaticamente
+#    Nenhuma configuração manual necessária!
 #
-# ⚠️  Alternativa: Render PostgreSQL
-#    Se Supabase apresentar problemas, veja: USE_RENDER_POSTGRESQL.md
+# 🔄 MIGRAÇÃO DE DADOS (se vindo do Supabase):
+#    Ver: docs/database/MIGRACAO_SUPABASE_RENDER.md
 # ==============================================================================
 
-# databases:
-#   - name: lista-presentes-db
-#     databaseName: lista_presentes
-#     user: lista_presentes_user
-#     region: oregon
-#     plan: free
-#     ipAllowList: []
+databases:
+  - name: lista-presentes-db
+    databaseName: lista_presentes
+    user: lista_presentes_user
+    region: oregon
+    plan: free
+    ipAllowList: []
