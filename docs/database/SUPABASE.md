@@ -5,14 +5,17 @@
 ### Status Atual
 - ✅ Database: Supabase PostgreSQL
 - ✅ Connection Pooler: Ativo (PgBouncer)
+- ✅ **Schema Isolado**: `lista_presentes` (múltiplas apps Django)
 - ✅ Row Level Security (RLS): Habilitado em 23 tabelas
 - ✅ Segurança: Protegido contra acesso não autorizado via API
+
+**⚠️ IMPORTANTE:** Esta aplicação usa schema isolado `lista_presentes`. Veja [SCHEMA_ISOLADO.md](SCHEMA_ISOLADO.md) para detalhes.
 
 ### Variáveis de Ambiente (Render)
 
 ```bash
-# Database Connection (Connection Pooler)
-DATABASE_URL=postgresql://postgres.YOUR_PROJECT_ID:YOUR_PASSWORD_ENCODED@aws-1-us-east-2.pooler.supabase.com:6543/postgres
+# Database Connection (Connection Pooler + Schema Isolado)
+DATABASE_URL=postgresql://postgres.YOUR_PROJECT_ID:YOUR_PASSWORD_ENCODED@aws-1-us-east-2.pooler.supabase.com:6543/postgres?options=-csearch_path%3Dlista_presentes
 
 # Supabase API (Opcional)
 SUPABASE_URL=https://YOUR_PROJECT_ID.supabase.co
@@ -79,6 +82,46 @@ ALTER TABLE public.presentes_notificacao ENABLE ROW LEVEL SECURITY;
 | `authenticated` | ❌ Não | API com auth | Bloqueado (0 rows) |
 
 **Resultado:** API Supabase bloqueada, Django funciona normalmente.
+
+---
+
+## 🗂️ Schema Isolado
+
+### Por Que Usar Schema Próprio?
+
+Quando você tem **múltiplas aplicações Django** no mesmo banco Supabase:
+
+```
+❌ PROBLEMA (schema public compartilhado):
+App 1 → public.django_migrations
+App 2 → public.django_migrations  ← CONFLITO!
+App 3 → public.django_migrations  ← CONFLITO!
+
+Resultado: InconsistentMigrationHistory
+```
+
+```
+✅ SOLUÇÃO (schema isolado):
+App 1 → gestao_contrato.django_migrations
+App 2 → lista_presentes.django_migrations  ← Esta app
+App 3 → outra_app.django_migrations
+
+Resultado: Cada app isolada, sem conflitos
+```
+
+### Configuração
+
+**DATABASE_URL com search_path:**
+```
+?options=-csearch_path%3Dlista_presentes
+```
+
+**O que faz:**
+- Django cria tabelas em `lista_presentes.` ao invés de `public.`
+- Evita conflitos com outras apps Django
+- Mantém histórico de migrações isolado
+
+**Documentação completa:** [SCHEMA_ISOLADO.md](SCHEMA_ISOLADO.md)
 
 ---
 
