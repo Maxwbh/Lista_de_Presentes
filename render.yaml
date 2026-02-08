@@ -36,29 +36,34 @@ services:
         value: .onrender.com,lista-presentes-0hbp.onrender.com
 
       # ==============================================================================
-      # Database Configuration
+      # Database Configuration - Supabase PostgreSQL com Schema Isolado
       # ==============================================================================
-      # OPÇÃO 1: Supabase PostgreSQL (Configuração Atual)
-      #   ✅ 500MB Free Tier
-      #   ✅ Interface web
-      #   ✅ Backup automático (7 dias)
-      #   ✅ Usando Connection Pooler (aws-1-us-east-2.pooler.supabase.com)
-      #   📝 Configurar DATABASE_URL manualmente no Dashboard
+      # ✅ SUPABASE COM SCHEMA ISOLADO 'lista_presentes'
+      # ✅ Múltiplas apps Django no mesmo banco Supabase (isoladas)
+      # ✅ 500MB Free Tier (vs 256MB Render)
+      # ✅ Dashboard web para queries
+      # ⚠️  Configurar DATABASE_URL manualmente no Render Dashboard
+      #
+      # DATABASE_URL deve ter: ?options=-csearch_path%3Dlista_presentes
+      # Exemplo:
+      # postgresql://postgres.PROJECT:PASS@aws-1-us-east-2.pooler.supabase.com:6543/postgres?options=-csearch_path%3Dlista_presentes
 
       - key: DATABASE_URL
-        sync: false
+        sync: false  # Configurar manualmente no Dashboard
 
       - key: SUPABASE_URL
-        sync: false
+        sync: false  # Opcional
 
       - key: SUPABASE_KEY
-        sync: false
+        sync: false  # Opcional
 
-      # OPÇÃO 2: Render PostgreSQL (Alternativa)
-      #   ✅ Mesma rede (sem problemas IPv6)
-      #   ✅ Confiável e rápido
-      #   ✅ 256MB Free Tier
-      #   📝 Se usar, comente a configuração acima e descomente abaixo:
+      # ==============================================================================
+      # Render PostgreSQL (Alternativa - mais simples, mas menos armazenamento)
+      # ==============================================================================
+      # Se preferir Render PostgreSQL ao invés de Supabase:
+      #   1. Comentar DATABASE_URL acima
+      #   2. Descomentar linhas abaixo
+      #   3. Ver docs/database/MIGRACAO_SUPABASE_RENDER.md
 
       # - key: DATABASE_URL
       #   fromDatabase:
@@ -109,24 +114,21 @@ services:
     healthCheckPath: /health/
 
 # ==============================================================================
-# Database - Supabase PostgreSQL (Configuração Atual)
+# Database - Render PostgreSQL (ALTERNATIVA)
 # ==============================================================================
-# Usando Supabase PostgreSQL com Connection Pooler para melhor compatibilidade.
+# ⚠️  ATUALMENTE USANDO SUPABASE COM SCHEMA ISOLADO
+#     Esta seção está comentada para não criar Render PostgreSQL
 #
-# ✅ Configuração Atual:
-#    - Host: aws-1-us-east-2.pooler.supabase.com
-#    - Porta: 6543 (Connection Pooler)
-#    - Armazenamento: 500MB Free Tier
-#    - Backup: Automático (7 dias)
-#    - Interface: Web Dashboard
+# Se quiser migrar para Render PostgreSQL:
+#   1. Descomentar seção databases: abaixo
+#   2. Comentar DATABASE_URL manual nas envVars (linha 51)
+#   3. Ver docs/database/MIGRACAO_SUPABASE_RENDER.md
 #
-# 📝 Variáveis no Render Dashboard:
-#    DATABASE_URL=postgresql://postgres.szyouijmxhlbavkzibxa:123ewqasdcxz%21%40%23@aws-1-us-east-2.pooler.supabase.com:6543/postgres
-#    SUPABASE_URL=https://szyouijmxhlbavkzibxa.supabase.co
-#    SUPABASE_KEY=sb_publishable_aswPuvIXjzcejBTyYWObdQ_BpC5l903
-#
-# ⚠️  Alternativa: Render PostgreSQL
-#    Se Supabase apresentar problemas, veja: USE_RENDER_POSTGRESQL.md
+# ✅ VANTAGENS RENDER POSTGRESQL:
+#    - Isolamento automático (1 banco por app)
+#    - Latência <1ms (mesma rede)
+#    - Setup automático via render.yaml
+#    - 256MB Free Tier
 # ==============================================================================
 
 # databases:

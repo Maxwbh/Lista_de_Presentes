@@ -3,6 +3,6 @@ Sistema de Versionamento Automático
 Este arquivo é atualizado automaticamente a cada commit
 """
 
-__version__ = "1.1.34"
-__build__ = 33
-__commit__ = "babf4a0"
+__version__ = "1.1.38"
+__build__ = 40
+__commit__ = "32b1b47"

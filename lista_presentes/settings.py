@@ -107,7 +107,7 @@ SUPABASE_URL = os.getenv('SUPABASE_URL', '')
 SUPABASE_KEY = os.getenv('SUPABASE_KEY', '')
 
 if DATABASE_URL and not USE_SQLITE:
-    # Produção: PostgreSQL via DATABASE_URL (Supabase, Render, Heroku, etc.)
+    # Produção: PostgreSQL via DATABASE_URL (Render, Supabase, Heroku, etc.)
     DATABASES = {
         'default': dj_database_url.config(
             default=DATABASE_URL,
@@ -116,16 +116,28 @@ if DATABASE_URL and not USE_SQLITE:
         )
     }
 
-    # Schema Isolado: Configurar search_path para 'lista_presentes'
-    # Evita conflitos com outras aplicações Django no mesmo banco Supabase
-    # O search_path pode vir na URL (?options=-csearch_path%3Dlista_presentes)
-    # ou ser configurado aqui no OPTIONS
+    # Configurar search_path (obrigatório para Django funcionar)
+    #
+    # SUPABASE com múltiplas apps Django:
+    #   - Usa schema isolado 'lista_presentes' para evitar conflitos
+    #   - Configurar via ?options= na DATABASE_URL ou será aplicado automaticamente aqui
+    #
+    # RENDER PostgreSQL:
+    #   - Usa schema 'public' (padrão)
+    #   - Cada app tem banco isolado automaticamente
+    #
     if 'OPTIONS' not in DATABASES['default']:
         DATABASES['default']['OPTIONS'] = {}
 
-    # Se não tiver options na URL, adicionar aqui
+    # Se DATABASE_URL não tem options, detectar provider e aplicar search_path correto
     if 'options' not in DATABASES['default']['OPTIONS']:
-        DATABASES['default']['OPTIONS']['options'] = '-c search_path=lista_presentes'
+        # Detectar se é Supabase pela hostname
+        if 'supabase' in DATABASE_URL.lower():
+            # Supabase: usar schema isolado lista_presentes
+            DATABASES['default']['OPTIONS']['options'] = '-c search_path=lista_presentes'
+        else:
+            # Render PostgreSQL ou outro: usar schema public (padrão)
+            DATABASES['default']['OPTIONS']['options'] = '-c search_path=public'
 else:
     # Desenvolvimento: SQLite
     # Use para ambientes com recursos mínimos (512MB-1GB RAM)
