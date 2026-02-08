@@ -115,6 +115,17 @@ if DATABASE_URL and not USE_SQLITE:
             conn_health_checks=True,  # Verifica saúde da conexão antes de usar
         )
     }
+
+    # Schema Isolado: Configurar search_path para 'lista_presentes'
+    # Evita conflitos com outras aplicações Django no mesmo banco Supabase
+    # O search_path pode vir na URL (?options=-csearch_path%3Dlista_presentes)
+    # ou ser configurado aqui no OPTIONS
+    if 'OPTIONS' not in DATABASES['default']:
+        DATABASES['default']['OPTIONS'] = {}
+
+    # Se não tiver options na URL, adicionar aqui
+    if 'options' not in DATABASES['default']['OPTIONS']:
+        DATABASES['default']['OPTIONS']['options'] = '-c search_path=lista_presentes'
 else:
     # Desenvolvimento: SQLite
     # Use para ambientes com recursos mínimos (512MB-1GB RAM)

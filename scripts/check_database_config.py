@@ -56,8 +56,8 @@ def check_database_config():
         print("\n📋 AÇÃO NECESSÁRIA:")
         print("   Adicione DATABASE_URL no Render Dashboard > Environment")
         print("\n   Key:   DATABASE_URL")
-        print("   Value: postgresql://postgres:123ewqasdcxz%21%40%23@db.szyouijmxhlbavkzibxa.supabase.co:5432/postgres")
-        print("\n📖 Consulte: RENDER_SUPABASE_SETUP.md ou CHECKLIST_SUPABASE.md")
+        print("   Value: postgresql://postgres.YOUR_PROJECT:YOUR_PASSWORD@aws-X-us-east-X.pooler.supabase.com:6543/postgres")
+        print("\n📖 Consulte: docs/database/SUPABASE.md ou docs/deployment/RENDER.md")
         return False
     else:
         # Ocultar senha
