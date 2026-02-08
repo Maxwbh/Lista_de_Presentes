@@ -1,39 +1,40 @@
-# Supabase PostgreSQL - Alternativa
+# Supabase PostgreSQL - Configuração Atual
 
-## ⚠️ Aviso Importante
+## ✅ Status Atual
 
-**Esta aplicação usa Render PostgreSQL Free como database padrão.**
+**Esta aplicação usa Supabase PostgreSQL com Schema Isolado `lista_presentes`.**
 
-Supabase é uma alternativa viável, mas requer configuração adicional:
-- ⚠️ Se múltiplas apps Django: precisa schema isolado (complexo)
-- ⚠️ Latência maior (50-100ms vs <1ms Render)
-- ⚠️ Setup manual vs automático
+Configuração permite:
+- ✅ Múltiplas apps Django no mesmo banco Supabase (isoladas por schema)
+- ✅ 500MB Free Tier (vs 256MB Render PostgreSQL)
+- ✅ Dashboard web para queries SQL
+- ✅ Possibilidade de usar Supabase Storage/Auth/Realtime no futuro
 
-**Recomendação:** Use Render PostgreSQL (já configurado no `render.yaml`)
-
-**Se mesmo assim quiser usar Supabase**, continue lendo.
+**Schema:** `lista_presentes` (configurado automaticamente via `settings.py`)
 
 ---
 
 ## 📋 Configuração Supabase
 
-### Quando Usar
-- ✅ Única app Django no banco (sem conflitos)
-- ✅ Precisa de dashboard web para queries
-- ✅ Precisa de mais armazenamento (500 MB vs 256 MB)
-- ✅ Quer usar Supabase Storage/Auth/Realtime no futuro
+### Vantagens
+- ✅ Múltiplas apps Django isoladas no mesmo banco (via schemas)
+- ✅ Mais armazenamento: 500 MB (vs 256 MB Render PostgreSQL)
+- ✅ Dashboard web para queries SQL
+- ✅ Supabase Storage/Auth/Realtime disponíveis
 
-### Requisitos
-- ⚠️ **Múltiplas apps Django**: Requer schema isolado ([SCHEMA_ISOLADO.md](SCHEMA_ISOLADO.md))
-- ✅ **App única**: Pode usar schema `public` normalmente
+### Schema Isolado
+- 📁 **Schema:** `lista_presentes` (configurado automaticamente)
+- 🔒 **Isolamento:** Evita conflitos de `django_migrations` entre apps
+- ⚙️ **Configuração:** Ver [SCHEMA_ISOLADO.md](SCHEMA_ISOLADO.md)
 
-### Variáveis de Ambiente (Render)
+### Variáveis de Ambiente (Render Dashboard)
 
 ```bash
-# Database Connection (Connection Pooler + Schema Isolado)
-DATABASE_URL=postgresql://postgres.YOUR_PROJECT_ID:YOUR_PASSWORD_ENCODED@aws-1-us-east-2.pooler.supabase.com:6543/postgres?options=-csearch_path%3Dlista_presentes
+# Database Connection (Connection Pooler - porta 6543)
+# IMPORTANTE: Não adicionar ?options= - search_path configurado automaticamente
+DATABASE_URL=postgresql://postgres.YOUR_PROJECT_ID:YOUR_PASSWORD_ENCODED@aws-1-us-east-2.pooler.supabase.com:6543/postgres
 
-# Supabase API (Opcional)
+# Supabase API (Opcional - uso futuro)
 SUPABASE_URL=https://YOUR_PROJECT_ID.supabase.co
 SUPABASE_KEY=sb_publishable_YOUR_ANON_KEY
 
@@ -45,6 +46,8 @@ GITHUB_AUTO_CREATE_ISSUES=True
 ```
 
 **Configurar em:** https://dashboard.render.com/web/lista-presentes/environment
+
+> 💡 **Nota:** O `search_path=lista_presentes` é aplicado automaticamente via `settings.py` (signal `connection_created`)
 
 ---
 
@@ -60,33 +63,33 @@ GITHUB_AUTO_CREATE_ISSUES=True
 ### Script SQL Executado
 
 ```sql
--- Habilitar RLS em todas as tabelas Django
-ALTER TABLE public.django_migrations ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.django_content_type ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.auth_permission ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.auth_group ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.auth_group_permissions ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.django_admin_log ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.django_session ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.django_site ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.account_emailaddress ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.account_emailconfirmation ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.socialaccount_socialaccount ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.socialaccount_socialapp ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.socialaccount_socialapp_sites ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.socialaccount_socialtoken ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.presentes_usuario ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.presentes_usuario_groups ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.presentes_usuario_user_permissions ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.presentes_grupo ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.presentes_grupomembro ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.presentes_presente ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.presentes_compra ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.presentes_sugestaocompra ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.presentes_notificacao ENABLE ROW LEVEL SECURITY;
+-- Habilitar RLS em todas as tabelas Django (schema lista_presentes)
+ALTER TABLE lista_presentes.django_migrations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE lista_presentes.django_content_type ENABLE ROW LEVEL SECURITY;
+ALTER TABLE lista_presentes.auth_permission ENABLE ROW LEVEL SECURITY;
+ALTER TABLE lista_presentes.auth_group ENABLE ROW LEVEL SECURITY;
+ALTER TABLE lista_presentes.auth_group_permissions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE lista_presentes.django_admin_log ENABLE ROW LEVEL SECURITY;
+ALTER TABLE lista_presentes.django_session ENABLE ROW LEVEL SECURITY;
+ALTER TABLE lista_presentes.django_site ENABLE ROW LEVEL SECURITY;
+ALTER TABLE lista_presentes.account_emailaddress ENABLE ROW LEVEL SECURITY;
+ALTER TABLE lista_presentes.account_emailconfirmation ENABLE ROW LEVEL SECURITY;
+ALTER TABLE lista_presentes.socialaccount_socialaccount ENABLE ROW LEVEL SECURITY;
+ALTER TABLE lista_presentes.socialaccount_socialapp ENABLE ROW LEVEL SECURITY;
+ALTER TABLE lista_presentes.socialaccount_socialapp_sites ENABLE ROW LEVEL SECURITY;
+ALTER TABLE lista_presentes.socialaccount_socialtoken ENABLE ROW LEVEL SECURITY;
+ALTER TABLE lista_presentes.presentes_usuario ENABLE ROW LEVEL SECURITY;
+ALTER TABLE lista_presentes.presentes_usuario_groups ENABLE ROW LEVEL SECURITY;
+ALTER TABLE lista_presentes.presentes_usuario_user_permissions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE lista_presentes.presentes_grupo ENABLE ROW LEVEL SECURITY;
+ALTER TABLE lista_presentes.presentes_grupomembro ENABLE ROW LEVEL SECURITY;
+ALTER TABLE lista_presentes.presentes_presente ENABLE ROW LEVEL SECURITY;
+ALTER TABLE lista_presentes.presentes_compra ENABLE ROW LEVEL SECURITY;
+ALTER TABLE lista_presentes.presentes_sugestaocompra ENABLE ROW LEVEL SECURITY;
+ALTER TABLE lista_presentes.presentes_notificacao ENABLE ROW LEVEL SECURITY;
 ```
 
-**Script completo:** `scripts/enable_rls_supabase.sql`
+**Script completo:** `scripts/enable_rls_supabase.sql` (já atualizado para schema `lista_presentes`)
 
 ### Como Funciona
 
