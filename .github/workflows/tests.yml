@@ -56,6 +56,11 @@ jobs:
           SITE_URL=http://localhost:8000
           EOF
 
+      - name: Create schema lista_presentes
+        run: |
+          PGPASSWORD=postgres psql -h localhost -U postgres -d test_lista_presentes -c "CREATE SCHEMA IF NOT EXISTS lista_presentes;"
+          PGPASSWORD=postgres psql -h localhost -U postgres -d test_lista_presentes -c "GRANT ALL ON SCHEMA lista_presentes TO postgres;"
+
       - name: Run migrations
         run: |
           python manage.py makemigrations --check --dry-run
