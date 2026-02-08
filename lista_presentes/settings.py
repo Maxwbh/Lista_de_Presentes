@@ -116,10 +116,15 @@ if DATABASE_URL and not USE_SQLITE:
         )
     }
 
-    # Schema Isolado (apenas para Supabase com múltiplas apps)
-    # Render PostgreSQL não precisa: cada app tem seu próprio banco isolado
-    # Se DATABASE_URL do Supabase tem ?options=..., ele é usado automaticamente
-    # Caso contrário, Render PostgreSQL funciona sem configuração adicional
+    # Configurar search_path (obrigatório para Django funcionar)
+    # Render PostgreSQL: usa 'public' (schema padrão) - cada app tem banco isolado
+    # Supabase com múltiplas apps: usa 'lista_presentes' via ?options= na URL
+    if 'OPTIONS' not in DATABASES['default']:
+        DATABASES['default']['OPTIONS'] = {}
+
+    # Se DATABASE_URL não tem options, usar schema public (padrão)
+    if 'options' not in DATABASES['default']['OPTIONS']:
+        DATABASES['default']['OPTIONS']['options'] = '-c search_path=public'
 else:
     # Desenvolvimento: SQLite
     # Use para ambientes com recursos mínimos (512MB-1GB RAM)
