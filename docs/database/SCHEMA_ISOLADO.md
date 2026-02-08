@@ -1,5 +1,17 @@
 # Schema Isolado - Múltiplas Apps Django no Supabase
 
+## ✨ TL;DR - Configuração Automática
+
+**O schema `lista_presentes` é criado AUTOMATICAMENTE durante o build do Render!**
+
+Nenhuma ação manual necessária. O script `scripts/ensure_schema.py` é executado automaticamente pelo `build.sh` antes das migrations Django.
+
+**Você só precisa:**
+1. Configurar `DATABASE_URL` no Render Dashboard (Supabase Connection Pooler)
+2. Deploy! O resto é automático.
+
+---
+
 ## 🎯 Problema
 
 Quando você tem **múltiplas aplicações Django** no mesmo banco Supabase, todas compartilham o schema `public`:
@@ -48,42 +60,53 @@ Supabase Database
 
 ---
 
-## 📋 Migração - Passo a Passo
+## 📋 Configuração - Totalmente Automática
 
-### 1️⃣ Executar Script SQL no Supabase
+### ✨ O Build do Render Faz Tudo!
+
+**Você só precisa configurar a `DATABASE_URL`:**
+
+```bash
+# Render Dashboard > lista-presentes > Environment
+DATABASE_URL=postgresql://postgres.YOUR_PROJECT:YOUR_PASSWORD@aws-1-us-east-2.pooler.supabase.com:6543/postgres
+```
+
+**NÃO adicione** `?options=-csearch_path%3D...` - o schema é configurado automaticamente via `settings.py`!
+
+### 🔧 O que Acontece Automaticamente no Build
+
+1. **Script `scripts/ensure_schema.py` é executado** (via `build.sh`)
+   - Conecta no Supabase
+   - Verifica se schema `lista_presentes` existe
+   - Cria se não existir
+   - Configura permissões automaticamente
+
+2. **Django executa migrations**
+   - Com `search_path=lista_presentes` (via `settings.py`)
+   - Cria todas as tabelas no schema isolado
+   - Signal `connection_created` garante schema correto em cada conexão
+
+**Resultado:** Schema criado + Tabelas criadas + Isolamento completo - TUDO AUTOMÁTICO!
+
+---
+
+### 🛠️ Migração Manual (Opcional)
+
+Se você já tem tabelas no schema `public` e quer migrá-las para `lista_presentes`:
 
 ```bash
 # Abrir Supabase SQL Editor
 https://app.supabase.com/project/YOUR_PROJECT_ID/sql/new
 
-# Copiar e colar
+# Executar script de migração
 scripts/create_isolated_schema.sql
-
-# Executar (Run)
 ```
 
-**O que o script faz:**
+**O script migra automaticamente:**
 - ✅ Cria schema `lista_presentes`
-- ✅ Configura permissões para role `postgres`
-- ✅ **Migra tabelas existentes** de `public` → `lista_presentes` (se existirem)
-- ✅ Habilita RLS em todas as tabelas
-- ✅ Verifica resultado
-
-**Tempo:** ~30 segundos
-
----
-
-### 2️⃣ Atualizar DATABASE_URL no Render
-
-```bash
-# ANTES (schema public)
-DATABASE_URL=postgresql://postgres.YOUR_PROJECT:YOUR_PASSWORD@aws-1-us-east-2.pooler.supabase.com:6543/postgres
-
-# DEPOIS (schema lista_presentes)
-DATABASE_URL=postgresql://postgres.YOUR_PROJECT:YOUR_PASSWORD@aws-1-us-east-2.pooler.supabase.com:6543/postgres?options=-csearch_path%3Dlista_presentes
-```
-
-**Mudança:** Adicionar `?options=-csearch_path%3Dlista_presentes` no final
+- ✅ Move tabelas existentes de `public` → `lista_presentes`
+- ✅ Habilita RLS
+- ✅ Configura permissões
 
 **Onde configurar:**
 1. Render Dashboard > Environment

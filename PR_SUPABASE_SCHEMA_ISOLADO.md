@@ -105,6 +105,17 @@ postgresql://postgres.PROJECT:PASS@aws-1-us-east-2.pooler.supabase.com:6543/post
 - NÃO adicionar `?options=` (aplicado automaticamente)
 - Schema `lista_presentes` configurado via `settings.py`
 
+### ✨ Criação Automática do Schema
+
+O schema `lista_presentes` é criado **automaticamente** durante o build do Render:
+
+1. **Script:** `scripts/ensure_schema.py`
+2. **Execução:** Antes das migrations Django (via `build.sh`)
+3. **Idempotente:** Seguro executar múltiplas vezes
+4. **Permissões:** Concedidas automaticamente ao role `postgres`
+
+**Nenhuma ação manual necessária!** O build do Render cria tudo automaticamente.
+
 ### Variáveis Opcionais
 
 ```bash
