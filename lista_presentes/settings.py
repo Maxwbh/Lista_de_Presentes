@@ -117,9 +117,12 @@ if DATABASE_URL and not USE_SQLITE:
     # Usar schema separado para esta aplicação (compartilhamento de banco Supabase)
     # IMPORTANTE: Usar APENAS lista_presentes (sem public) para evitar
     # conflito com django_migrations de outras aplicações Django
-    DATABASES['default']['OPTIONS'] = {
-        'options': '-c search_path=lista_presentes'
-    }
+
+    # Preservar OPTIONS existentes do dj_database_url e adicionar search_path
+    if 'OPTIONS' not in DATABASES['default']:
+        DATABASES['default']['OPTIONS'] = {}
+
+    DATABASES['default']['OPTIONS']['options'] = '-c search_path=lista_presentes'
 
     # Signal para garantir search_path em cada conexão
     from django.db.backends.signals import connection_created
