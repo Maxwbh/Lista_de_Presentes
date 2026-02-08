@@ -104,6 +104,16 @@ else
     exit 1
 fi
 
+# Ensure schema lista_presentes exists (before migrations)
+echo "🗂️  Ensuring schema 'lista_presentes' exists..."
+if python scripts/ensure_schema.py; then
+    echo "✅ Schema is ready"
+else
+    echo "❌ Failed to create/verify schema"
+    echo "   This may cause migration errors!"
+    echo "   Continuing anyway (schema may already exist)..."
+fi
+
 # Create migrations (if any model changes)
 echo "🔄 Creating migrations..."
 python manage.py makemigrations --noinput || echo "⚠️  No migrations to create"

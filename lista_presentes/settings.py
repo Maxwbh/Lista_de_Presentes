@@ -89,12 +89,14 @@ WSGI_APPLICATION = 'lista_presentes.wsgi.application'
 #
 # 1. PRODUÇÃO - Supabase PostgreSQL com Schema Isolado (Configuração Atual):
 #    DATABASE_URL=postgresql://postgres.PROJECT:PASS@aws-1-us-east-2.pooler.supabase.com:6543/postgres
-#    Schema: lista_presentes (isolado para evitar conflitos com outras apps Django)
+#
+#    O search_path=lista_presentes é adicionado AUTOMATICAMENTE na URL abaixo!
+#    Não precisa adicionar ?options= manualmente - o código faz isso por você.
 #
 # 2. DESENVOLVIMENTO - SQLite:
 #    Sem DATABASE_URL ou com USE_SQLITE=True
 #
-# IMPORTANTE: Usa search_path=lista_presentes exclusivamente
+# IMPORTANTE: Schema isolado lista_presentes é aplicado automaticamente em PostgreSQL
 # ==============================================================================
 
 DATABASE_URL = os.getenv('DATABASE_URL')
@@ -103,6 +105,17 @@ USE_SQLITE = os.getenv('USE_SQLITE', 'False') == 'True'
 # Supabase - Variáveis adicionais (opcionais, para uso futuro com Supabase SDK)
 SUPABASE_URL = os.getenv('SUPABASE_URL', '')
 SUPABASE_KEY = os.getenv('SUPABASE_KEY', '')
+
+# Adicionar search_path=lista_presentes na DATABASE_URL se for PostgreSQL
+if DATABASE_URL and not USE_SQLITE and 'postgresql' in DATABASE_URL:
+    # Adicionar options para search_path se ainda não existir na URL
+    if '?' not in DATABASE_URL:
+        # URL sem parâmetros: adicionar ?options=
+        DATABASE_URL = f"{DATABASE_URL}?options=-c search_path=lista_presentes"
+    elif 'options=' not in DATABASE_URL:
+        # URL com parâmetros mas sem options: adicionar &options=
+        DATABASE_URL = f"{DATABASE_URL}&options=-c search_path=lista_presentes"
+    # Se já tem options=, manter como está (usuário configurou manualmente)
 
 if DATABASE_URL and not USE_SQLITE:
     # Produção: PostgreSQL via DATABASE_URL (Render, Supabase, Heroku, etc.)
@@ -114,20 +127,12 @@ if DATABASE_URL and not USE_SQLITE:
         )
     }
 
-    # Usar schema separado para esta aplicação (compartilhamento de banco Supabase)
-    # IMPORTANTE: Usar APENAS lista_presentes (sem public) para evitar
+    # Schema separado para esta aplicação (compartilhamento de banco Supabase)
+    # IMPORTANTE: Usa APENAS lista_presentes (sem public) para evitar
     # conflito com django_migrations de outras aplicações Django
-    DATABASES['default']['OPTIONS'] = {
-        'options': '-c search_path=lista_presentes'
-    }
-
-    # Signal para garantir search_path em cada conexão
-    from django.db.backends.signals import connection_created
-    def set_search_path(sender, connection, **kwargs):
-        if connection.vendor == 'postgresql':
-            cursor = connection.cursor()
-            cursor.execute("SET search_path TO lista_presentes")
-    connection_created.connect(set_search_path)
+    #
+    # O search_path=lista_presentes já foi adicionado na DATABASE_URL acima,
+    # então o dj_database_url.config() já parseou corretamente
 else:
     # Desenvolvimento: SQLite
     # Use para ambientes com recursos mínimos (512MB-1GB RAM)
