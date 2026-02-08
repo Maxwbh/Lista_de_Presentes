@@ -119,12 +119,15 @@ if DATABASE_URL and not USE_SQLITE and 'postgresql' in DATABASE_URL:
 
 if DATABASE_URL and not USE_SQLITE:
     # Produção: PostgreSQL via DATABASE_URL (Render, Supabase, Heroku, etc.)
+    # Usar parse() diretamente com a URL modificada (não config() que lê do env)
+    db_config = dj_database_url.parse(
+        DATABASE_URL,
+        conn_max_age=600,  # Pool de conexões: mantém conexões por 10 minutos
+        conn_health_checks=True,  # Verifica saúde da conexão antes de usar
+    )
+
     DATABASES = {
-        'default': dj_database_url.config(
-            default=DATABASE_URL,
-            conn_max_age=600,  # Pool de conexões: mantém conexões por 10 minutos
-            conn_health_checks=True,  # Verifica saúde da conexão antes de usar
-        )
+        'default': db_config
     }
 
     # Schema separado para esta aplicação (compartilhamento de banco Supabase)
@@ -132,7 +135,7 @@ if DATABASE_URL and not USE_SQLITE:
     # conflito com django_migrations de outras aplicações Django
     #
     # O search_path=lista_presentes já foi adicionado na DATABASE_URL acima,
-    # então o dj_database_url.config() já parseou corretamente
+    # então o dj_database_url.parse() já parseou corretamente
 else:
     # Desenvolvimento: SQLite
     # Use para ambientes com recursos mínimos (512MB-1GB RAM)
