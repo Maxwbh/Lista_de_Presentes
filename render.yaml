@@ -36,41 +36,39 @@ services:
         value: .onrender.com,lista-presentes-0hbp.onrender.com
 
       # ==============================================================================
-      # Database Configuration - Render PostgreSQL (RECOMENDADO)
+      # Database Configuration - Supabase PostgreSQL com Schema Isolado
       # ==============================================================================
-      # ✅ ISOLAMENTO AUTOMÁTICO: Cada app tem seu próprio banco Render
-      # ✅ Sem conflitos entre múltiplas apps Django
-      # ✅ Mesma rede (latência <1ms)
-      # ✅ 256MB Free Tier (suficiente para maioria dos casos)
-      # ✅ Setup automático via render.yaml
+      # ✅ SUPABASE COM SCHEMA ISOLADO 'lista_presentes'
+      # ✅ Múltiplas apps Django no mesmo banco Supabase (isoladas)
+      # ✅ 500MB Free Tier (vs 256MB Render)
+      # ✅ Dashboard web para queries
+      # ⚠️  Configurar DATABASE_URL manualmente no Render Dashboard
+      #
+      # DATABASE_URL deve ter: ?options=-csearch_path%3Dlista_presentes
+      # Exemplo:
+      # postgresql://postgres.PROJECT:PASS@aws-1-us-east-2.pooler.supabase.com:6543/postgres?options=-csearch_path%3Dlista_presentes
 
       - key: DATABASE_URL
-        fromDatabase:
-          name: lista-presentes-db
-          property: connectionString
+        sync: false  # Configurar manualmente no Dashboard
+
+      - key: SUPABASE_URL
+        sync: false  # Opcional
+
+      - key: SUPABASE_KEY
+        sync: false  # Opcional
 
       # ==============================================================================
-      # Supabase (Alternativa - NÃO RECOMENDADO para múltiplas apps)
+      # Render PostgreSQL (Alternativa - mais simples, mas menos armazenamento)
       # ==============================================================================
-      # ⚠️  Se múltiplas apps Django no mesmo Supabase:
-      #     - Requer schema isolado (complexo)
-      #     - Problemas de InconsistentMigrationHistory
-      #     - Latência maior (50-100ms vs <1ms)
-      #
-      # Se mesmo assim quiser usar Supabase:
+      # Se preferir Render PostgreSQL ao invés de Supabase:
       #   1. Comentar DATABASE_URL acima
       #   2. Descomentar linhas abaixo
-      #   3. Configurar DATABASE_URL manualmente no Dashboard
-      #   4. Ver docs/database/SCHEMA_ISOLADO.md
+      #   3. Ver docs/database/MIGRACAO_SUPABASE_RENDER.md
 
       # - key: DATABASE_URL
-      #   sync: false
-
-      # - key: SUPABASE_URL
-      #   sync: false
-
-      # - key: SUPABASE_KEY
-      #   sync: false
+      #   fromDatabase:
+      #     name: lista-presentes-db
+      #     property: connectionString
 
       # ==============================================================================
       # API Keys
@@ -116,33 +114,27 @@ services:
     healthCheckPath: /health/
 
 # ==============================================================================
-# Database - Render PostgreSQL Free (RECOMENDADO)
+# Database - Render PostgreSQL (ALTERNATIVA)
 # ==============================================================================
-# ✅ ISOLAMENTO AUTOMÁTICO POR APP
-#    - Cada aplicação Django tem seu próprio banco Render
-#    - Sem conflitos de django_migrations entre apps
-#    - Sem necessidade de schema isolado
+# ⚠️  ATUALMENTE USANDO SUPABASE COM SCHEMA ISOLADO
+#     Esta seção está comentada para não criar Render PostgreSQL
+#
+# Se quiser migrar para Render PostgreSQL:
+#   1. Descomentar seção databases: abaixo
+#   2. Comentar DATABASE_URL manual nas envVars (linha 51)
+#   3. Ver docs/database/MIGRACAO_SUPABASE_RENDER.md
+#
+# ✅ VANTAGENS RENDER POSTGRESQL:
+#    - Isolamento automático (1 banco por app)
+#    - Latência <1ms (mesma rede)
 #    - Setup automático via render.yaml
-#
-# ✅ VANTAGENS:
-#    - Mesma rede interna (latência <1ms)
-#    - 100% confiável (sem "Network is unreachable")
-#    - Sem problemas de IPv6
 #    - 256MB Free Tier
-#
-# 📝 CONFIGURAÇÃO:
-#    O Render cria e conecta automaticamente o banco
-#    DATABASE_URL é injetado automaticamente
-#    Nenhuma configuração manual necessária!
-#
-# 🔄 MIGRAÇÃO DE DADOS (se vindo do Supabase):
-#    Ver: docs/database/MIGRACAO_SUPABASE_RENDER.md
 # ==============================================================================
 
-databases:
-  - name: lista-presentes-db
-    databaseName: lista_presentes
-    user: lista_presentes_user
-    region: oregon
-    plan: free
-    ipAllowList: []
+# databases:
+#   - name: lista-presentes-db
+#     databaseName: lista_presentes
+#     user: lista_presentes_user
+#     region: oregon
+#     plan: free
+#     ipAllowList: []

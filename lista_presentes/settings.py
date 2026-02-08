@@ -117,14 +117,27 @@ if DATABASE_URL and not USE_SQLITE:
     }
 
     # Configurar search_path (obrigatório para Django funcionar)
-    # Render PostgreSQL: usa 'public' (schema padrão) - cada app tem banco isolado
-    # Supabase com múltiplas apps: usa 'lista_presentes' via ?options= na URL
+    #
+    # SUPABASE com múltiplas apps Django:
+    #   - Usa schema isolado 'lista_presentes' para evitar conflitos
+    #   - Configurar via ?options= na DATABASE_URL ou será aplicado automaticamente aqui
+    #
+    # RENDER PostgreSQL:
+    #   - Usa schema 'public' (padrão)
+    #   - Cada app tem banco isolado automaticamente
+    #
     if 'OPTIONS' not in DATABASES['default']:
         DATABASES['default']['OPTIONS'] = {}
 
-    # Se DATABASE_URL não tem options, usar schema public (padrão)
+    # Se DATABASE_URL não tem options, detectar provider e aplicar search_path correto
     if 'options' not in DATABASES['default']['OPTIONS']:
-        DATABASES['default']['OPTIONS']['options'] = '-c search_path=public'
+        # Detectar se é Supabase pela hostname
+        if 'supabase' in DATABASE_URL.lower():
+            # Supabase: usar schema isolado lista_presentes
+            DATABASES['default']['OPTIONS']['options'] = '-c search_path=lista_presentes'
+        else:
+            # Render PostgreSQL ou outro: usar schema public (padrão)
+            DATABASES['default']['OPTIONS']['options'] = '-c search_path=public'
 else:
     # Desenvolvimento: SQLite
     # Use para ambientes com recursos mínimos (512MB-1GB RAM)

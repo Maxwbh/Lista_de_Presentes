@@ -8,13 +8,14 @@
 - **Branch**: Automático (main/production)
 
 ### Database
-- **Provider**: Render PostgreSQL (Recomendado)
-- **Armazenamento**: 256 MB Free Tier
-- **Latência**: <1ms (mesma rede)
-- **Isolamento**: Automático (1 banco por app)
-- **Setup**: Automático via render.yaml
+- **Provider**: Supabase PostgreSQL (Configuração Atual)
+- **Schema**: `lista_presentes` (isolado)
+- **Armazenamento**: 500 MB Free Tier
+- **Latência**: 50-100ms (Connection Pooler)
+- **Isolamento**: Schema isolado para múltiplas apps Django
+- **Setup**: Manual via Dashboard (DATABASE_URL)
 
-**Alternativa:** Supabase (veja [SUPABASE.md](../database/SUPABASE.md))
+**Alternativa:** Render PostgreSQL (veja seção "Database" no final deste documento)
 
 ---
 
@@ -85,9 +86,12 @@ python manage.py shell < scripts/create_or_update_admin.py
 SECRET_KEY=<gerado automaticamente>
 ALLOWED_HOSTS=.onrender.com,your-app-name.onrender.com
 
-# Database (Render PostgreSQL - Automático)
-# DATABASE_URL é injetado automaticamente pelo Render
-# Não precisa configurar manualmente!
+# Database (Supabase PostgreSQL com Schema Isolado)
+DATABASE_URL=postgresql://postgres.YOUR_PROJECT:YOUR_PASSWORD_ENCODED@aws-1-us-east-2.pooler.supabase.com:6543/postgres?options=-csearch_path%3Dlista_presentes
+
+# Supabase (Opcional - para uso futuro com Supabase SDK)
+SUPABASE_URL=https://YOUR_PROJECT_ID.supabase.co
+SUPABASE_KEY=sb_publishable_YOUR_ANON_KEY
 
 # GitHub (Auto-create Issues)
 GITHUB_TOKEN=<fornecido pelo administrador>
@@ -283,8 +287,9 @@ STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 ### Antes do Deploy
 
-- [ ] Variáveis de ambiente configuradas
-- [ ] DATABASE_URL com Connection Pooler
+- [ ] Variáveis de ambiente configuradas no Render Dashboard
+- [ ] DATABASE_URL com Supabase Connection Pooler e schema isolado
+- [ ] SUPABASE_URL e SUPABASE_KEY configurados (opcional)
 - [ ] GITHUB_TOKEN configurado
 - [ ] SECRET_KEY gerado (automático)
 - [ ] ALLOWED_HOSTS configurado
@@ -297,7 +302,7 @@ STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 - [ ] Site acessível via HTTPS
 - [ ] Login funcionando
 - [ ] Static files carregando
-- [ ] Database conectado (Supabase)
+- [ ] Database conectado (Supabase com schema lista_presentes)
 
 ### Verificação Completa
 
