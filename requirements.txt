@@ -12,6 +12,9 @@ django-cors-headers==4.3.1
 # PWA Support
 django-pwa==1.1.0
 
+# Tailwind CSS + daisyUI (gerenciado via npm no build)
+django-tailwind==3.8.0  # App 'tailwind' para manage.py tailwind
+
 # AI Integration
 anthropic==0.18.0  # Claude AI
 openai==1.12.0  # ChatGPT

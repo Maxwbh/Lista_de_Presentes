@@ -20,6 +20,18 @@ pip install --upgrade pip
 echo "📦 Installing dependencies..."
 pip install -r requirements.txt
 
+# Build Tailwind CSS
+echo "🎨 Building Tailwind CSS..."
+if [ -d "theme/static_src" ]; then
+    cd theme/static_src
+    npm install --prefer-offline 2>&1 | tail -5
+    npx tailwindcss -i ./src/styles.css -o ../static/css/dist/styles.css --minify
+    cd ../..
+    echo "✅ Tailwind CSS compiled successfully!"
+else
+    echo "⚠️  theme/static_src not found, skipping Tailwind build"
+fi
+
 # Collect static files
 echo "📁 Collecting static files..."
 python manage.py collectstatic --noinput
