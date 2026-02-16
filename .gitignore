@@ -6,7 +6,7 @@ __pycache__/
 .Python
 build/
 develop-eggs/
-dist/
+/dist/
 downloads/
 eggs/
 .eggs/
@@ -44,6 +44,11 @@ venv.bak/
 *.swo
 *~
 .DS_Store
+
+# Node / Tailwind
+node_modules/
+theme/static_src/node_modules/
+npm-debug.log*
 
 # Test coverage
 htmlcov/

@@ -3,6 +3,6 @@ Sistema de Versionamento Automático
 Este arquivo é atualizado automaticamente a cada commit
 """
 
-__version__ = "1.1.44"
-__build__ = 51
-__commit__ = "db26dfa"
+__version__ = "1.1.45"
+__build__ = 52
+__commit__ = "c656292"

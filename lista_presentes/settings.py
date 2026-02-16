@@ -30,6 +30,8 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'django.contrib.sites',  # Required by allauth
     'presentes',
+    'theme',
+    'tailwind',
     'rest_framework',
     'pwa',
     'corsheaders',
@@ -181,7 +183,12 @@ STATIC_ROOT = BASE_DIR / 'staticfiles'
 # Diretórios de arquivos estáticos adicionais
 STATICFILES_DIRS = [
     BASE_DIR / 'static',
-] if (BASE_DIR / 'static').exists() else []
+    BASE_DIR / 'theme' / 'static',
+]
+
+# Tailwind CSS
+TAILWIND_APP_NAME = 'theme'
+INTERNAL_IPS = ['127.0.0.1']
 
 # WhiteNoise para servir arquivos estáticos em produção
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
