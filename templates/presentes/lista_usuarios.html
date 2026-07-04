@@ -115,9 +115,9 @@
                             {% if usuario.presentes_list %}
                                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                                     {% for presente in usuario.presentes_list %}
-                                        <div class="presente-membro bg-base-100 border border-base-300/40 rounded-2xl overflow-hidden transition-all duration-300 hover:border-primary/40 hover:shadow-lg hover:-translate-y-0.5 flex flex-col {% if presente.status == 'COMPRADO' %}opacity-70{% endif %}" data-status="{{ presente.status }}">
-                                            <!-- Imagem (sem sobreposições de texto) -->
-                                            <div class="relative aspect-[4/3] bg-base-200 {% if presente.status == 'COMPRADO' %}grayscale-[40%]{% endif %}">
+                                        <div class="presente-membro bg-base-100 border border-base-300/40 rounded-2xl overflow-hidden transition-all duration-300 hover:border-primary/40 hover:shadow-lg hover:-translate-y-0.5 flex flex-col {% if presente.status == 'COMPRADO' %}grayscale opacity-75{% endif %}" data-status="{{ presente.status }}">
+                                            <!-- Imagem limpa (nenhuma sobreposição de texto) -->
+                                            <div class="relative aspect-[4/3] bg-base-200">
                                                 {% if presente.tem_imagem %}
                                                     <img src="{{ presente.get_imagem_url }}" alt="{{ presente.descricao }}" loading="lazy" class="w-full h-full object-contain">
                                                 {% else %}
@@ -125,29 +125,16 @@
                                                         <i class="bi bi-gift text-5xl text-base-300"></i>
                                                     </div>
                                                 {% endif %}
-                                                {% if presente.status == 'COMPRADO' %}
-                                                <div class="absolute top-2 left-2">
-                                                    <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-base-content/60 text-white backdrop-blur-sm shadow">
-                                                        <i class="bi bi-bag-check text-[10px]"></i> Comprado
-                                                    </span>
-                                                </div>
-                                                {% endif %}
-                                                {% if presente.sugestoes.count > 0 %}
-                                                <div class="absolute top-2 right-2">
-                                                    <span class="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-bold bg-base-100/90 text-primary backdrop-blur-sm shadow">
-                                                        <i class="bi bi-shop"></i> {{ presente.sugestoes.count }}
-                                                    </span>
-                                                </div>
-                                                {% endif %}
                                             </div>
 
                                             <div class="p-3.5 flex flex-col flex-1">
                                                 <p class="font-semibold text-sm leading-snug line-clamp-2 mb-2">{{ presente.descricao|truncatewords:12 }}</p>
 
-                                                <!-- Preço + temperatura (no corpo, sem sobrepor a imagem) -->
+                                                <!-- Preço + temperatura + contador de lojas (linha única no corpo) -->
                                                 <div class="flex items-center gap-2 mb-3 min-h-[24px]">
                                                     {% if presente.preco %}
-                                                    <span class="text-base font-extrabold text-success">R$ {{ presente.preco }}</span>
+                                                    <span class="text-base font-extrabold {% if presente.status == 'COMPRADO' %}text-base-content/50{% else %}text-success{% endif %}">R$ {{ presente.preco }}</span>
+                                                    {% if presente.status == 'ATIVO' %}
                                                     {% with temp=presente.temperatura %}
                                                     {% if temp.codigo == 'quente' or temp.codigo == 'frio' %}
                                                     <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold {{ temp.css }}" title="{{ temp.label }}">
@@ -155,8 +142,14 @@
                                                     </span>
                                                     {% endif %}
                                                     {% endwith %}
+                                                    {% endif %}
                                                     {% else %}
-                                                    <span class="text-xs text-base-content/30">Preço não informado</span>
+                                                    <span class="text-xs text-base-content/30">Sem preço</span>
+                                                    {% endif %}
+                                                    {% if presente.sugestoes.count > 0 %}
+                                                    <span class="ml-auto inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-base-200 text-base-content/50" title="{{ presente.sugestoes.count }} sugestões de lojas">
+                                                        <i class="bi bi-shop"></i> {{ presente.sugestoes.count }}
+                                                    </span>
                                                     {% endif %}
                                                 </div>
 
@@ -239,9 +232,9 @@
             </div>
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5" id="produtos-container">
                 {% for presente in todos_presentes %}
-                    <div class="produto-card bg-base-100 border border-base-300/40 rounded-3xl shadow-sm hover:shadow-lg transition-all duration-300 hover:-translate-y-1 overflow-hidden flex flex-col animate-slide-up {% if presente.status == 'COMPRADO' %}opacity-70{% endif %}" data-descricao="{{ presente.descricao|lower }}" data-usuario="{{ presente.usuario.first_name }} {{ presente.usuario.last_name }}" data-status="{{ presente.status }}">
-                        <!-- Imagem -->
-                        <div class="relative aspect-[4/3] bg-base-200 {% if presente.status == 'COMPRADO' %}grayscale-[40%]{% endif %}">
+                    <div class="produto-card bg-base-100 border border-base-300/40 rounded-3xl shadow-sm hover:shadow-lg transition-all duration-300 hover:-translate-y-1 overflow-hidden flex flex-col animate-slide-up {% if presente.status == 'COMPRADO' %}grayscale opacity-75{% endif %}" data-descricao="{{ presente.descricao|lower }}" data-usuario="{{ presente.usuario.first_name }} {{ presente.usuario.last_name }}" data-status="{{ presente.status }}">
+                        <!-- Imagem (apenas o dono como identificador, sem selo de texto) -->
+                        <div class="relative aspect-[4/3] bg-base-200">
                             {% if presente.tem_imagem %}
                                 <img src="{{ presente.get_imagem_url }}" alt="{{ presente.descricao }}" loading="lazy" class="w-full h-full object-contain">
                             {% else %}
@@ -257,23 +250,22 @@
                                     {{ presente.usuario.first_name }}
                                 </span>
                             </div>
-
-                            {% if presente.status == 'COMPRADO' %}
-                            <div class="absolute top-3 right-3">
-                                <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-base-content/60 text-white backdrop-blur-sm shadow">
-                                    <i class="bi bi-bag-check text-[10px]"></i> Comprado
-                                </span>
-                            </div>
-                            {% endif %}
                         </div>
 
                         <div class="p-4 flex flex-col flex-1">
+                            <!-- Status comprado (no corpo, sem sobrepor) -->
+                            {% if presente.status == 'COMPRADO' %}
+                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-base-300 text-base-content/60 mb-2 self-start">
+                                <i class="bi bi-bag-check text-[10px]"></i> Comprado
+                            </span>
+                            {% endif %}
+
                             <h5 class="font-bold text-sm leading-snug line-clamp-2 mb-2">{{ presente.descricao|truncatewords:14 }}</h5>
 
                             <!-- Preço + temperatura + melhor oferta (no corpo) -->
                             <div class="flex items-center flex-wrap gap-2 mb-3 min-h-[24px]">
                                 {% if presente.preco %}
-                                <span class="text-base font-extrabold text-success">R$ {{ presente.preco }}</span>
+                                <span class="text-base font-extrabold {% if presente.status == 'COMPRADO' %}text-base-content/50{% else %}text-success{% endif %}">R$ {{ presente.preco }}</span>
                                 {% with temp=presente.temperatura %}
                                 {% if temp.codigo == 'quente' or temp.codigo == 'frio' %}
                                 <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold {{ temp.css }}" title="{{ temp.label }}">
