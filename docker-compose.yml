@@ -1,0 +1,90 @@
+version: '3.8'
+
+services:
+  # Banco de dados PostgreSQL
+  db:
+    image: postgres:15-alpine
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_DB=lista_presentes
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Aplicação Django
+  web:
+    build: .
+    command: >
+      sh -c "
+        python manage.py migrate --noinput &&
+        python manage.py collectstatic --noinput &&
+        gunicorn --bind 0.0.0.0:8000 --workers 3 --reload lista_presentes.wsgi:application
+      "
+    volumes:
+      - .:/app
+      - static_volume:/app/staticfiles
+      - media_volume:/app/media
+    ports:
+      - "8000:8000"
+    environment:
+      - DEBUG=True
+      - SECRET_KEY=django-insecure-dev-key-change-in-production
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/lista_presentes
+      - ALLOWED_HOSTS=localhost,127.0.0.1,0.0.0.0
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-sua-chave-anthropic}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-sua-chave-openai}
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-sua-chave-gemini}
+    depends_on:
+      db:
+        condition: service_healthy
+
+    # Docker Compose File Watch Configuration
+    develop:
+      watch:
+        # Sincronizar código Python - reload automático com gunicorn --reload
+        - action: sync
+          path: ./lista_presentes
+          target: /app/lista_presentes
+          ignore:
+            - __pycache__/
+            - "*.pyc"
+            - "*.pyo"
+
+        - action: sync
+          path: ./presentes
+          target: /app/presentes
+          ignore:
+            - __pycache__/
+            - "*.pyc"
+            - "*.pyo"
+            - migrations/
+
+        # Sincronizar templates - mudanças refletidas imediatamente
+        - action: sync
+          path: ./templates
+          target: /app/templates
+
+        # Sincronizar arquivos estáticos
+        - action: sync
+          path: ./static
+          target: /app/static
+
+        # Rebuild container se requirements.txt mudar
+        - action: rebuild
+          path: ./requirements.txt
+
+        # Rebuild container se Dockerfile mudar
+        - action: rebuild
+          path: ./Dockerfile
+
+volumes:
+  postgres_data:
+  static_volume:
+  media_volume:

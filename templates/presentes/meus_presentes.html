@@ -1,0 +1,189 @@
+{% extends 'base.html' %}
+{% load preco_tags %}
+
+{% block title %}Meus Presentes - Lista de Presentes{% endblock %}
+
+{% block content %}
+<!-- Page Header -->
+<div class="bg-gradient-to-r from-primary via-primary/90 to-secondary rounded-3xl p-8 mb-8 text-primary-content animate-fade-in relative overflow-hidden">
+    <div class="absolute -top-10 -right-10 w-40 h-40 bg-white/10 rounded-full blur-2xl"></div>
+    <div class="relative">
+        <h1 class="text-3xl font-extrabold flex items-center gap-3 tracking-tight">
+            <i class="bi bi-gift-fill"></i>
+            Meus Presentes
+        </h1>
+        <p class="mt-2 opacity-80 text-sm">Gerencie sua lista de desejos</p>
+    </div>
+</div>
+
+<!-- Stats -->
+<div class="grid grid-cols-3 gap-4 mb-8">
+    <div class="bg-base-100 border border-base-300/50 rounded-2xl p-5 text-center">
+        <p class="text-3xl font-extrabold text-primary">{{ total_presentes }}</p>
+        <p class="text-xs text-base-content/50 font-semibold uppercase tracking-wider mt-1">Total</p>
+    </div>
+    <div class="bg-base-100 border border-base-300/50 rounded-2xl p-5 text-center">
+        <p class="text-3xl font-extrabold text-success">{{ presentes_ativos }}</p>
+        <p class="text-xs text-base-content/50 font-semibold uppercase tracking-wider mt-1">Ativos</p>
+    </div>
+    <div class="bg-base-100 border border-base-300/50 rounded-2xl p-5 text-center">
+        <p class="text-3xl font-extrabold text-base-content/30">{{ presentes_comprados }}</p>
+        <p class="text-xs text-base-content/50 font-semibold uppercase tracking-wider mt-1">Comprados</p>
+    </div>
+</div>
+
+<!-- Actions -->
+<div class="flex flex-wrap gap-3 justify-center mb-8">
+    <a href="{% url 'adicionar_presente' %}" class="btn btn-primary gap-2 rounded-xl">
+        <i class="bi bi-plus-circle"></i>
+        Adicionar Presente
+    </a>
+
+    {% if presentes_ativos > 0 %}
+    <form method="post" action="{% url 'atualizar_todos_precos' %}" class="inline"
+          onsubmit="return confirm('Deseja atualizar os preços de todos os {{ presentes_ativos }} presentes ativos?');">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-secondary btn-outline gap-2 rounded-xl">
+            <i class="bi bi-arrow-clockwise"></i>
+            Atualizar Preços
+        </button>
+    </form>
+    {% endif %}
+</div>
+
+{% if presentes %}
+    <!-- Gift Grid -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        {% for presente in presentes %}
+        <div class="group bg-base-100 border border-base-300/40 rounded-3xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-300 hover:-translate-y-0.5 animate-slide-up flex flex-col">
+
+            <!-- Image com overlay -->
+            <div class="relative aspect-[4/3] bg-base-300/30 overflow-hidden">
+                {% if presente.tem_imagem %}
+                    <img src="{{ presente.get_imagem_url }}" alt="{{ presente.descricao }}"
+                         class="w-full h-full object-contain group-hover:scale-105 transition-transform duration-500">
+                {% else %}
+                    <div class="w-full h-full flex items-center justify-center">
+                        <i class="bi bi-gift text-5xl text-base-content/15"></i>
+                    </div>
+                {% endif %}
+
+                <!-- Gradient overlay no fundo -->
+                <div class="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/20 to-transparent pointer-events-none"></div>
+
+                <!-- Status Badge -->
+                <div class="absolute top-3 right-3">
+                    {% if presente.status == 'ATIVO' %}
+                        <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-success/90 text-white backdrop-blur-sm shadow">
+                            <i class="bi bi-check-circle text-[10px]"></i> Ativo
+                        </span>
+                    {% else %}
+                        <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-base-content/60 text-white backdrop-blur-sm shadow">
+                            <i class="bi bi-bag-check text-[10px]"></i> Comprado
+                        </span>
+                    {% endif %}
+                </div>
+
+                <!-- Preço sobre a imagem -->
+                {% if presente.preco %}
+                <div class="absolute bottom-3 left-3 flex items-center gap-1.5">
+                    <span class="inline-flex items-center px-3 py-1.5 rounded-xl text-sm font-extrabold bg-base-100/90 text-success backdrop-blur-sm shadow">
+                        R$ {{ presente.preco }}
+                    </span>
+                    {% with temp=presente.temperatura %}
+                    {% if temp.codigo == 'quente' or temp.codigo == 'frio' %}
+                    <span class="inline-flex items-center gap-1 px-2 py-1.5 rounded-xl text-[11px] font-bold bg-base-100/90 backdrop-blur-sm shadow {% if temp.codigo == 'quente' %}text-error{% else %}text-info{% endif %}" title="{{ temp.label }}">
+                        <i class="bi {{ temp.icone }}"></i>
+                    </span>
+                    {% endif %}
+                    {% endwith %}
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Content -->
+            <div class="p-5 flex flex-col flex-1">
+                <!-- Title -->
+                <h3 class="font-bold text-base leading-snug line-clamp-2 mb-2">{{ presente.descricao|truncatewords:15 }}</h3>
+
+                <!-- Meta info -->
+                <div class="flex items-center gap-3 text-xs text-base-content/40 mb-3">
+                    <span class="inline-flex items-center gap-1">
+                        <i class="bi bi-calendar3"></i>
+                        {{ presente.data_cadastro|date:"d/m/Y" }}
+                    </span>
+                    {% if presente.url %}
+                    <a href="{{ presente.url }}" target="_blank"
+                       class="inline-flex items-center gap-1 text-primary/60 hover:text-primary transition-colors">
+                        <i class="bi bi-link-45deg"></i> Link
+                    </a>
+                    {% endif %}
+                </div>
+
+                <!-- AI Suggestions (compacto) -->
+                {% if presente.sugestoes.count > 0 %}
+                <div class="bg-base-200/60 rounded-2xl p-3.5 mb-3 border border-primary/10">
+                    <div class="flex items-center justify-between mb-2.5">
+                        <span class="text-[11px] font-bold text-primary uppercase tracking-wider flex items-center gap-1.5">
+                            <i class="bi bi-shop"></i> {{ presente.sugestoes.count }} Sugestões
+                        </span>
+                        {% if presente.sugestoes.count > 3 %}
+                        <a href="{% url 'ver_sugestoes' presente.id %}" class="text-[10px] font-bold text-primary hover:underline">
+                            Ver todas
+                        </a>
+                        {% endif %}
+                    </div>
+                    {% for sugestao in presente.sugestoes.all|slice:":3" %}
+                    <div class="flex items-center justify-between py-1.5 {% if not forloop.last %}border-b border-base-300/40{% endif %}">
+                        <span class="text-xs font-medium text-base-content/70 truncate flex-1 mr-2">{{ sugestao.local_compra|loja_limpa }}</span>
+                        <span class="text-xs font-bold text-success whitespace-nowrap">
+                            {% if sugestao.preco_sugerido %}R$ {{ sugestao.preco_sugerido }}{% else %}<span class="text-base-content/30">Consultar</span>{% endif %}
+                        </span>
+                        {% if sugestao.url_compra %}
+                        <a href="{{ sugestao.url_compra }}" target="_blank" class="ml-2 text-base-content/30 hover:text-primary transition-colors">
+                            <i class="bi bi-box-arrow-up-right text-[10px]"></i>
+                        </a>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+
+                <!-- Spacer para empurrar botões pro fundo -->
+                <div class="flex-1"></div>
+
+                <!-- Actions -->
+                {% if presente.status == 'ATIVO' %}
+                <div class="flex gap-2 pt-3 border-t border-base-300/40">
+                    <a href="{% url 'editar_presente' presente.id %}" class="btn btn-sm btn-primary rounded-xl flex-1 gap-1.5 text-xs font-semibold">
+                        <i class="bi bi-pencil"></i> Editar
+                    </a>
+                    <a href="{% url 'deletar_presente' presente.id %}" class="btn btn-sm btn-ghost text-error rounded-xl gap-1 text-xs hover:bg-error/10">
+                        <i class="bi bi-trash"></i>
+                    </a>
+                </div>
+                {% else %}
+                <div class="flex items-center gap-2 pt-3 border-t border-base-300/40 text-xs text-base-content/40">
+                    <i class="bi bi-check-circle-fill text-success"></i>
+                    <span>Presente já foi comprado</span>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+{% else %}
+    <!-- Empty State -->
+    <div class="text-center py-20 bg-base-100 rounded-3xl border border-base-300/40">
+        <div class="text-7xl mb-6 text-base-content/10">
+            <i class="bi bi-gift"></i>
+        </div>
+        <h3 class="text-xl font-extrabold mb-2">Nenhum presente cadastrado</h3>
+        <p class="text-base-content/50 text-sm mb-8 max-w-sm mx-auto">Adicione seus primeiros presentes para começar a organizar sua lista de desejos</p>
+        <a href="{% url 'adicionar_presente' %}" class="btn btn-primary gap-2 rounded-xl">
+            <i class="bi bi-plus-circle"></i>
+            Adicionar Meu Primeiro Presente
+        </a>
+    </div>
+{% endif %}
+{% endblock %}

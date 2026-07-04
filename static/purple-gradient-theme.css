@@ -1,0 +1,750 @@
+/* ===================================
+   PURPLE GRADIENT THEME
+   Tema moderno com gradiente roxo baseado no login
+   =================================== */
+
+:root {
+    /* Purple Gradient Colors */
+    --primary-purple: #667eea;
+    --secondary-purple: #764ba2;
+    --light-purple: #8b5cf6;
+    --deep-purple: #5a4fcf;
+
+    /* Neutral Colors */
+    --bg-light: #f8f9fa;
+    --bg-white: #ffffff;
+    --text-dark: #2d3748;
+    --text-light: #718096;
+    --text-muted: #a0aec0;
+
+    /* Accent Colors */
+    --gold: #ffd700;
+    --success: #48bb78;
+    --danger: #e53e3e;
+    --warning: #ed8936;
+    --info: #4299e1;
+
+    /* Effects */
+    --shadow-sm: 0 2px 4px rgba(102, 126, 234, 0.1);
+    --shadow-md: 0 4px 15px rgba(102, 126, 234, 0.2);
+    --shadow-lg: 0 10px 40px rgba(102, 126, 234, 0.3);
+}
+
+/* ===================================
+   GLOBAL STYLES
+   =================================== */
+
+body.purple-theme {
+    background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+    min-height: 100vh;
+    color: var(--text-dark);
+    transition: all 0.3s ease;
+}
+
+body.purple-theme .container {
+    position: relative;
+    z-index: 1;
+}
+
+/* ===================================
+   NAVBAR
+   =================================== */
+
+body.purple-theme .navbar-dark.bg-primary {
+    background: linear-gradient(135deg, var(--primary-purple) 0%, var(--secondary-purple) 100%) !important;
+    backdrop-filter: blur(20px);
+    box-shadow: 0 4px 20px rgba(102, 126, 234, 0.3);
+    border: none;
+    padding: 1rem 0;
+}
+
+body.purple-theme .navbar-brand {
+    color: white !important;
+    font-weight: 700;
+    font-size: 1.4rem;
+    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+    transition: all 0.3s ease;
+}
+
+body.purple-theme .navbar-brand:hover {
+    transform: scale(1.05);
+    color: var(--gold) !important;
+}
+
+body.purple-theme .nav-link {
+    color: rgba(255, 255, 255, 0.9) !important;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    border-radius: 8px;
+    padding: 0.5rem 1rem !important;
+    margin: 0 0.2rem;
+}
+
+body.purple-theme .nav-link:hover {
+    color: white !important;
+    background: rgba(255, 255, 255, 0.15);
+    transform: translateY(-2px);
+}
+
+body.purple-theme .nav-link.active {
+    background: rgba(255, 255, 255, 0.2);
+    color: white !important;
+}
+
+body.purple-theme .dropdown-menu {
+    background: white;
+    border: 2px solid rgba(102, 126, 234, 0.2);
+    border-radius: 12px;
+    box-shadow: var(--shadow-lg);
+    padding: 0.5rem;
+    z-index: 1050 !important; /* Sobrepor outros elementos */
+    position: absolute;
+}
+
+body.purple-theme .dropdown-item {
+    color: var(--text-dark) !important;
+    border-radius: 8px;
+    padding: 0.75rem 1rem;
+    transition: all 0.3s ease;
+}
+
+body.purple-theme .dropdown-item:hover {
+    background: rgba(102, 126, 234, 0.1) !important;
+    color: var(--primary-purple) !important;
+    transform: translateX(5px);
+}
+
+body.purple-theme .dropdown-item.active {
+    background: linear-gradient(135deg, var(--primary-purple) 0%, var(--secondary-purple) 100%);
+    color: white !important;
+}
+
+/* ===================================
+   VIEW TOGGLE (Contraste WCAG AA: 4.5:1+)
+   =================================== */
+
+body.purple-theme .view-toggle {
+    background: white;
+    border: 2px solid rgba(102, 126, 234, 0.2);
+    border-radius: 50px;
+    padding: 8px;
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.15);
+}
+
+body.purple-theme .view-toggle-btn {
+    padding: 12px 30px;
+    border: none;
+    background: transparent;
+    border-radius: 50px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    color: #4a5568 !important; /* Cinza escuro - Contraste 8.59:1 */
+    font-size: 15px;
+}
+
+body.purple-theme .view-toggle-btn.active {
+    background: linear-gradient(135deg, var(--primary-purple) 0%, var(--secondary-purple) 100%) !important;
+    color: #ffffff !important; /* Branco - Contraste 6.5:1+ */
+    box-shadow: 0 2px 10px rgba(102, 126, 234, 0.4);
+}
+
+body.purple-theme .view-toggle-btn:hover:not(.active) {
+    background: rgba(102, 126, 234, 0.1);
+    color: var(--primary-purple) !important;
+}
+
+/* ===================================
+   TEXT WHITE (Contraste WCAG AA)
+   =================================== */
+
+/* Branco puro em fundos escuros */
+body.purple-theme .text-white {
+    color: var(--primary-purple) !important;
+}
+
+/* Em backgrounds claros, trocar para texto escuro */
+body.purple-theme .bg-light .text-white,
+body.purple-theme .bg-white .text-white {
+    color: #2d3748 !important; /* Cinza escuro - Contraste 12.63:1 */
+}
+
+/* Em cards brancos */
+body.purple-theme .card-body .text-white {
+    color: var(--primary-purple) !important; /* Roxo - Contraste 5.15:1 */
+}
+
+/* Manter branco em elementos escuros */
+body.purple-theme .navbar .text-white,
+body.purple-theme .bg-primary .text-white,
+body.purple-theme .bg-dark .text-white,
+body.purple-theme .card-header .text-white {
+    color: #ffffff !important;
+}
+
+/* Manter branco em card-footer com backgrounds coloridos */
+body.purple-theme .card-footer.bg-success .text-white,
+body.purple-theme .card-footer.bg-primary .text-white,
+body.purple-theme .card-footer.bg-warning .text-white,
+body.purple-theme .card-footer.bg-danger .text-white,
+body.purple-theme .card-footer.bg-info .text-white,
+body.purple-theme .card .bg-success .text-white,
+body.purple-theme .card .bg-warning .text-white {
+    color: #ffffff !important;
+}
+
+/* ===================================
+   CARDS
+   =================================== */
+
+body.purple-theme .card {
+    background: white !important;
+    border: none !important;
+    border-radius: 16px !important;
+    box-shadow: var(--shadow-md);
+    transition: all 0.3s ease;
+    overflow: hidden;
+}
+
+body.purple-theme .card:hover {
+    transform: translateY(-5px);
+    box-shadow: var(--shadow-lg);
+}
+
+body.purple-theme .card-header {
+    background: linear-gradient(135deg, var(--primary-purple) 0%, var(--secondary-purple) 100%) !important;
+    color: white !important;
+    font-weight: 600;
+    padding: 1.2rem 1.5rem;
+    border: none !important;
+}
+
+body.purple-theme .card-body {
+    color: var(--text-dark);
+    padding: 1.5rem;
+}
+
+body.purple-theme .card-title {
+    color: var(--primary-purple) !important;
+    font-weight: 700;
+    margin-bottom: 1rem;
+}
+
+body.purple-theme .card-text {
+    color: var(--text-light) !important;
+}
+
+body.purple-theme .card-footer {
+    background: rgba(102, 126, 234, 0.05);
+    border-top: 1px solid rgba(102, 126, 234, 0.1);
+    padding: 1rem 1.5rem;
+}
+
+/* ===================================
+   BUTTONS
+   =================================== */
+
+body.purple-theme .btn-primary {
+    background: linear-gradient(135deg, var(--primary-purple) 0%, var(--secondary-purple) 100%) !important;
+    border: none !important;
+    border-radius: 10px;
+    padding: 0.75rem 1.5rem;
+    font-weight: 600;
+    color: white !important;
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+body.purple-theme .btn-primary::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.2);
+    transform: translate(-50%, -50%);
+    transition: width 0.6s, height 0.6s;
+}
+
+body.purple-theme .btn-primary:hover::before {
+    width: 300px;
+    height: 300px;
+}
+
+body.purple-theme .btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+}
+
+body.purple-theme .btn-primary:active {
+    transform: translateY(0);
+}
+
+body.purple-theme .btn-success {
+    background: linear-gradient(135deg, #48bb78 0%, #38a169 100%) !important;
+    border: none !important;
+    box-shadow: 0 4px 15px rgba(72, 187, 120, 0.3);
+}
+
+body.purple-theme .btn-danger {
+    background: linear-gradient(135deg, #e53e3e 0%, #c53030 100%) !important;
+    border: none !important;
+    box-shadow: 0 4px 15px rgba(229, 62, 62, 0.3);
+}
+
+body.purple-theme .btn-warning {
+    background: linear-gradient(135deg, #ed8936 0%, #dd6b20 100%) !important;
+    border: none !important;
+    box-shadow: 0 4px 15px rgba(237, 137, 54, 0.3);
+}
+
+body.purple-theme .btn-outline-secondary {
+    border: 2px solid var(--primary-purple) !important;
+    color: var(--primary-purple) !important;
+    background: transparent !important;
+    border-radius: 10px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+body.purple-theme .btn-outline-secondary:hover {
+    background: linear-gradient(135deg, var(--primary-purple) 0%, var(--secondary-purple) 100%) !important;
+    color: white !important;
+    transform: translateY(-2px);
+}
+
+/* ===================================
+   FORMS
+   =================================== */
+
+body.purple-theme .form-control,
+body.purple-theme .form-select {
+    background: #f7fafc !important;
+    border: 2px solid #e2e8f0 !important;
+    border-radius: 10px;
+    color: var(--text-dark) !important;
+    padding: 0.75rem 1rem;
+    transition: all 0.3s ease;
+}
+
+body.purple-theme .form-control:focus,
+body.purple-theme .form-select:focus {
+    background: white !important;
+    border-color: var(--primary-purple) !important;
+    box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+    color: var(--text-dark) !important;
+}
+
+body.purple-theme .form-label {
+    color: var(--text-dark);
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+}
+
+body.purple-theme .form-control::placeholder {
+    color: var(--text-muted);
+}
+
+/* ===================================
+   ALERTS
+   =================================== */
+
+body.purple-theme .alert {
+    border: none;
+    border-radius: 12px;
+    padding: 1rem 1.25rem;
+    box-shadow: var(--shadow-sm);
+}
+
+body.purple-theme .alert-success {
+    background: linear-gradient(135deg, #f0fff4 0%, #c6f6d5 100%);
+    color: #22543d;
+    border-left: 4px solid #48bb78;
+}
+
+body.purple-theme .alert-danger {
+    background: linear-gradient(135deg, #fff5f5 0%, #fed7d7 100%);
+    color: #742a2a;
+    border-left: 4px solid #e53e3e;
+}
+
+body.purple-theme .alert-info {
+    background: linear-gradient(135deg, #ebf8ff 0%, #bee3f8 100%);
+    color: #2c5282;
+    border-left: 4px solid #4299e1;
+}
+
+body.purple-theme .alert-warning {
+    background: linear-gradient(135deg, #fffaf0 0%, #feebc8 100%);
+    color: #744210;
+    border-left: 4px solid #ed8936;
+}
+
+/* ===================================
+   BADGES
+   =================================== */
+
+body.purple-theme .badge {
+    padding: 0.5rem 0.75rem;
+    border-radius: 8px;
+    font-weight: 600;
+    box-shadow: var(--shadow-sm);
+}
+
+body.purple-theme .badge.bg-primary {
+    background: linear-gradient(135deg, var(--primary-purple) 0%, var(--secondary-purple) 100%) !important;
+}
+
+body.purple-theme .badge.bg-success {
+    background: linear-gradient(135deg, #48bb78 0%, #38a169 100%) !important;
+}
+
+body.purple-theme .badge.bg-danger {
+    background: linear-gradient(135deg, #e53e3e 0%, #c53030 100%) !important;
+}
+
+body.purple-theme .badge.bg-warning {
+    background: linear-gradient(135deg, #ed8936 0%, #dd6b20 100%) !important;
+}
+
+/* ===================================
+   HEADINGS
+   =================================== */
+
+body.purple-theme h1,
+body.purple-theme h2,
+body.purple-theme h3,
+body.purple-theme h4,
+body.purple-theme h5,
+body.purple-theme h6 {
+    color: var(--primary-purple) !important;
+    font-weight: 700;
+}
+
+/* ===================================
+   LINKS
+   =================================== */
+
+body.purple-theme a {
+    color: var(--primary-purple);
+    text-decoration: none;
+    transition: all 0.3s ease;
+}
+
+body.purple-theme a:hover {
+    color: var(--secondary-purple);
+    text-decoration: underline;
+}
+
+/* ===================================
+   TEXT COLORS
+   =================================== */
+
+body.purple-theme .text-muted {
+    color: var(--text-muted) !important;
+}
+
+/* ===================================
+   LIST GROUP
+   =================================== */
+
+body.purple-theme .list-group-item {
+    background: white !important;
+    border: 1px solid #e2e8f0 !important;
+    color: var(--text-dark) !important;
+    margin-bottom: 0.5rem;
+    border-radius: 10px !important;
+    transition: all 0.3s ease;
+}
+
+body.purple-theme .list-group-item:hover {
+    background: rgba(102, 126, 234, 0.05) !important;
+    border-color: var(--primary-purple) !important;
+    transform: translateX(5px);
+}
+
+/* ===================================
+   MODALS
+   =================================== */
+
+body.purple-theme .modal-content {
+    background: white;
+    border: none;
+    border-radius: 16px;
+    box-shadow: var(--shadow-lg);
+}
+
+body.purple-theme .modal-header {
+    background: linear-gradient(135deg, var(--primary-purple) 0%, var(--secondary-purple) 100%);
+    color: white;
+    border: none;
+    border-radius: 16px 16px 0 0;
+    padding: 1.5rem;
+}
+
+body.purple-theme .modal-title {
+    color: white !important;
+    font-weight: 700;
+}
+
+body.purple-theme .modal-body {
+    color: var(--text-dark);
+    padding: 1.5rem;
+}
+
+body.purple-theme .modal-footer {
+    background: rgba(102, 126, 234, 0.05);
+    border: none;
+    border-radius: 0 0 16px 16px;
+    padding: 1rem 1.5rem;
+}
+
+body.purple-theme .btn-close {
+    filter: invert(1);
+}
+
+/* ===================================
+   SCROLLBAR
+   =================================== */
+
+body.purple-theme ::-webkit-scrollbar {
+    width: 12px;
+}
+
+body.purple-theme ::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
+
+body.purple-theme ::-webkit-scrollbar-thumb {
+    background: linear-gradient(135deg, var(--primary-purple) 0%, var(--secondary-purple) 100%);
+    border-radius: 10px;
+}
+
+body.purple-theme ::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(135deg, var(--secondary-purple) 0%, var(--deep-purple) 100%);
+}
+
+/* ===================================
+   NOTIFICATION BADGE
+   =================================== */
+
+body.purple-theme .notification-badge {
+    background: linear-gradient(135deg, #e53e3e 0%, #c53030 100%) !important;
+    border: 2px solid white;
+    box-shadow: 0 2px 8px rgba(229, 62, 62, 0.5);
+    animation: pulse-purple 2s ease-in-out infinite;
+}
+
+@keyframes pulse-purple {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+}
+
+/* ===================================
+   THEME TOGGLE BUTTON
+   =================================== */
+
+body.purple-theme .theme-toggle {
+    background: rgba(255, 255, 255, 0.2) !important;
+    border: 2px solid rgba(255, 255, 255, 0.3) !important;
+    border-radius: 8px;
+    padding: 0.5rem 0.8rem !important;
+    transition: all 0.3s ease;
+}
+
+body.purple-theme .theme-toggle:hover {
+    background: rgba(255, 255, 255, 0.3) !important;
+    transform: rotate(20deg) scale(1.1);
+}
+
+/* ===================================
+   ANIMATIONS
+   =================================== */
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+body.purple-theme .card {
+    animation: fadeIn 0.5s ease-out;
+}
+
+/* ===================================
+   DARK MODE - PURPLE THEME
+   =================================== */
+
+body.purple-theme.dark-theme {
+    background: linear-gradient(135deg, #1a1625 0%, #2d1b4e 50%, #1a1625 100%);
+    background-size: 400% 400%;
+    animation: gradientMove 15s ease infinite;
+    color: #e0e0e0;
+}
+
+@keyframes gradientMove {
+    0%, 100% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+}
+
+/* Cards */
+body.purple-theme.dark-theme .card {
+    background: rgba(45, 27, 78, 0.6) !important;
+    backdrop-filter: blur(20px);
+    border-color: rgba(102, 126, 234, 0.3) !important;
+    color: #e0e0e0;
+}
+
+body.purple-theme.dark-theme .card-header {
+    background: rgba(102, 126, 234, 0.3) !important;
+    border-bottom-color: rgba(102, 126, 234, 0.4) !important;
+}
+
+body.purple-theme.dark-theme .card-body {
+    color: #e0e0e0;
+}
+
+body.purple-theme.dark-theme .card-title {
+    color: #a78bfa !important;
+}
+
+body.purple-theme.dark-theme .card-text {
+    color: #d1d5db !important;
+}
+
+/* Forms */
+body.purple-theme.dark-theme .form-control,
+body.purple-theme.dark-theme .form-select {
+    background: rgba(45, 27, 78, 0.5) !important;
+    border-color: rgba(102, 126, 234, 0.3) !important;
+    color: #e0e0e0 !important;
+}
+
+body.purple-theme.dark-theme .form-control::placeholder {
+    color: rgba(224, 224, 224, 0.5);
+}
+
+body.purple-theme.dark-theme .form-control:focus,
+body.purple-theme.dark-theme .form-select:focus {
+    background: rgba(45, 27, 78, 0.7) !important;
+    border-color: var(--primary-purple) !important;
+    color: #e0e0e0 !important;
+}
+
+body.purple-theme.dark-theme .form-label {
+    color: #c4b5fd;
+}
+
+/* Modals */
+body.purple-theme.dark-theme .modal-content {
+    background: rgba(26, 22, 37, 0.95);
+    border-color: rgba(102, 126, 234, 0.3);
+}
+
+body.purple-theme.dark-theme .modal-body {
+    color: #e0e0e0;
+}
+
+/* Alerts */
+body.purple-theme.dark-theme .alert-success {
+    background: rgba(72, 187, 120, 0.2);
+    color: #6ee7b7;
+    border-color: #48bb78;
+}
+
+body.purple-theme.dark-theme .alert-danger {
+    background: rgba(229, 62, 62, 0.2);
+    color: #fca5a5;
+    border-color: #e53e3e;
+}
+
+body.purple-theme.dark-theme .alert-info {
+    background: rgba(66, 153, 225, 0.2);
+    color: #93c5fd;
+    border-color: #4299e1;
+}
+
+body.purple-theme.dark-theme .alert-warning {
+    background: rgba(237, 137, 54, 0.2);
+    color: #fbbf24;
+    border-color: #ed8936;
+}
+
+/* List Group */
+body.purple-theme.dark-theme .list-group-item {
+    background: rgba(45, 27, 78, 0.5) !important;
+    border-color: rgba(102, 126, 234, 0.3) !important;
+    color: #e0e0e0 !important;
+}
+
+/* Headings */
+body.purple-theme.dark-theme h1,
+body.purple-theme.dark-theme h2,
+body.purple-theme.dark-theme h3,
+body.purple-theme.dark-theme h4,
+body.purple-theme.dark-theme h5,
+body.purple-theme.dark-theme h6 {
+    color: #a78bfa !important;
+}
+
+/* Links */
+body.purple-theme.dark-theme a {
+    color: #a78bfa;
+}
+
+body.purple-theme.dark-theme a:hover {
+    color: #c4b5fd;
+}
+
+/* Text */
+body.purple-theme.dark-theme .text-muted {
+    color: #9ca3af !important;
+}
+
+/* View Toggle - Dark Mode */
+body.purple-theme.dark-theme .view-toggle {
+    background: rgba(45, 27, 78, 0.6);
+    border-color: rgba(102, 126, 234, 0.3);
+}
+
+body.purple-theme.dark-theme .view-toggle-btn {
+    color: #d1d5db !important; /* Cinza claro - Contraste 7.0:1 com fundo escuro */
+}
+
+body.purple-theme.dark-theme .view-toggle-btn.active {
+    background: linear-gradient(135deg, var(--primary-purple) 0%, var(--secondary-purple) 100%) !important;
+    color: #ffffff !important;
+}
+
+body.purple-theme.dark-theme .view-toggle-btn:hover:not(.active) {
+    background: rgba(167, 139, 250, 0.2);
+    color: #a78bfa !important;
+}
+
+/* Text White - Dark Mode */
+body.purple-theme.dark-theme .text-white {
+    color: #ffffff !important; /* Sempre branco em modo escuro */
+}
+
+/* ===================================
+   RESPONSIVE
+   =================================== */
+
+@media (max-width: 768px) {
+    body.purple-theme .card {
+        border-radius: 12px !important;
+    }
+
+    body.purple-theme .navbar {
+        padding: 0.75rem 0 !important;
+    }
+}

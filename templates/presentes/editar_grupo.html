@@ -1,0 +1,203 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Editar Grupo - {{ grupo.nome }}{% endblock %}
+
+{% block content %}
+<!-- Page Header -->
+<div class="max-w-2xl mx-auto">
+    <div class="bg-gradient-to-r from-primary via-primary/90 to-secondary rounded-3xl p-8 mb-6 text-primary-content animate-fade-in relative overflow-hidden">
+        <div class="absolute -top-10 -right-10 w-40 h-40 bg-white/10 rounded-full blur-2xl"></div>
+        <div class="relative">
+            <h1 class="text-2xl font-extrabold flex items-center gap-3 tracking-tight">
+                <i class="bi bi-pencil-square"></i>
+                Editar Grupo
+            </h1>
+            <p class="mt-1.5 opacity-80 text-sm truncate">{{ grupo.nome }}</p>
+        </div>
+    </div>
+</div>
+
+<div class="max-w-2xl mx-auto animate-slide-up">
+    {% if messages %}
+        {% for message in messages %}
+            <div role="alert" class="alert alert-{{ message.tags }} mb-6 rounded-xl text-sm">
+                <span>{{ message }}</span>
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <form method="post">
+        {% csrf_token %}
+
+        <!-- Detalhes do Grupo -->
+        <div class="bg-base-100 border border-base-300/40 rounded-3xl p-6 sm:p-8 mb-6">
+            <h3 class="font-extrabold text-sm uppercase tracking-wider text-base-content/40 mb-5 flex items-center gap-2">
+                <i class="bi bi-card-text"></i> Detalhes
+            </h3>
+
+            <!-- Nome -->
+            <div class="form-control w-full mb-6">
+                <label class="label pb-1.5" for="{{ form.nome.id_for_label }}">
+                    <span class="label-text font-semibold text-sm">Nome do Grupo <span class="text-error">*</span></span>
+                </label>
+                {{ form.nome }}
+                {% if form.nome.errors %}
+                    <p class="text-error text-xs mt-1">{{ form.nome.errors.0 }}</p>
+                {% endif %}
+            </div>
+
+            <!-- Descrição -->
+            <div class="form-control w-full">
+                <label class="label pb-1.5" for="{{ form.descricao.id_for_label }}">
+                    <span class="label-text font-semibold text-sm">Descrição <span class="text-base-content/30 font-normal">(opcional)</span></span>
+                </label>
+                {{ form.descricao }}
+                {% if form.descricao.errors %}
+                    <p class="text-error text-xs mt-1">{{ form.descricao.errors.0 }}</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Logo do Grupo -->
+        <div class="bg-base-100 border border-base-300/40 rounded-3xl p-6 sm:p-8 mb-6">
+            <h3 class="font-extrabold text-sm uppercase tracking-wider text-base-content/40 mb-5 flex items-center gap-2">
+                <i class="bi bi-image"></i> Logo do Grupo
+            </h3>
+
+            <div class="flex items-start gap-5">
+                <!-- Preview: imagem atual ou nova -->
+                <div class="w-20 h-20 rounded-2xl bg-base-200 border border-base-300/40 flex items-center justify-center overflow-hidden shrink-0" id="logo-preview-box">
+                    {% if grupo.imagem_base64 %}
+                        <img src="{% url 'servir_imagem_grupo' grupo.id %}" alt="{{ grupo.nome }}"
+                             class="w-full h-full object-cover" id="logo-current">
+                        <i class="bi bi-people text-2xl text-base-content/20" id="logo-placeholder" style="display: none;"></i>
+                    {% else %}
+                        <i class="bi bi-people text-2xl text-base-content/20" id="logo-placeholder"></i>
+                    {% endif %}
+                    <img id="logo-preview" class="w-full h-full object-cover" style="display: none;" alt="Preview do novo logo">
+                </div>
+
+                <!-- URL input -->
+                <div class="form-control flex-1">
+                    {{ form.url_imagem }}
+                    <label class="label pt-1">
+                        <span class="label-text-alt text-base-content/40 text-xs">Cole a URL de uma nova imagem — deixe em branco para manter a atual</span>
+                    </label>
+                    {% if form.url_imagem.errors %}
+                        <p class="text-error text-xs mt-1">{{ form.url_imagem.errors.0 }}</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Aviso -->
+        <div class="flex items-center gap-3 bg-warning/10 border border-warning/20 rounded-2xl px-5 py-3.5 mb-6 text-sm">
+            <i class="bi bi-exclamation-triangle-fill text-warning"></i>
+            <span class="text-base-content/70">Alterações afetam <strong>todos os membros</strong> do grupo</span>
+        </div>
+
+        <!-- Actions -->
+        <div class="flex items-center justify-between gap-3 mb-8">
+            <a href="{% url 'gerenciar_membros' grupo.id %}" class="btn btn-ghost rounded-xl gap-2 text-base-content/60">
+                <i class="bi bi-arrow-left"></i>
+                Cancelar
+            </a>
+            <button type="submit" class="btn btn-primary rounded-xl px-8 gap-2">
+                <i class="bi bi-check-circle"></i>
+                Salvar Alterações
+            </button>
+        </div>
+    </form>
+
+    <!-- Informações do Grupo -->
+    <div class="bg-base-100 border border-base-300/40 rounded-3xl p-6 sm:p-8 mb-4">
+        <h3 class="font-extrabold text-sm uppercase tracking-wider text-base-content/40 mb-5 flex items-center gap-2">
+            <i class="bi bi-info-circle"></i> Informações
+        </h3>
+
+        <div class="grid grid-cols-2 gap-4">
+            <!-- Código de convite com copiar -->
+            <div class="col-span-2 sm:col-span-1">
+                <p class="text-[11px] font-bold uppercase tracking-wider text-base-content/40 mb-1.5">Código de Convite</p>
+                <div class="flex items-center gap-2">
+                    <code class="bg-base-200 px-3 py-1.5 rounded-lg text-sm font-bold flex-1 truncate" id="codigo-convite">{{ grupo.codigo_convite }}</code>
+                    <button type="button" class="btn btn-ghost btn-sm btn-square rounded-lg" onclick="copiarCodigo(this)" title="Copiar código">
+                        <i class="bi bi-clipboard"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Status -->
+            <div>
+                <p class="text-[11px] font-bold uppercase tracking-wider text-base-content/40 mb-1.5">Status</p>
+                {% if grupo.ativo %}
+                    <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-success/10 text-success">
+                        <span class="w-1.5 h-1.5 rounded-full bg-success"></span> Ativo
+                    </span>
+                {% else %}
+                    <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-error/10 text-error">
+                        <span class="w-1.5 h-1.5 rounded-full bg-error"></span> Inativo
+                    </span>
+                {% endif %}
+            </div>
+
+            <!-- Membros -->
+            <div>
+                <p class="text-[11px] font-bold uppercase tracking-wider text-base-content/40 mb-1.5">Membros</p>
+                <p class="text-lg font-extrabold">{{ grupo.membros.count }}</p>
+            </div>
+
+            <!-- Criado em -->
+            <div>
+                <p class="text-[11px] font-bold uppercase tracking-wider text-base-content/40 mb-1.5">Criado em</p>
+                <p class="text-sm font-semibold text-base-content/70">{{ grupo.data_criacao|date:"d/m/Y H:i" }}</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Preview ao vivo do novo logo a partir da URL
+    const urlInput = document.getElementById('{{ form.url_imagem.id_for_label }}');
+    const logoPreview = document.getElementById('logo-preview');
+    const logoCurrent = document.getElementById('logo-current');
+    const logoPlaceholder = document.getElementById('logo-placeholder');
+
+    if (urlInput) {
+        urlInput.addEventListener('input', function() {
+            const url = this.value.trim();
+            if (url && /^https?:\/\//i.test(url)) {
+                logoPreview.src = url;
+                logoPreview.onload = function() {
+                    logoPreview.style.display = 'block';
+                    if (logoCurrent) logoCurrent.style.display = 'none';
+                    if (logoPlaceholder) logoPlaceholder.style.display = 'none';
+                };
+                logoPreview.onerror = function() {
+                    logoPreview.style.display = 'none';
+                    if (logoCurrent) logoCurrent.style.display = 'block';
+                    else if (logoPlaceholder) logoPlaceholder.style.display = 'block';
+                };
+            } else {
+                logoPreview.style.display = 'none';
+                if (logoCurrent) logoCurrent.style.display = 'block';
+                else if (logoPlaceholder) logoPlaceholder.style.display = 'block';
+            }
+        });
+    }
+
+    // Copiar código de convite
+    function copiarCodigo(btn) {
+        const codigo = document.getElementById('codigo-convite').textContent.trim();
+        navigator.clipboard.writeText(codigo).then(function() {
+            btn.innerHTML = '<i class="bi bi-check-lg text-success"></i>';
+            setTimeout(() => { btn.innerHTML = '<i class="bi bi-clipboard"></i>'; }, 2000);
+        }).catch(function() {
+            alert('Código: ' + codigo);
+        });
+    }
+</script>
+{% endblock %}

@@ -1,0 +1,175 @@
+{% extends 'base.html' %}
+
+{% block title %}Setup de Grupos - Lista de Presentes{% endblock %}
+
+{% block content %}
+<div class="bg-gradient-to-r from-primary via-primary/90 to-secondary text-white py-10 -mx-4 -mt-6 px-4 rounded-b-3xl mb-8 text-center">
+    <div class="max-w-7xl mx-auto">
+        <h1 class="text-3xl sm:text-4xl font-extrabold">
+            Setup de Grupos
+        </h1>
+        <p class="mt-2 opacity-90 text-lg">
+            Configure o grupo "Natal Familia Cruz e Credos 2025"
+        </p>
+    </div>
+</div>
+
+<div class="max-w-7xl mx-auto">
+    <!-- Status do Sistema -->
+    <div class="bg-base-100 border border-base-300/40 rounded-3xl shadow-sm mb-8">
+        <div class="card-body">
+            <h3 class="text-xl font-bold text-primary mb-4">
+                Status do Sistema
+            </h3>
+
+            <div class="stats stats-vertical sm:stats-horizontal w-full bg-base-100 border border-base-300/40 rounded-3xl shadow-sm">
+                <div class="stat place-items-center">
+                    <div class="stat-value text-primary">{{ total_usuarios }}</div>
+                    <div class="stat-desc uppercase tracking-wider">Usuarios</div>
+                </div>
+                <div class="stat place-items-center">
+                    <div class="stat-value {% if total_grupos > 0 %}text-success{% else %}text-warning{% endif %}">{{ total_grupos }}</div>
+                    <div class="stat-desc uppercase tracking-wider">Grupos</div>
+                </div>
+                <div class="stat place-items-center">
+                    <div class="stat-value text-primary">{{ total_presentes }}</div>
+                    <div class="stat-desc uppercase tracking-wider">Presentes</div>
+                </div>
+                <div class="stat place-items-center">
+                    <div class="stat-value {% if presentes_sem_grupo == 0 %}text-success{% else %}text-warning{% endif %}">{{ presentes_sem_grupo }}</div>
+                    <div class="stat-desc uppercase tracking-wider">Sem Grupo</div>
+                </div>
+            </div>
+
+            {% if grupo_padrao %}
+            <div class="badge badge-success gap-2 mt-4 p-3">
+                <i class="bi bi-check-circle-fill"></i>
+                Grupo Padrao Criado: {{ grupo_padrao.nome }} ({{ membros_grupo }} membros)
+            </div>
+            {% else %}
+            <div class="badge badge-warning gap-2 mt-4 p-3">
+                <i class="bi bi-exclamation-triangle-fill"></i>
+                Grupo padrao ainda nao foi criado
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Informacoes -->
+    <div role="alert" class="alert alert-info mb-8">
+        <i class="bi bi-info-circle-fill text-xl"></i>
+        <div>
+            <h5 class="font-bold mb-2">Sobre este Setup</h5>
+            <p class="mb-2">Esta pagina permite executar o setup do sistema de grupos atraves da interface web, ideal para plataformas como <strong>Render</strong> onde nao ha acesso SSH.</p>
+            <p class="font-semibold mb-1">O que sera feito:</p>
+            <ul class="list-disc list-inside space-y-1 ml-2">
+                <li>Criar tabelas de grupos no banco de dados (migrations)</li>
+                <li>Criar grupo "Natal Familia Cruz e Credos 2025"</li>
+                <li>Adicionar todos os usuarios ao grupo</li>
+                <li>Tornar administradores em mantenedores do grupo</li>
+                <li>Migrar dados existentes para o grupo</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- Acoes -->
+    <!-- Setup Completo (Recomendado) -->
+    <div class="bg-base-100 border border-base-300/40 rounded-3xl shadow-sm mb-6 border-2 border-success">
+        <div class="card-body">
+            <div class="flex items-center gap-4 mb-3">
+                <span class="text-3xl">&#127919;</span>
+                <h3 class="text-xl font-bold text-primary">Setup Completo (Recomendado)</h3>
+            </div>
+            <p class="text-base-content/60 mb-1">
+                <strong>Executa tudo de uma vez:</strong> Migrations + Criar Grupo + Migrar Dados
+            </p>
+            <p class="text-success text-sm mb-4">
+                <i class="bi bi-check-lg"></i> Este e o caminho mais facil e rapido!
+            </p>
+            <form method="post" onsubmit="return confirm('Executar setup completo? Isso pode levar alguns segundos.')">
+                {% csrf_token %}
+                <input type="hidden" name="acao" value="setup_completo">
+                <button type="submit" class="btn btn-success w-full text-lg font-semibold rounded-xl">
+                    Executar Setup Completo
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Opcoes Individuais -->
+    <h4 class="text-primary font-bold text-lg mt-8 mb-5">
+        Ou execute passo a passo:
+    </h4>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div class="bg-base-100 border border-base-300/40 rounded-3xl shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
+            <div class="card-body">
+                <div class="flex items-center gap-3 mb-3">
+                    <span class="text-2xl">1&#65039;&#8419;</span>
+                    <h3 class="text-lg font-bold text-primary">Migrations</h3>
+                </div>
+                <p class="text-base-content/60 mb-4">
+                    Cria as tabelas de grupos no banco de dados.
+                </p>
+                <form method="post">
+                    {% csrf_token %}
+                    <input type="hidden" name="acao" value="migrations">
+                    <button type="submit" class="btn btn-primary w-full rounded-xl">
+                        Executar Migrations
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <div class="bg-base-100 border border-base-300/40 rounded-3xl shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
+            <div class="card-body">
+                <div class="flex items-center gap-3 mb-3">
+                    <span class="text-2xl">2&#65039;&#8419;</span>
+                    <h3 class="text-lg font-bold text-primary">Criar Grupo</h3>
+                </div>
+                <p class="text-base-content/60 mb-4">
+                    Cria o grupo padrao e adiciona todos os usuarios.
+                </p>
+                <form method="post">
+                    {% csrf_token %}
+                    <input type="hidden" name="acao" value="criar_grupo">
+                    <button type="submit" class="btn btn-success w-full rounded-xl">
+                        Criar Grupo Padrao
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <div class="bg-base-100 border border-base-300/40 rounded-3xl shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
+            <div class="card-body">
+                <div class="flex items-center gap-3 mb-3">
+                    <span class="text-2xl">3&#65039;&#8419;</span>
+                    <h3 class="text-lg font-bold text-primary">Migrar Dados</h3>
+                </div>
+                <p class="text-base-content/60 mb-4">
+                    Vincula presentes, compras e notificacoes ao grupo.
+                </p>
+                <form method="post">
+                    {% csrf_token %}
+                    <input type="hidden" name="acao" value="migrar_dados">
+                    <button type="submit" class="btn btn-warning w-full rounded-xl">
+                        Migrar Dados
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Link de Volta -->
+    <div class="text-center py-10">
+        <a href="{% url 'dashboard' %}" class="btn btn-outline btn-neutral rounded-xl gap-2">
+            <i class="bi bi-arrow-left"></i> Voltar ao Dashboard
+        </a>
+        {% if grupo_padrao %}
+        <a href="{% url 'grupos_lista' %}" class="btn btn-outline btn-success rounded-xl gap-2 ml-2">
+            Ver Grupos <i class="bi bi-arrow-right"></i>
+        </a>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

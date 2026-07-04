@@ -1,0 +1,108 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard - Lista de Presentes{% endblock %}
+
+{% block content %}
+<!-- Header -->
+<div class="relative mb-8 animate-fade-in bg-gradient-to-r from-primary via-primary/90 to-secondary rounded-3xl px-8 py-10 text-white overflow-hidden">
+    <div class="absolute -top-10 -right-10 w-40 h-40 bg-white/10 rounded-full blur-2xl"></div>
+    <h2 class="text-3xl font-extrabold tracking-tight">
+        Bem-vindo, <span class="text-white/90">{{ user.first_name }}</span>!
+    </h2>
+    <p class="text-white/70 mt-1">Aqui está o resumo da sua lista de presentes</p>
+</div>
+
+<!-- Stats Cards -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+    <!-- Total Usuários -->
+    <div class="card bg-base-100 border border-base-300/40 rounded-3xl shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
+        <div class="card-body flex-row items-center justify-between">
+            <div>
+                <p class="font-extrabold text-sm uppercase tracking-wider text-base-content/40">Total de Usuários</p>
+                <p class="text-4xl font-bold text-primary mt-1">{{ total_usuarios }}</p>
+            </div>
+            <div class="bg-primary/10 p-4 rounded-2xl">
+                <i class="bi bi-people text-3xl text-primary"></i>
+            </div>
+        </div>
+    </div>
+
+    <!-- Meus Presentes Ativos -->
+    <div class="card bg-base-100 border border-base-300/40 rounded-3xl shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
+        <div class="card-body flex-row items-center justify-between">
+            <div>
+                <p class="font-extrabold text-sm uppercase tracking-wider text-base-content/40">Meus Presentes Ativos</p>
+                <p class="text-4xl font-bold text-success mt-1">{{ meus_presentes_ativos }}</p>
+            </div>
+            <div class="bg-success/10 p-4 rounded-2xl">
+                <i class="bi bi-gift text-3xl text-success"></i>
+            </div>
+        </div>
+        <div class="px-6 pb-4">
+            <a href="{% url 'meus_presentes' %}" class="link link-primary text-sm font-medium inline-flex items-center gap-1 hover:gap-2 transition-all">
+                Ver meus presentes <i class="bi bi-arrow-right"></i>
+            </a>
+        </div>
+    </div>
+
+    <!-- Presentes Disponíveis -->
+    <div class="card bg-base-100 border border-base-300/40 rounded-3xl shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
+        <div class="card-body flex-row items-center justify-between">
+            <div>
+                <p class="font-extrabold text-sm uppercase tracking-wider text-base-content/40">Presentes Disponíveis</p>
+                <p class="text-4xl font-bold text-warning mt-1">{{ presentes_nao_comprados }}</p>
+            </div>
+            <div class="bg-warning/10 p-4 rounded-2xl">
+                <i class="bi bi-bag-check text-3xl text-warning"></i>
+            </div>
+        </div>
+        <div class="px-6 pb-4">
+            <a href="{% url 'lista_usuarios' %}" class="link link-primary text-sm font-medium inline-flex items-center gap-1 hover:gap-2 transition-all">
+                Ver presentes <i class="bi bi-arrow-right"></i>
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Como Funciona -->
+<div class="card bg-base-100 border border-base-300/40 rounded-3xl shadow-lg animate-slide-up">
+    <div class="card-body">
+        <h3 class="font-extrabold text-sm uppercase tracking-wider text-base-content/40 mb-6 flex items-center gap-2">
+            <i class="bi bi-info-circle text-primary"></i>
+            Como Funciona
+        </h3>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <!-- Passo 1 -->
+            <div class="flex flex-col items-center text-center p-6 rounded-3xl bg-base-100 border border-base-300/40 hover:bg-base-100 transition-colors">
+                <div class="bg-primary/10 p-4 rounded-full mb-4">
+                    <i class="bi bi-pencil-square text-3xl text-primary"></i>
+                </div>
+                <span class="badge badge-primary badge-sm mb-3">Passo 1</span>
+                <h4 class="font-semibold mb-2">Cadastre seus presentes</h4>
+                <p class="text-base-content/60 text-sm">Adicione os presentes que você deseja ganhar com descrição, link e preço.</p>
+            </div>
+
+            <!-- Passo 2 -->
+            <div class="flex flex-col items-center text-center p-6 rounded-3xl bg-base-100 border border-base-300/40 hover:bg-base-100 transition-colors">
+                <div class="bg-success/10 p-4 rounded-full mb-4">
+                    <i class="bi bi-robot text-3xl text-success"></i>
+                </div>
+                <span class="badge badge-success badge-sm mb-3">Passo 2</span>
+                <h4 class="font-semibold mb-2">Busque sugestões com IA</h4>
+                <p class="text-base-content/60 text-sm">Use nossa IA para encontrar os melhores lugares para comprar com os melhores preços.</p>
+            </div>
+
+            <!-- Passo 3 -->
+            <div class="flex flex-col items-center text-center p-6 rounded-3xl bg-base-100 border border-base-300/40 hover:bg-base-100 transition-colors">
+                <div class="bg-warning/10 p-4 rounded-full mb-4">
+                    <i class="bi bi-bag-heart text-3xl text-warning"></i>
+                </div>
+                <span class="badge badge-warning badge-sm mb-3">Passo 3</span>
+                <h4 class="font-semibold mb-2">Compre presentes de amigos</h4>
+                <p class="text-base-content/60 text-sm">Navegue pelos presentes de outros usuários e marque quando comprar um.</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

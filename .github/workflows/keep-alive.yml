@@ -1,0 +1,42 @@
+# GitHub Actions: Keep Render Free Tier Alive
+# Evita que o serviço desligue por inatividade (15 min)
+# Faz ping a cada 14 minutos
+
+name: Keep Render Alive
+
+on:
+  schedule:
+    # Executa a cada 14 minutos
+    # Formato: minuto hora dia mês dia-da-semana
+    - cron: '*/14 * * * *'
+
+  # Permite executar manualmente
+  workflow_dispatch:
+
+jobs:
+  keep-alive:
+    name: Ping Render Service
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Ping Health Endpoint
+        run: |
+          echo "🏓 Fazendo ping no serviço Render..."
+          echo "Timestamp: $(date)"
+
+          # Substitua pela URL do seu app
+          RENDER_URL="https://lista-presentes.onrender.com/health/"
+
+          # Fazer request
+          response=$(curl -s -o /dev/null -w "%{http_code}" "$RENDER_URL")
+
+          if [ "$response" = "200" ]; then
+            echo "✅ Serviço respondeu: HTTP $response"
+          else
+            echo "⚠️  Resposta inesperada: HTTP $response"
+          fi
+
+          echo "Próximo ping em 14 minutos..."
+
+      - name: Log Timestamp
+        run: echo "Last ping: $(date -u +"%Y-%m-%d %H:%M:%S UTC")"

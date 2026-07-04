@@ -1,0 +1,210 @@
+{% extends 'base.html' %}
+
+{% block title %}Notificacoes - Lista de Presentes{% endblock %}
+
+{% block content %}
+<div class="relative bg-gradient-to-r from-primary via-primary/90 to-secondary text-white py-10 -mx-4 px-4 rounded-3xl mb-8 animate-fade-in overflow-hidden">
+    <div class="absolute -top-10 -right-10 w-40 h-40 bg-white/10 rounded-full blur-2xl"></div>
+    <div class="container mx-auto max-w-6xl relative z-10">
+        <h1 class="text-3xl font-extrabold tracking-tight flex items-center gap-2">
+            <i class="bi bi-bell-fill"></i>
+            Minhas Notificacoes
+        </h1>
+        <p class="mt-2 opacity-90">Acompanhe as novidades sobre seus presentes</p>
+
+        <div class="flex gap-4 justify-center mt-6 flex-wrap">
+            <div class="bg-white/20 backdrop-blur-sm px-6 py-3 rounded-full text-center">
+                <div class="text-2xl font-bold">{{ notificacoes.paginator.count }}</div>
+                <div class="text-sm opacity-90">Total</div>
+            </div>
+            <div class="bg-white/20 backdrop-blur-sm px-6 py-3 rounded-full text-center">
+                <div class="text-2xl font-bold">{{ total_nao_lidas }}</div>
+                <div class="text-sm opacity-90">Novas</div>
+            </div>
+            <div class="bg-white/20 backdrop-blur-sm px-6 py-3 rounded-full text-center">
+                <div class="text-2xl font-bold">{{ total_lidas }}</div>
+                <div class="text-sm opacity-90">Lidas</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="container mx-auto max-w-6xl px-4">
+    {% if notificacoes %}
+        <!-- Filter Section -->
+        <div class="bg-base-100 border border-base-300/40 rounded-3xl shadow-sm mb-8 animate-slide-up">
+            <div class="card-body">
+                <div class="flex justify-center flex-wrap gap-3">
+                    <button class="btn btn-primary rounded-xl" onclick="filterNotificacoes('todas')" data-filter="todas">
+                        <i class="bi bi-list"></i> Todas
+                    </button>
+                    <button class="btn btn-outline rounded-xl" onclick="filterNotificacoes('nao-lida')" data-filter="nao-lida">
+                        <i class="bi bi-bell"></i> Novas
+                    </button>
+                    <button class="btn btn-outline rounded-xl" onclick="filterNotificacoes('lida')" data-filter="lida">
+                        <i class="bi bi-bell-slash"></i> Lidas
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div id="notificacoes-container">
+            {% regroup notificacoes by data_notificacao|date:"Y-m-d" as notificacoes_por_dia %}
+
+            {% for dia in notificacoes_por_dia %}
+                {% now "Y-m-d" as hoje %}
+                <div class="timeline-date text-center my-6 relative">
+                    <span class="bg-base-100 border border-base-300/40 px-5 py-2 rounded-full font-bold text-primary shadow-sm inline-flex items-center gap-2 text-sm">
+                        <i class="bi bi-calendar3"></i>
+                        {% if dia.grouper == hoje %}
+                            Hoje
+                        {% else %}
+                            {{ dia.list.0.data_notificacao|date:"d/m/Y" }}
+                        {% endif %}
+                    </span>
+                </div>
+
+                {% for notificacao in dia.list %}
+                    <div class="notificacao-card bg-base-100 border border-base-300/40 rounded-3xl shadow-sm mb-5 border-l-4 transition-all duration-300 hover:translate-x-1 hover:shadow-lg animate-slide-up relative {% if not notificacao.lida %}border-l-primary bg-gradient-to-r from-primary/5 to-base-100{% else %}border-l-base-300 opacity-80{% endif %}" data-status="{% if not notificacao.lida %}nao-lida{% else %}lida{% endif %}">
+                        {% if not notificacao.lida %}
+                            <div class="absolute -left-3 top-6 w-6 h-6 bg-primary rounded-full border-[3px] border-base-100 shadow-lg"></div>
+                        {% endif %}
+                        <div class="card-body">
+                            <div class="flex w-full gap-4">
+                                <div class="w-12 h-12 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-white text-xl flex-shrink-0 shadow-lg">
+                                    <i class="bi bi-gift-fill"></i>
+                                </div>
+
+                                <div class="flex-1">
+                                    <p class="text-lg text-base-content leading-relaxed mb-2">
+                                        {{ notificacao.mensagem }}
+                                    </p>
+
+                                    <div class="flex gap-3 flex-wrap items-center">
+                                        <span class="text-sm text-base-content/40 flex items-center gap-1">
+                                            <i class="bi bi-clock"></i>
+                                            {{ notificacao.data_notificacao|date:"d/m/Y às H:i" }}
+                                        </span>
+
+                                        {% if not notificacao.lida %}
+                                            <span class="badge badge-primary gap-1">
+                                                <i class="bi bi-star-fill"></i> Nova
+                                            </span>
+                                        {% else %}
+                                            <span class="badge badge-ghost gap-1">
+                                                <i class="bi bi-check2"></i> Lida
+                                            </span>
+                                        {% endif %}
+                                    </div>
+
+                                    <div class="mt-4 pt-4 border-t border-base-200">
+                                        <a href="{% url 'meus_presentes' %}" class="btn btn-success btn-sm rounded-xl">
+                                            <i class="bi bi-gift"></i> Ver Meus Presentes
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            {% endfor %}
+        </div>
+
+        <div id="no-results" class="bg-base-100 border border-base-300/40 rounded-3xl shadow-sm hidden">
+            <div class="card-body text-center py-20">
+                <i class="bi bi-funnel text-7xl text-base-300 block mb-4"></i>
+                <h3 class="text-xl font-bold text-base-content mb-2">Nenhuma notificacao nesta categoria</h3>
+                <p class="text-base-content/60">Tente outro filtro</p>
+            </div>
+        </div>
+
+    {% else %}
+        <div class="bg-base-100 border border-base-300/40 rounded-3xl shadow-sm animate-slide-up">
+            <div class="card-body text-center py-20">
+                <i class="bi bi-bell-slash text-7xl text-base-300 block mb-4"></i>
+                <h3 class="text-xl font-bold text-base-content mb-3">Nenhuma notificacao ainda</h3>
+                <p class="text-base-content/60 mb-6">Quando alguem marcar um dos seus presentes como comprado, voce recebera uma notificacao aqui!</p>
+                <a href="{% url 'meus_presentes' %}" class="btn btn-success rounded-xl">
+                    <i class="bi bi-gift"></i> Ver Meus Presentes
+                </a>
+            </div>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function filterNotificacoes(status) {
+        const container = document.getElementById('notificacoes-container');
+        const cards = container ? container.getElementsByClassName('notificacao-card') : [];
+        const noResults = document.getElementById('no-results');
+        const tabs = document.querySelectorAll('[data-filter]');
+        let visibleCount = 0;
+
+        // Atualizar tabs
+        tabs.forEach(tab => {
+            if (tab.getAttribute('data-filter') === status) {
+                tab.classList.add('btn-primary');
+                tab.classList.remove('btn-outline');
+            } else {
+                tab.classList.remove('btn-primary');
+                tab.classList.add('btn-outline');
+            }
+        });
+
+        // Filtrar notificacoes
+        for (let i = 0; i < cards.length; i++) {
+            const cardStatus = cards[i].getAttribute('data-status');
+
+            if (status === 'todas' || cardStatus === status) {
+                cards[i].style.display = '';
+                visibleCount++;
+            } else {
+                cards[i].style.display = 'none';
+            }
+        }
+
+        // Mostrar/ocultar timeline dates
+        const timelineDates = container ? container.getElementsByClassName('timeline-date') : [];
+        for (let i = 0; i < timelineDates.length; i++) {
+            let hasVisibleNext = false;
+            let next = timelineDates[i].nextElementSibling;
+
+            while (next && !next.classList.contains('timeline-date')) {
+                if (next.classList.contains('notificacao-card') && next.style.display !== 'none') {
+                    hasVisibleNext = true;
+                    break;
+                }
+                next = next.nextElementSibling;
+            }
+
+            timelineDates[i].style.display = hasVisibleNext ? '' : 'none';
+        }
+
+        // Mostrar mensagem se nao houver resultados
+        if (noResults) {
+            if (visibleCount === 0) {
+                noResults.classList.remove('hidden');
+                if (container) container.style.display = 'none';
+            } else {
+                noResults.classList.add('hidden');
+                if (container) container.style.display = 'block';
+            }
+        }
+    }
+
+    // Animar cards conforme aparecem
+    const cards = document.querySelectorAll('.notificacao-card');
+    cards.forEach((card, index) => {
+        card.style.animationDelay = `${index * 0.05}s`;
+    });
+
+    // Auto-refresh do contador do navbar (ja marcou como lida ao abrir)
+    setTimeout(() => {
+        if (typeof atualizarNotificacoes === 'function') {
+            atualizarNotificacoes();
+        }
+    }, 1000);
+</script>
+{% endblock %}

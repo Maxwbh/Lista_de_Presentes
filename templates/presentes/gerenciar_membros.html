@@ -1,0 +1,222 @@
+{% extends 'base.html' %}
+{% load static avatar_tags %}
+
+{% block title %}Gerenciar Membros - {{ grupo.nome }}{% endblock %}
+
+{% block content %}
+<!-- Page Header -->
+<div class="max-w-3xl mx-auto">
+    <div class="bg-gradient-to-r from-primary via-primary/90 to-secondary rounded-3xl p-8 mb-6 text-primary-content animate-fade-in relative overflow-hidden">
+        <div class="absolute -top-10 -right-10 w-40 h-40 bg-white/10 rounded-full blur-2xl"></div>
+        <div class="relative flex items-start justify-between gap-4">
+            <div>
+                <h1 class="text-2xl font-extrabold flex items-center gap-3 tracking-tight">
+                    <i class="bi bi-people-fill"></i>
+                    {{ grupo.nome }}
+                </h1>
+                <p class="mt-1.5 opacity-80 text-sm flex items-center gap-3 flex-wrap">
+                    <span><i class="bi bi-people"></i> {{ membros.count }} membro{{ membros.count|pluralize }}</span>
+                    <span class="opacity-50">&bull;</span>
+                    <span><i class="bi bi-calendar3"></i> Criado em {{ grupo.data_criacao|date:"d/m/Y" }}</span>
+                </p>
+                {% if grupo.descricao %}
+                    <p class="mt-2 opacity-70 text-xs max-w-md">{{ grupo.descricao|truncatewords:20 }}</p>
+                {% endif %}
+            </div>
+            <a href="{% url 'grupos_lista' %}" class="btn btn-sm btn-ghost bg-white/10 hover:bg-white/20 border-0 text-primary-content rounded-xl gap-1.5 shrink-0">
+                <i class="bi bi-arrow-left"></i> <span class="hidden sm:inline">Voltar</span>
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="max-w-3xl mx-auto animate-slide-up">
+    {% if messages %}
+        {% for message in messages %}
+            <div role="alert" class="alert {% if message.tags == 'error' %}alert-error{% elif message.tags == 'success' %}alert-success{% elif message.tags == 'warning' %}alert-warning{% else %}alert-info{% endif %} mb-4 rounded-xl text-sm">
+                <span>{{ message }}</span>
+                <button type="button" class="btn btn-ghost btn-xs" onclick="this.closest('.alert').remove()">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <!-- Convidar Membros (destaque) -->
+    <div class="bg-secondary/5 border border-secondary/15 rounded-3xl p-6 mb-6">
+        <div class="flex items-center gap-2 mb-1">
+            <i class="bi bi-person-plus-fill text-secondary"></i>
+            <h4 class="font-extrabold text-sm uppercase tracking-wider text-secondary">Convidar Membros</h4>
+        </div>
+        <p class="text-xs text-base-content/50 mb-4">Compartilhe este link — quem abrir entra direto no grupo</p>
+
+        <div class="flex flex-col sm:flex-row gap-2 mb-3">
+            <input type="text" class="input input-bordered rounded-xl flex-1 text-sm font-mono" id="linkConvite" value="{{ link_convite }}" readonly onclick="this.select()">
+            <button class="btn btn-secondary rounded-xl gap-2 shrink-0" type="button" onclick="copiarLink(this)">
+                <i class="bi bi-clipboard"></i> Copiar
+            </button>
+        </div>
+
+        <div class="flex flex-wrap gap-2 mb-5">
+            <a href="https://wa.me/?text={{ link_convite|urlencode }}"
+               class="btn btn-sm btn-ghost border border-base-300 rounded-xl gap-1.5 text-xs font-semibold"
+               target="_blank">
+                <i class="bi bi-whatsapp text-success"></i> WhatsApp
+            </a>
+            <button class="btn btn-sm btn-ghost border border-base-300 rounded-xl gap-1.5 text-xs font-semibold" onclick="compartilharLink()">
+                <i class="bi bi-share"></i> Compartilhar
+            </button>
+            <button class="btn btn-sm btn-ghost border border-base-300 rounded-xl gap-1.5 text-xs font-semibold" onclick="copiarCodigo(this)" title="Copiar apenas o código (quem receber usa em Grupos > Entrar com código)">
+                <i class="bi bi-key"></i> Copiar código
+            </button>
+        </div>
+
+        <!-- Adicionar membro já cadastrado, pelo e-mail -->
+        <div class="border-t border-secondary/10 pt-4">
+            <p class="text-xs font-bold uppercase tracking-wider text-base-content/40 mb-2">
+                <i class="bi bi-envelope-plus"></i> Adicionar membro já cadastrado
+            </p>
+            <form method="post" action="{% url 'adicionar_membro' grupo.id %}" class="flex flex-col sm:flex-row gap-2">
+                {% csrf_token %}
+                <input type="email" name="email" required placeholder="email@exemplo.com"
+                       class="input input-bordered rounded-xl flex-1 text-sm">
+                <button type="submit" class="btn btn-primary rounded-xl gap-2 shrink-0">
+                    <i class="bi bi-person-plus"></i> Adicionar
+                </button>
+            </form>
+            <p class="text-[11px] text-base-content/40 mt-2">
+                A pessoa precisa ter cadastro no sistema. Se ainda não tiver, envie o link de convite acima.
+            </p>
+        </div>
+    </div>
+
+    <!-- Lista de Membros -->
+    <div class="bg-base-100 border border-base-300/40 rounded-3xl overflow-hidden mb-6">
+        <div class="px-6 py-5 border-b border-base-300/40">
+            <h3 class="font-extrabold text-sm uppercase tracking-wider text-base-content/40 flex items-center gap-2">
+                <i class="bi bi-people"></i> Membros <span class="text-base-content/25">({{ membros.count }})</span>
+            </h3>
+        </div>
+
+        <div class="divide-y divide-base-300/40">
+            {% for membro in membros %}
+            <div class="px-6 py-4 flex items-center gap-4 hover:bg-base-200/40 transition-colors">
+                <!-- Avatar com iniciais -->
+                {% user_avatar_html membro.usuario "w-11 h-11" "text-xl" %}
+
+                <!-- Nome + email -->
+                <div class="flex-1 min-w-0">
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <p class="font-bold text-sm truncate">{{ membro.usuario.get_full_name|default:membro.usuario.email }}</p>
+                        {% if membro.usuario == request.user %}
+                            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-info/10 text-info">Você</span>
+                        {% endif %}
+                        {% if membro.e_mantenedor %}
+                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-primary/10 text-primary">
+                                <i class="bi bi-shield-fill-check"></i> Admin
+                            </span>
+                        {% endif %}
+                    </div>
+                    <p class="text-xs text-base-content/40 truncate mt-0.5">
+                        {{ membro.usuario.email }}
+                        <span class="opacity-60">&bull; desde {{ membro.data_entrada|date:"d/m/Y" }}</span>
+                    </p>
+                </div>
+
+                <!-- Ações -->
+                {% if membro.usuario != request.user %}
+                <div class="flex gap-1 shrink-0">
+                    <a href="{% url 'toggle_mantenedor' grupo.id membro.usuario.id %}"
+                       class="btn btn-ghost btn-sm btn-square rounded-xl text-base-content/40 hover:text-primary hover:bg-primary/10"
+                       title="{% if membro.e_mantenedor %}Remover privilégios de admin{% else %}Promover a admin{% endif %}">
+                        {% if membro.e_mantenedor %}
+                            <i class="bi bi-shield-slash"></i>
+                        {% else %}
+                            <i class="bi bi-shield-plus"></i>
+                        {% endif %}
+                    </a>
+                    <a href="{% url 'remover_membro' grupo.id membro.usuario.id %}"
+                       class="btn btn-ghost btn-sm btn-square rounded-xl text-base-content/40 hover:text-error hover:bg-error/10"
+                       onclick="return confirm('Deseja realmente remover {{ membro.usuario.get_full_name|default:membro.usuario.email }} do grupo?')"
+                       title="Remover do grupo">
+                        <i class="bi bi-person-x"></i>
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+            {% empty %}
+            <div class="px-6 py-12 text-center">
+                <i class="bi bi-people text-4xl text-base-content/10 block mb-3"></i>
+                <p class="text-sm text-base-content/40">Nenhum membro no grupo ainda</p>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Configurações do Grupo -->
+    <div class="bg-base-100 border border-base-300/40 rounded-3xl p-6 mb-4">
+        <h3 class="font-extrabold text-sm uppercase tracking-wider text-base-content/40 mb-4 flex items-center gap-2">
+            <i class="bi bi-gear"></i> Configurações
+        </h3>
+        <div class="flex flex-wrap gap-2">
+            <a href="{% url 'editar_grupo' grupo.id %}" class="btn btn-sm btn-ghost border border-base-300 rounded-xl gap-1.5 text-xs font-semibold">
+                <i class="bi bi-pencil"></i> Editar Informações
+            </a>
+
+            <form method="post" action="{% url 'toggle_ativo_grupo' grupo.id %}" class="inline">
+                {% csrf_token %}
+                {% if grupo.ativo %}
+                <button type="submit" class="btn btn-sm btn-ghost border border-error/30 text-error rounded-xl gap-1.5 text-xs font-semibold hover:bg-error/10"
+                        onclick="return confirm('Desativar o grupo {{ grupo.nome }}? Os membros não poderão mais acessá-lo.')">
+                    <i class="bi bi-pause-circle"></i> Desativar Grupo
+                </button>
+                {% else %}
+                <button type="submit" class="btn btn-sm btn-ghost border border-success/30 text-success rounded-xl gap-1.5 text-xs font-semibold hover:bg-success/10">
+                    <i class="bi bi-play-circle"></i> Ativar Grupo
+                </button>
+                {% endif %}
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function copiarLink(btn) {
+    const linkInput = document.getElementById('linkConvite');
+    linkInput.select();
+    linkInput.setSelectionRange(0, 99999); // Para mobile
+
+    navigator.clipboard.writeText(linkInput.value).then(function() {
+        const originalHTML = btn.innerHTML;
+        btn.innerHTML = '<i class="bi bi-check-lg"></i> Copiado!';
+        setTimeout(function() {
+            btn.innerHTML = originalHTML;
+        }, 2000);
+    }).catch(function(err) {
+        alert('Erro ao copiar: ' + err);
+    });
+}
+
+function copiarCodigo(btn) {
+    navigator.clipboard.writeText('{{ grupo.codigo_convite }}').then(function() {
+        const originalHTML = btn.innerHTML;
+        btn.innerHTML = '<i class="bi bi-check-lg"></i> Código copiado!';
+        setTimeout(function() { btn.innerHTML = originalHTML; }, 2000);
+    });
+}
+
+function compartilharLink() {
+    if (navigator.share) {
+        navigator.share({
+            title: 'Convite para {{ grupo.nome }}',
+            text: 'Junte-se ao meu grupo na Lista de Presentes!',
+            url: '{{ link_convite }}'
+        }).catch(err => console.log('Erro ao compartilhar:', err));
+    } else {
+        const btn = document.querySelector('[onclick^="copiarLink"]');
+        copiarLink(btn);
+        alert('Link copiado! Cole onde desejar compartilhar.');
+    }
+}
+</script>
+{% endblock %}

@@ -1,0 +1,233 @@
+{% extends 'base.html' %}
+{% load avatar_tags %}
+
+{% block title %}Editar Perfil - Lista de Presentes{% endblock %}
+
+{% block content %}
+<div class="max-w-lg mx-auto animate-slide-up">
+    <div class="bg-base-100 rounded-3xl border border-base-300/40 shadow-sm overflow-hidden">
+        <!-- Header -->
+        <div class="bg-gradient-to-r from-primary via-primary/90 to-secondary text-primary-content text-center py-8 px-6 relative overflow-hidden">
+            <div class="absolute -top-10 -right-10 w-40 h-40 bg-white/10 rounded-full blur-2xl"></div>
+            <div class="relative">
+                <i class="bi bi-person-gear text-4xl mb-2 block"></i>
+                <h2 class="text-2xl font-extrabold tracking-tight">Editar Perfil</h2>
+                <p class="mt-1 opacity-80 text-sm">Atualize seus dados, avatar e foto</p>
+            </div>
+        </div>
+
+        <!-- Body -->
+        <div class="p-6 sm:p-8">
+            <form method="post" enctype="multipart/form-data" novalidate id="perfilForm">
+                {% csrf_token %}
+
+                {% if form.non_field_errors %}
+                    <div class="alert alert-error mb-5 rounded-xl text-sm">
+                        <i class="bi bi-x-circle-fill"></i>
+                        <span>{{ form.non_field_errors }}</span>
+                    </div>
+                {% endif %}
+
+                <!-- Avatar / Foto -->
+                <div class="mb-6">
+                    <h3 class="font-extrabold text-sm uppercase tracking-wider text-base-content/40 mb-3 flex items-center gap-2">
+                        <i class="bi bi-person-circle"></i> Sua foto ou avatar
+                    </h3>
+
+                    <div class="flex items-center gap-5 mb-4">
+                        <!-- Preview grande -->
+                        <div class="relative shrink-0">
+                            <div id="avatar-preview" class="w-20 h-20 rounded-2xl flex items-center justify-center text-4xl bg-base-200 border-2 border-primary/30 transition-all shadow-sm overflow-hidden">
+                                <span id="avatar-emoji-display">{{ user.avatar|avatar_emoji }}</span>
+                                <img id="foto-preview-img" class="w-full h-full object-cover"
+                                     {% if user.foto_base64 %}src="data:{{ user.foto_tipo|default:'image/jpeg' }};base64,{{ user.foto_base64 }}" style="display:block;"{% else %}style="display:none;"{% endif %}
+                                     alt="Sua foto">
+                            </div>
+                            <button type="button" id="btn-upload-foto"
+                                    class="absolute -bottom-1.5 -right-1.5 w-7 h-7 rounded-full bg-primary text-primary-content flex items-center justify-center text-xs shadow-md hover:scale-110 transition-transform"
+                                    title="Enviar sua foto"
+                                    onclick="document.getElementById('foto-input').click()">
+                                <i class="bi bi-camera-fill"></i>
+                            </button>
+                        </div>
+
+                        <div class="flex-1">
+                            <p class="text-sm font-semibold text-base-content/70 mb-1">Escolha um avatar ou envie uma foto</p>
+                            <p class="text-xs text-base-content/40">A foto aparecerá na toolbar e na lista de membros</p>
+                        </div>
+                    </div>
+
+                    {{ form.foto }}
+                    {{ form.remover_foto }}
+
+                    <button type="button" id="btn-remover-foto" class="btn btn-xs btn-ghost text-error gap-1 mb-3" {% if not user.foto_base64 %}style="display:none;"{% endif %} onclick="removerFoto()">
+                        <i class="bi bi-x-circle"></i> Remover foto
+                    </button>
+
+                    <!-- Grid de avatares (pessoas) -->
+                    <div class="grid grid-cols-10 gap-1.5" id="avatar-grid">
+                        <button type="button" data-avatar="avatar-1"  data-emoji="👩" class="avatar-option w-9 h-9 rounded-xl bg-base-200 hover:bg-primary/10 flex items-center justify-center text-lg transition-all border-2 border-transparent" title="Mulher">👩</button>
+                        <button type="button" data-avatar="avatar-2"  data-emoji="👨" class="avatar-option w-9 h-9 rounded-xl bg-base-200 hover:bg-primary/10 flex items-center justify-center text-lg transition-all border-2 border-transparent" title="Homem">👨</button>
+                        <button type="button" data-avatar="avatar-3"  data-emoji="👩‍🦰" class="avatar-option w-9 h-9 rounded-xl bg-base-200 hover:bg-primary/10 flex items-center justify-center text-lg transition-all border-2 border-transparent" title="Ruiva">👩‍🦰</button>
+                        <button type="button" data-avatar="avatar-4"  data-emoji="👨‍🦱" class="avatar-option w-9 h-9 rounded-xl bg-base-200 hover:bg-primary/10 flex items-center justify-center text-lg transition-all border-2 border-transparent" title="Cacheado">👨‍🦱</button>
+                        <button type="button" data-avatar="avatar-5"  data-emoji="👩‍🦳" class="avatar-option w-9 h-9 rounded-xl bg-base-200 hover:bg-primary/10 flex items-center justify-center text-lg transition-all border-2 border-transparent" title="Cabelo branco">👩‍🦳</button>
+                        <button type="button" data-avatar="avatar-6"  data-emoji="👨‍🦳" class="avatar-option w-9 h-9 rounded-xl bg-base-200 hover:bg-primary/10 flex items-center justify-center text-lg transition-all border-2 border-transparent" title="Grisalho">👨‍🦳</button>
+                        <button type="button" data-avatar="avatar-7"  data-emoji="🧑" class="avatar-option w-9 h-9 rounded-xl bg-base-200 hover:bg-primary/10 flex items-center justify-center text-lg transition-all border-2 border-transparent" title="Pessoa">🧑</button>
+                        <button type="button" data-avatar="avatar-8"  data-emoji="👧" class="avatar-option w-9 h-9 rounded-xl bg-base-200 hover:bg-primary/10 flex items-center justify-center text-lg transition-all border-2 border-transparent" title="Garota">👧</button>
+                        <button type="button" data-avatar="avatar-9"  data-emoji="👦" class="avatar-option w-9 h-9 rounded-xl bg-base-200 hover:bg-primary/10 flex items-center justify-center text-lg transition-all border-2 border-transparent" title="Garoto">👦</button>
+                        <button type="button" data-avatar="avatar-10" data-emoji="🧔" class="avatar-option w-9 h-9 rounded-xl bg-base-200 hover:bg-primary/10 flex items-center justify-center text-lg transition-all border-2 border-transparent" title="Barbudo">🧔</button>
+                        <button type="button" data-avatar="avatar-11" data-emoji="👩‍🦲" class="avatar-option w-9 h-9 rounded-xl bg-base-200 hover:bg-primary/10 flex items-center justify-center text-lg transition-all border-2 border-transparent" title="Careca">👩‍🦲</button>
+                        <button type="button" data-avatar="avatar-12" data-emoji="🧑‍🦱" class="avatar-option w-9 h-9 rounded-xl bg-base-200 hover:bg-primary/10 flex items-center justify-center text-lg transition-all border-2 border-transparent" title="Cacheado">🧑‍🦱</button>
+                        <button type="button" data-avatar="avatar-13" data-emoji="👴" class="avatar-option w-9 h-9 rounded-xl bg-base-200 hover:bg-primary/10 flex items-center justify-center text-lg transition-all border-2 border-transparent" title="Idoso">👴</button>
+                        <button type="button" data-avatar="avatar-14" data-emoji="👵" class="avatar-option w-9 h-9 rounded-xl bg-base-200 hover:bg-primary/10 flex items-center justify-center text-lg transition-all border-2 border-transparent" title="Idosa">👵</button>
+                        <button type="button" data-avatar="avatar-15" data-emoji="🧑‍🎄" class="avatar-option w-9 h-9 rounded-xl bg-base-200 hover:bg-primary/10 flex items-center justify-center text-lg transition-all border-2 border-transparent" title="Noel">🧑‍🎄</button>
+                        <button type="button" data-avatar="avatar-16" data-emoji="🤶" class="avatar-option w-9 h-9 rounded-xl bg-base-200 hover:bg-primary/10 flex items-center justify-center text-lg transition-all border-2 border-transparent" title="Mamãe Noel">🤶</button>
+                        <button type="button" data-avatar="avatar-17" data-emoji="🦸" class="avatar-option w-9 h-9 rounded-xl bg-base-200 hover:bg-primary/10 flex items-center justify-center text-lg transition-all border-2 border-transparent" title="Herói">🦸</button>
+                        <button type="button" data-avatar="avatar-18" data-emoji="🦸‍♀️" class="avatar-option w-9 h-9 rounded-xl bg-base-200 hover:bg-primary/10 flex items-center justify-center text-lg transition-all border-2 border-transparent" title="Heroína">🦸‍♀️</button>
+                        <button type="button" data-avatar="avatar-19" data-emoji="🧙" class="avatar-option w-9 h-9 rounded-xl bg-base-200 hover:bg-primary/10 flex items-center justify-center text-lg transition-all border-2 border-transparent" title="Mago">🧙</button>
+                        <button type="button" data-avatar="avatar-20" data-emoji="🧝" class="avatar-option w-9 h-9 rounded-xl bg-base-200 hover:bg-primary/10 flex items-center justify-center text-lg transition-all border-2 border-transparent" title="Elfo">🧝</button>
+                    </div>
+                    {{ form.avatar }}
+                </div>
+
+                <!-- Dados Pessoais -->
+                <div class="bg-base-200/40 rounded-2xl p-5 mb-6">
+                    <h3 class="font-extrabold text-sm uppercase tracking-wider text-base-content/40 mb-4 flex items-center gap-2">
+                        <i class="bi bi-person"></i> Dados Pessoais
+                    </h3>
+
+                    <div class="grid grid-cols-2 gap-3 mb-3">
+                        <div class="form-control">
+                            <label class="label pb-1" for="{{ form.first_name.id_for_label }}">
+                                <span class="label-text font-semibold text-sm">Nome <span class="text-error">*</span></span>
+                            </label>
+                            {{ form.first_name }}
+                            {% if form.first_name.errors %}<p class="text-error text-xs mt-1">{{ form.first_name.errors.0 }}</p>{% endif %}
+                        </div>
+                        <div class="form-control">
+                            <label class="label pb-1" for="{{ form.last_name.id_for_label }}">
+                                <span class="label-text font-semibold text-sm">Sobrenome <span class="text-error">*</span></span>
+                            </label>
+                            {{ form.last_name }}
+                            {% if form.last_name.errors %}<p class="text-error text-xs mt-1">{{ form.last_name.errors.0 }}</p>{% endif %}
+                        </div>
+                    </div>
+
+                    <div class="form-control mb-3">
+                        <label class="label pb-1" for="{{ form.email.id_for_label }}">
+                            <span class="label-text font-semibold text-sm">Email <span class="text-error">*</span></span>
+                        </label>
+                        {{ form.email }}
+                        {% if form.email.errors %}<p class="text-error text-xs mt-1">{{ form.email.errors.0 }}</p>{% endif %}
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3">
+                        <div class="form-control">
+                            <label class="label pb-1" for="{{ form.username.id_for_label }}">
+                                <span class="label-text font-semibold text-sm">Usuário <span class="text-error">*</span></span>
+                            </label>
+                            {{ form.username }}
+                            {% if form.username.errors %}<p class="text-error text-xs mt-1">{{ form.username.errors.0 }}</p>{% endif %}
+                        </div>
+                        <div class="form-control">
+                            <label class="label pb-1" for="{{ form.telefone.id_for_label }}">
+                                <span class="label-text font-semibold text-sm">Telefone</span>
+                            </label>
+                            {{ form.telefone }}
+                            {% if form.telefone.errors %}<p class="text-error text-xs mt-1">{{ form.telefone.errors.0 }}</p>{% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex gap-3">
+                    <a href="{% url 'dashboard' %}" class="btn btn-ghost rounded-xl flex-1">Cancelar</a>
+                    <button type="submit" class="btn btn-primary rounded-xl flex-1 gap-2">
+                        <i class="bi bi-check-circle"></i> Salvar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const avatarInput = document.getElementById('avatar-input');
+    const avatarGrid = document.getElementById('avatar-grid');
+    const avatarEmojiDisplay = document.getElementById('avatar-emoji-display');
+    const fotoPreviewImg = document.getElementById('foto-preview-img');
+    const fotoInput = document.getElementById('foto-input');
+    const removerFotoInput = document.getElementById('remover-foto-input');
+    const btnRemoverFoto = document.getElementById('btn-remover-foto');
+    let fotoSelecionada = {% if user.foto_base64 %}true{% else %}false{% endif %};
+
+    function marcarAtivo(btn) {
+        avatarGrid.querySelectorAll('.avatar-option').forEach(el => {
+            el.classList.remove('active', 'border-primary', 'scale-110');
+            el.classList.add('border-transparent');
+        });
+        btn.classList.add('active', 'border-primary', 'scale-110');
+        btn.classList.remove('border-transparent');
+    }
+
+    // Inicializar avatar selecionado a partir do valor atual
+    (function initAvatar() {
+        const atual = avatarInput.value || '{{ user.avatar|default:"avatar-1" }}';
+        const btn = avatarGrid.querySelector(`[data-avatar="${atual}"]`) || avatarGrid.querySelector('.avatar-option');
+        if (btn) {
+            marcarAtivo(btn);
+            avatarInput.value = btn.dataset.avatar;
+        }
+    })();
+
+    // Selecionar avatar
+    avatarGrid.addEventListener('click', function(e) {
+        const btn = e.target.closest('.avatar-option');
+        if (!btn) return;
+        if (fotoSelecionada) removerFoto();
+        marcarAtivo(btn);
+        avatarEmojiDisplay.textContent = btn.dataset.emoji;
+        avatarEmojiDisplay.style.display = 'block';
+        fotoPreviewImg.style.display = 'none';
+        avatarInput.value = btn.dataset.avatar;
+    });
+
+    // Upload de foto
+    fotoInput.addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (!file || !file.type.startsWith('image/')) return;
+        const reader = new FileReader();
+        reader.onload = function(ev) {
+            fotoPreviewImg.src = ev.target.result;
+            fotoPreviewImg.style.display = 'block';
+            avatarEmojiDisplay.style.display = 'none';
+            btnRemoverFoto.style.display = 'inline-flex';
+            fotoSelecionada = true;
+            removerFotoInput.value = '';
+            avatarGrid.querySelectorAll('.avatar-option').forEach(el => {
+                el.classList.remove('active', 'border-primary', 'scale-110');
+                el.classList.add('border-transparent');
+            });
+        };
+        reader.readAsDataURL(file);
+    });
+
+    // Remover foto
+    function removerFoto() {
+        fotoInput.value = '';
+        fotoPreviewImg.style.display = 'none';
+        fotoPreviewImg.src = '';
+        avatarEmojiDisplay.style.display = 'block';
+        btnRemoverFoto.style.display = 'none';
+        fotoSelecionada = false;
+        removerFotoInput.value = 'on';
+        const atual = avatarGrid.querySelector(`[data-avatar="${avatarInput.value}"]`) || avatarGrid.querySelector('.avatar-option');
+        if (atual) {
+            marcarAtivo(atual);
+            avatarEmojiDisplay.textContent = atual.dataset.emoji;
+            avatarInput.value = atual.dataset.avatar;
+        }
+    }
+</script>
+{% endblock %}

@@ -1,0 +1,72 @@
+# Docker Compose para Desenvolvimento
+# Uso: docker compose -f docker-compose.dev.yml up --watch
+#
+# Este arquivo estende o docker-compose.yml com configurações otimizadas para desenvolvimento
+
+version: '3.8'
+
+services:
+  web:
+    # Sobrescrever comando para usar runserver Django (mais rápido para dev)
+    command: >
+      sh -c "
+        python manage.py migrate --noinput &&
+        python manage.py collectstatic --noinput &&
+        python manage.py runserver 0.0.0.0:8000
+      "
+
+    environment:
+      - DEBUG=True
+      - DJANGO_DEVELOPMENT=True
+
+    # File Watch para desenvolvimento
+    develop:
+      watch:
+        # Python files - sync para reload automático
+        - action: sync
+          path: ./lista_presentes
+          target: /app/lista_presentes
+          ignore:
+            - __pycache__/
+            - "*.pyc"
+            - "*.pyo"
+
+        - action: sync
+          path: ./presentes
+          target: /app/presentes
+          ignore:
+            - __pycache__/
+            - "*.pyc"
+            - "*.pyo"
+            - migrations/
+
+        # Templates - sync imediato
+        - action: sync
+          path: ./templates
+          target: /app/templates
+
+        # Static files - sync imediato
+        - action: sync
+          path: ./static
+          target: /app/static
+
+        # CSS files
+        - action: sync
+          path: ./static
+          target: /app/static
+          ignore:
+            - "*.map"
+
+        # JavaScript files
+        - action: sync+restart
+          path: ./static
+          target: /app/static
+          ignore:
+            - "*.map"
+
+        # Rebuild se dependências mudarem
+        - action: rebuild
+          path: ./requirements.txt
+
+        - action: rebuild
+          path: ./Dockerfile

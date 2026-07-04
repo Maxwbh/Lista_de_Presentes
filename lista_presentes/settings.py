@@ -1,0 +1,466 @@
+import os
+from pathlib import Path
+import dj_database_url
+from dotenv import load_dotenv
+
+# Carregar variáveis de ambiente do arquivo .env
+load_dotenv()
+
+BASE_DIR = Path(__file__).resolve().parent.parent
+
+# SECURITY WARNING: keep the secret key used in production secret!
+SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-CHANGE-THIS-IN-PRODUCTION')
+
+# SECURITY WARNING: don't run with debug turned on in production!
+DEBUG = os.getenv('DEBUG', 'True') == 'True'
+
+ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
+
+CSRF_TRUSTED_ORIGINS = [
+    'https://lista-presentes-0hbp.onrender.com',
+    'https://*.onrender.com',
+]
+
+INSTALLED_APPS = [
+    'django.contrib.admin',
+    'django.contrib.auth',
+    'django.contrib.contenttypes',
+    'django.contrib.sessions',
+    'django.contrib.messages',
+    'django.contrib.staticfiles',
+    'django.contrib.sites',  # Required by allauth
+    'presentes',
+    'theme',
+    'tailwind',
+    'rest_framework',
+    'pwa',
+    'corsheaders',
+    # Django-allauth
+    'allauth',
+    'allauth.account',
+    'allauth.socialaccount',
+    # Social providers
+    'allauth.socialaccount.providers.google',
+    'allauth.socialaccount.providers.facebook',
+    'allauth.socialaccount.providers.linkedin_oauth2',
+    'allauth.socialaccount.providers.apple',
+]
+
+# Required by django-allauth
+SITE_ID = 1
+
+MIDDLEWARE = [
+    'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',  # Servir arquivos estáticos em produção
+    'django.contrib.sessions.middleware.SessionMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
+    'django.middleware.common.CommonMiddleware',
+    'django.middleware.csrf.CsrfViewMiddleware',
+    'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'allauth.account.middleware.AccountMiddleware',  # Django-allauth middleware
+    'django.contrib.messages.middleware.MessageMiddleware',
+    'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'presentes.pesquisa_precos.PesquisaPrecoMiddleware',  # Pesquisa semanal de preços
+]
+
+ROOT_URLCONF = 'lista_presentes.urls'
+
+TEMPLATES = [
+    {
+        'BACKEND': 'django.template.backends.django.DjangoTemplates',
+        'DIRS': [BASE_DIR / 'templates'],
+        'APP_DIRS': True,
+        'OPTIONS': {
+            'context_processors': [
+                'django.template.context_processors.debug',
+                'django.template.context_processors.request',
+                'django.contrib.auth.context_processors.auth',
+                'django.contrib.messages.context_processors.messages',
+                'presentes.context_processors.grupos_usuario',
+                'presentes.context_processors.app_version',
+                'presentes.context_processors.social_providers',
+            ],
+        },
+    },
+]
+
+WSGI_APPLICATION = 'lista_presentes.wsgi.application'
+
+# ==============================================================================
+# Banco de Dados - Configuração com Schema Isolado
+# ==============================================================================
+# Suporta múltiplas opções de banco de dados:
+#
+# 1. PRODUÇÃO - Supabase PostgreSQL com Schema Isolado (Configuração Atual):
+#    DATABASE_URL=postgresql://postgres.PROJECT:PASS@aws-1-us-east-2.pooler.supabase.com:6543/postgres
+#
+#    O search_path=lista_presentes é adicionado AUTOMATICAMENTE na URL abaixo!
+#    Não precisa adicionar ?options= manualmente - o código faz isso por você.
+#
+# 2. DESENVOLVIMENTO - SQLite:
+#    Sem DATABASE_URL ou com USE_SQLITE=True
+#
+# IMPORTANTE: Schema isolado lista_presentes é aplicado automaticamente em PostgreSQL
+# ==============================================================================
+
+DATABASE_URL = os.getenv('DATABASE_URL')
+USE_SQLITE = os.getenv('USE_SQLITE', 'False') == 'True'
+
+# Supabase - Variáveis adicionais (opcionais, para uso futuro com Supabase SDK)
+SUPABASE_URL = os.getenv('SUPABASE_URL', '')
+SUPABASE_KEY = os.getenv('SUPABASE_KEY', '')
+
+# Adicionar search_path=lista_presentes na DATABASE_URL se for PostgreSQL
+if DATABASE_URL and not USE_SQLITE and 'postgresql' in DATABASE_URL:
+    # Adicionar options para search_path se ainda não existir na URL
+    if '?' not in DATABASE_URL:
+        # URL sem parâmetros: adicionar ?options=
+        DATABASE_URL = f"{DATABASE_URL}?options=-c search_path=lista_presentes"
+    elif 'options=' not in DATABASE_URL:
+        # URL com parâmetros mas sem options: adicionar &options=
+        DATABASE_URL = f"{DATABASE_URL}&options=-c search_path=lista_presentes"
+    # Se já tem options=, manter como está (usuário configurou manualmente)
+
+if DATABASE_URL and not USE_SQLITE:
+    # Produção: PostgreSQL via DATABASE_URL (Render, Supabase, Heroku, etc.)
+    # Usar parse() diretamente com a URL modificada (não config() que lê do env)
+    db_config = dj_database_url.parse(
+        DATABASE_URL,
+        conn_max_age=600,  # Pool de conexões: mantém conexões por 10 minutos
+        conn_health_checks=True,  # Verifica saúde da conexão antes de usar
+    )
+
+    # GARANTIA: forçar search_path APENAS lista_presentes via OPTIONS,
+    # independente do que veio na URL. Sem 'public' no path, o PostgreSQL
+    # NUNCA cria tabelas no schema public (erro se o schema não existir,
+    # que é o comportamento desejado - fail fast).
+    # Obs: poolers em modo transação ignoram isto; o signal
+    # connection_created em presentes/apps.py cobre esse caso.
+    db_options = db_config.get('OPTIONS', {})
+    db_options['options'] = '-c search_path=lista_presentes'
+
+    # Robustez de conexão com banco remoto (Supabase fora da rede do Render):
+    # - connect_timeout: falha rápido em vez de travar o request
+    # - TCP keepalives: detecta e descarta conexões mortas (NAT/proxy do
+    #   pooler fecha conexões ociosas silenciosamente; sem keepalive o
+    #   Django só descobre no próximo query, com erro para o usuário)
+    db_options.setdefault('connect_timeout', 10)
+    db_options.setdefault('keepalives', 1)
+    db_options.setdefault('keepalives_idle', 30)
+    db_options.setdefault('keepalives_interval', 10)
+    db_options.setdefault('keepalives_count', 3)
+    db_config['OPTIONS'] = db_options
+
+    # Pooler em modo transação (PgBouncer/Supavisor porta 6543) não suporta
+    # server-side cursors — queries com .iterator() quebrariam.
+    # Para conexões persistentes (conn_max_age) prefira Session mode (porta 5432).
+    db_config['DISABLE_SERVER_SIDE_CURSORS'] = True
+
+    DATABASES = {
+        'default': db_config
+    }
+
+    # Schema separado para esta aplicação (compartilhamento de banco Supabase)
+    # IMPORTANTE: Usa APENAS lista_presentes (sem public) para evitar
+    # conflito com django_migrations de outras aplicações Django
+    #
+    # O search_path=lista_presentes já foi adicionado na DATABASE_URL acima,
+    # então o dj_database_url.parse() já parseou corretamente
+else:
+    # Desenvolvimento: SQLite
+    # Use para ambientes com recursos mínimos (512MB-1GB RAM)
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'data' / 'db.sqlite3' if USE_SQLITE else BASE_DIR / 'db.sqlite3',
+        }
+    }
+
+# Password validation
+AUTH_PASSWORD_VALIDATORS = [
+    {
+        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
+    },
+    {
+        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
+    },
+    {
+        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
+    },
+    {
+        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
+    },
+]
+
+# Autenticação
+AUTH_USER_MODEL = 'presentes.Usuario'
+LOGIN_URL = '/login/'
+LOGIN_REDIRECT_URL = '/dashboard/'
+LOGOUT_REDIRECT_URL = '/login/'
+
+# Internacionalização
+LANGUAGE_CODE = 'pt-br'
+TIME_ZONE = 'America/Sao_Paulo'
+USE_I18N = True
+USE_TZ = True
+
+# Arquivos estáticos
+STATIC_URL = '/static/'
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+
+# Diretórios de arquivos estáticos adicionais
+STATICFILES_DIRS = [
+    BASE_DIR / 'static',
+    BASE_DIR / 'theme' / 'static',
+]
+
+# Tailwind CSS
+TAILWIND_APP_NAME = 'theme'
+INTERNAL_IPS = ['127.0.0.1']
+
+# WhiteNoise para servir arquivos estáticos em produção
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+
+# Arquivos de mídia (uploads)
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'
+
+# IMPORTANTE: Criar diretório media se não existir
+import os
+os.makedirs(MEDIA_ROOT, exist_ok=True)
+
+# WhiteNoise também pode servir arquivos de mídia (não é ideal, mas funciona para free tier)
+# Nota: Em produção real, use S3, Cloudinary ou similar
+WHITENOISE_USE_FINDERS = True
+WHITENOISE_AUTOREFRESH = True if DEBUG else False
+
+# PWA Settings
+PWA_APP_NAME = 'Lista de Presentes'
+PWA_APP_DESCRIPTION = "Sistema de Lista de Presentes"
+PWA_APP_THEME_COLOR = '#0A4C95'
+PWA_APP_BACKGROUND_COLOR = '#ffffff'
+PWA_APP_DISPLAY = 'standalone'
+PWA_APP_SCOPE = '/'
+PWA_APP_ORIENTATION = 'any'
+PWA_APP_START_URL = '/dashboard/'
+PWA_APP_ICONS = [
+    {
+        'src': '/static/icons/icon-72x72.svg',
+        'sizes': '72x72',
+        'type': 'image/svg+xml'
+    },
+    {
+        'src': '/static/icons/icon-96x96.svg',
+        'sizes': '96x96',
+        'type': 'image/svg+xml'
+    },
+    {
+        'src': '/static/icons/icon-128x128.svg',
+        'sizes': '128x128',
+        'type': 'image/svg+xml'
+    },
+    {
+        'src': '/static/icons/icon-144x144.svg',
+        'sizes': '144x144',
+        'type': 'image/svg+xml'
+    },
+    {
+        'src': '/static/icons/icon-152x152.svg',
+        'sizes': '152x152',
+        'type': 'image/svg+xml'
+    },
+    {
+        'src': '/static/icons/icon-192x192.svg',
+        'sizes': '192x192',
+        'type': 'image/svg+xml'
+    },
+    {
+        'src': '/static/icons/icon-384x384.svg',
+        'sizes': '384x384',
+        'type': 'image/svg+xml'
+    },
+    {
+        'src': '/static/icons/icon-512x512.svg',
+        'sizes': '512x512',
+        'type': 'image/svg+xml'
+    }
+]
+
+# APIs de IA — ordem de fallback: Gemini -> Claude -> ChatGPT
+# Gemini é a IA principal (free tier generoso - https://aistudio.google.com/apikey)
+GEMINI_API_KEY = os.getenv('GEMINI_API_KEY', 'sua-chave-gemini')
+# gemini-2.0-flash foi desligado em 01/06/2026; 2.5-flash é o sucessor estável com free tier
+GEMINI_MODEL = os.getenv('GEMINI_MODEL', 'gemini-2.5-flash')
+# IAs alternativas (opcionais) — modelos mais baratos de cada provedor,
+# suficientes para a extração JSON simples das sugestões de compra
+ANTHROPIC_API_KEY = os.getenv('ANTHROPIC_API_KEY', 'sua-chave-anthropic')
+ANTHROPIC_MODEL = os.getenv('ANTHROPIC_MODEL', 'claude-haiku-4-5')  # $1/$5 por MTok
+OPENAI_API_KEY = os.getenv('OPENAI_API_KEY', 'sua-chave-openai')
+OPENAI_MODEL = os.getenv('OPENAI_MODEL', 'gpt-4o-mini')
+
+DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# Logging em produção
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{levelname} {asctime} {module} {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'verbose',
+        },
+    },
+    'root': {
+        'handlers': ['console'],
+        'level': 'INFO',
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'django.request': {
+            'handlers': ['console'],
+            'level': 'ERROR',
+            'propagate': False,
+        },
+    },
+}
+
+# Configurações de segurança para produção
+if not DEBUG:
+    # Render.com fornece proxy SSL, não redirecionar no app
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+    SECURE_SSL_REDIRECT = False  # Render.com já faz o redirect
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_BROWSER_XSS_FILTER = True
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+    X_FRAME_OPTIONS = 'DENY'
+
+    # HSTS (HTTP Strict Transport Security)
+    SECURE_HSTS_SECONDS = 31536000  # 1 ano
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
+
+# ==============================================================================
+# GitHub Integration - Auto-create issues for failed image downloads
+# ==============================================================================
+GITHUB_TOKEN = os.getenv('GITHUB_TOKEN', '')  # Token de acesso pessoal do GitHub
+GITHUB_REPO_OWNER = os.getenv('GITHUB_REPO_OWNER', 'Maxwbh')  # Dono do repositório
+GITHUB_REPO_NAME = os.getenv('GITHUB_REPO_NAME', 'Lista_de_Presentes')  # Nome do repositório
+GITHUB_AUTO_CREATE_ISSUES = os.getenv('GITHUB_AUTO_CREATE_ISSUES', 'True') == 'True'  # Habilitar/desabilitar
+
+# URL base da API do GitHub
+GITHUB_API_BASE_URL = 'https://api.github.com'
+
+# Site URL para links em issues
+SITE_URL = os.getenv('SITE_URL', 'http://localhost:8000')
+
+# ==============================================================================
+# Django-allauth Configuration - Social Authentication
+# ==============================================================================
+
+# Authentication backends
+AUTHENTICATION_BACKENDS = [
+    # Django default backend
+    'django.contrib.auth.backends.ModelBackend',
+    # Allauth backend
+    'allauth.account.auth_backends.AuthenticationBackend',
+]
+
+# Allauth settings — sintaxe da versão pinada (django-allauth 65.4.1).
+# Não usar ACCOUNT_LOGIN_METHODS/ACCOUNT_SIGNUP_FIELDS aqui: são de versões
+# mais novas e a ausência das chaves abaixo derruba o system check no boot.
+ACCOUNT_AUTHENTICATION_METHOD = 'email'  # Use email instead of username
+ACCOUNT_EMAIL_REQUIRED = True
+ACCOUNT_UNIQUE_EMAIL = True
+ACCOUNT_USERNAME_REQUIRED = False
+ACCOUNT_EMAIL_VERIFICATION = 'optional'  # Can be 'mandatory', 'optional', or 'none'
+ACCOUNT_SIGNUP_EMAIL_ENTER_TWICE = False
+ACCOUNT_SESSION_REMEMBER = True
+ACCOUNT_LOGOUT_ON_GET = False
+
+# Social account settings
+SOCIALACCOUNT_AUTO_SIGNUP = True
+SOCIALACCOUNT_EMAIL_VERIFICATION = 'optional'
+SOCIALACCOUNT_QUERY_EMAIL = True
+SOCIALACCOUNT_STORE_TOKENS = True
+# Redireciona direto ao provedor ao clicar no botão (sem página intermediária do allauth)
+SOCIALACCOUNT_LOGIN_ON_GET = True
+# Conecta conta social a usuário local existente com o mesmo e-mail
+SOCIALACCOUNT_ADAPTER = 'presentes.adapters.SocialAdapter'
+
+# Provider specific settings
+SOCIALACCOUNT_PROVIDERS = {
+    'google': {
+        'SCOPE': [
+            'profile',
+            'email',
+        ],
+        'AUTH_PARAMS': {
+            'access_type': 'online',
+        },
+        'APP': {
+            'client_id': os.getenv('GOOGLE_CLIENT_ID', ''),
+            'secret': os.getenv('GOOGLE_CLIENT_SECRET', ''),
+            'key': ''
+        }
+    },
+    'facebook': {
+        'METHOD': 'oauth2',
+        'SCOPE': ['email', 'public_profile'],
+        'AUTH_PARAMS': {'auth_type': 'reauthenticate'},
+        'FIELDS': [
+            'id',
+            'email',
+            'name',
+            'first_name',
+            'last_name',
+            'verified',
+        ],
+        'EXCHANGE_TOKEN': True,
+        'VERIFIED_EMAIL': False,
+        'VERSION': 'v18.0',
+        'APP': {
+            'client_id': os.getenv('FACEBOOK_APP_ID', ''),
+            'secret': os.getenv('FACEBOOK_APP_SECRET', ''),
+            'key': ''
+        }
+    },
+    'linkedin_oauth2': {
+        # Scopes atuais do LinkedIn (OpenID Connect) — os antigos
+        # r_basicprofile/r_emailaddress foram descontinuados pelo LinkedIn
+        'SCOPE': [
+            'openid',
+            'profile',
+            'email',
+        ],
+        'APP': {
+            'client_id': os.getenv('LINKEDIN_CLIENT_ID', ''),
+            'secret': os.getenv('LINKEDIN_CLIENT_SECRET', ''),
+            'key': ''
+        }
+    },
+    'apple': {
+        'APP': {
+            'client_id': os.getenv('APPLE_CLIENT_ID', ''),
+            'secret': os.getenv('APPLE_CLIENT_SECRET', ''),
+            'key': os.getenv('APPLE_KEY_ID', ''),
+            'certificate_key': os.getenv('APPLE_PRIVATE_KEY', ''),
+        },
+        'SCOPE': ['name', 'email'],
+    }
+}
+
+# Login/Logout redirect URLs
+LOGIN_REDIRECT_URL = '/dashboard/'
+LOGOUT_REDIRECT_URL = '/'
+ACCOUNT_LOGOUT_REDIRECT_URL = '/'

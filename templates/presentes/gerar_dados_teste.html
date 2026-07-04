@@ -1,0 +1,140 @@
+{% extends 'base.html' %}
+
+{% block title %}Gerar Dados de Teste - Lista de Presentes{% endblock %}
+
+{% block content %}
+<div class="bg-gradient-to-r from-primary via-primary/90 to-secondary text-white py-10 -mx-4 -mt-6 px-4 rounded-b-3xl mb-8 text-center">
+    <div class="max-w-7xl mx-auto">
+        <h1 class="text-3xl font-extrabold">
+            <i class="bi bi-database-fill-gear mr-2"></i>
+            Gerar Dados de Teste
+        </h1>
+        <p class="mt-2 opacity-90">Popule o banco de dados com usuarios e presentes para teste</p>
+    </div>
+</div>
+
+<div class="max-w-7xl mx-auto">
+    <!-- Estatisticas Atuais -->
+    <div class="bg-base-100 border border-base-300/40 rounded-3xl shadow-sm mb-8">
+        <div class="card-body">
+            <h3 class="text-center font-bold text-lg mb-4">
+                <i class="bi bi-graph-up mr-2"></i>
+                Estatisticas Atuais do Banco de Dados
+            </h3>
+            <div class="stats stats-vertical sm:stats-horizontal w-full bg-base-100 border border-base-300/40 rounded-3xl shadow-sm">
+                <div class="stat place-items-center">
+                    <div class="stat-value text-primary">{{ grupos_count|default:0 }}</div>
+                    <div class="stat-desc uppercase tracking-wider font-semibold">Grupos</div>
+                </div>
+                <div class="stat place-items-center">
+                    <div class="stat-value text-primary">{{ usuarios_count }}</div>
+                    <div class="stat-desc uppercase tracking-wider font-semibold">Usuarios</div>
+                </div>
+                <div class="stat place-items-center">
+                    <div class="stat-value text-primary">{{ presentes_count }}</div>
+                    <div class="stat-desc uppercase tracking-wider font-semibold">Presentes Total</div>
+                </div>
+                <div class="stat place-items-center">
+                    <div class="stat-value text-primary">{{ presentes_ativos }}</div>
+                    <div class="stat-desc uppercase tracking-wider font-semibold">Presentes Ativos</div>
+                </div>
+                <div class="stat place-items-center">
+                    <div class="stat-value text-primary">{{ presentes_comprados }}</div>
+                    <div class="stat-desc uppercase tracking-wider font-semibold">Presentes Comprados</div>
+                </div>
+                <div class="stat place-items-center">
+                    <div class="stat-value text-primary">{{ membros_count|default:0 }}</div>
+                    <div class="stat-desc uppercase tracking-wider font-semibold">Membros em Grupos</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Card de Acao -->
+    <div class="bg-base-100 border border-base-300/40 rounded-3xl shadow-sm mb-6">
+        <div class="card-body items-center text-center">
+            <div role="alert" class="alert alert-warning mb-6 text-left">
+                <i class="bi bi-exclamation-triangle-fill text-xl"></i>
+                <span><strong>Atencao:</strong> Esta acao ira criar novos dados de teste no banco de dados. Use apenas em ambiente de desenvolvimento ou quando necessario para testes.</span>
+            </div>
+
+            <h2 class="text-2xl font-bold mb-4">
+                <i class="bi bi-plus-circle mr-2"></i>
+                Criar Dados de Teste
+            </h2>
+
+            <p class="text-base-content/50 mb-4">O sistema ira criar:</p>
+
+            <ul class="text-left max-w-xl mx-auto space-y-3 mb-8">
+                <li class="flex items-start gap-3 pb-3 border-b border-base-200">
+                    <i class="bi bi-diagram-3-fill text-primary mt-0.5"></i>
+                    <span><strong>1 grupo de teste</strong> chamado "Grupo de Testes" (admin incluido como Mantenedor)</span>
+                </li>
+                <li class="flex items-start gap-3 pb-3 border-b border-base-200">
+                    <i class="bi bi-people-fill text-primary mt-0.5"></i>
+                    <span><strong>4 usuarios</strong> com avatar, telefone e emails diferentes</span>
+                </li>
+                <li class="flex items-start gap-3 pb-3 border-b border-base-200">
+                    <i class="bi bi-gift-fill text-primary mt-0.5"></i>
+                    <span><strong>4 presentes por usuario</strong> com imagem gerada, 70% ativos e 30% comprados</span>
+                </li>
+                <li class="flex items-start gap-3 pb-3 border-b border-base-200">
+                    <i class="bi bi-shop text-primary mt-0.5"></i>
+                    <span><strong>2 a 4 sugestoes de loja</strong> por presente, com precos variados</span>
+                </li>
+                <li class="flex items-start gap-3 pb-3 border-b border-base-200">
+                    <i class="bi bi-graph-down-arrow text-primary mt-0.5"></i>
+                    <span><strong>Historico de precos</strong> de 4 semanas por presente (temperaturas quente, estavel e fria)</span>
+                </li>
+                <li class="flex items-start gap-3 pb-3 border-b border-base-200">
+                    <i class="bi bi-bag-check text-primary mt-0.5"></i>
+                    <span><strong>Compras e notificacoes</strong> para os presentes comprados</span>
+                </li>
+                <li class="flex items-start gap-3 pb-3 border-b border-base-200">
+                    <i class="bi bi-wrench text-primary mt-0.5"></i>
+                    <span><strong>Reparos automaticos</strong>: vinculos de membro e imagens de dados antigos</span>
+                </li>
+                <li class="flex items-start gap-3">
+                    <i class="bi bi-key-fill text-primary mt-0.5"></i>
+                    <span>Todos os usuarios com senha: <code class="bg-base-200 px-2 py-0.5 rounded text-sm">senha123</code></span>
+                </li>
+            </ul>
+
+            <form method="post" onsubmit="return confirm('Tem certeza que deseja gerar os dados de teste?\n\nSerao criados usuarios, presentes com imagens, sugestoes de loja, historico de precos, compras e notificacoes.');">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-primary btn-lg rounded-xl gap-2 shadow-lg">
+                    <i class="bi bi-database-fill-add"></i>
+                    Gerar Dados de Teste
+                </button>
+            </form>
+
+            <p class="text-base-content/40 mt-6 text-sm">
+                <i class="bi bi-info-circle mr-1"></i>
+                Os emails seguirao o padrao: joao.silva1@example.com, maria.santos2@example.com, etc.
+            </p>
+        </div>
+    </div>
+
+    <div class="text-center mt-6 mb-4">
+        <a href="{% url 'dashboard' %}" class="btn btn-neutral btn-outline rounded-xl gap-2">
+            <i class="bi bi-arrow-left"></i>
+            Voltar ao Dashboard
+        </a>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Animacao ao carregar a pagina
+    document.addEventListener('DOMContentLoaded', function() {
+        const statItems = document.querySelectorAll('.stat');
+        statItems.forEach((item, index) => {
+            setTimeout(() => {
+                item.style.animation = 'fadeIn 0.5s ease-out';
+                item.style.opacity = '1';
+            }, index * 100);
+        });
+    });
+</script>
+{% endblock %}

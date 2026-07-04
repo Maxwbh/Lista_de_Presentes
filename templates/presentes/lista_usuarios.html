@@ -1,0 +1,643 @@
+{% extends 'base.html' %}
+{% load avatar_tags preco_tags %}
+
+{% block title %}Ver Presentes - Lista de Presentes{% endblock %}
+
+{% block content %}
+<!-- Header -->
+<div class="relative bg-gradient-to-r from-primary via-primary/90 to-secondary text-white py-10 -mx-4 px-4 rounded-3xl mb-8 animate-fade-in overflow-hidden">
+    <div class="absolute -top-10 -right-10 w-40 h-40 bg-white/10 rounded-full blur-2xl"></div>
+    <div class="container mx-auto max-w-6xl flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+            <h1 class="text-3xl font-extrabold tracking-tight flex items-center gap-2">
+                <i class="bi bi-gift-fill"></i>
+                Presentes do Grupo
+            </h1>
+            <p class="mt-2 opacity-90">Escolha quem você quer presentear</p>
+        </div>
+        <!-- Toggle de Visualização -->
+        <div class="inline-flex bg-white/15 backdrop-blur-sm rounded-xl p-1 self-start sm:self-auto">
+            <button class="px-4 py-2 rounded-lg font-semibold text-sm transition-all duration-300 flex items-center gap-2 bg-white text-primary shadow" onclick="switchView('usuarios')" id="btn-view-usuarios">
+                <i class="bi bi-people-fill"></i> Por Membro
+            </button>
+            <button class="px-4 py-2 rounded-lg font-semibold text-sm transition-all duration-300 flex items-center gap-2 text-white/80 hover:bg-white/10" onclick="switchView('produtos')" id="btn-view-produtos">
+                <i class="bi bi-grid-3x3-gap-fill"></i> Por Produto
+            </button>
+        </div>
+    </div>
+</div>
+
+<div class="container mx-auto max-w-6xl px-4">
+
+    <!-- Barra de busca + filtros (compartilhada) -->
+    <div class="bg-base-100 border border-base-300/40 rounded-3xl shadow-sm mb-8 animate-slide-up">
+        <div class="p-4">
+            <form method="get" action="{% url 'lista_usuarios' %}" id="filtros-form">
+                <input type="hidden" name="view" value="usuarios" id="view-input">
+                <div class="flex flex-col lg:flex-row gap-3">
+                    <!-- Busca local (JS) -->
+                    <label class="input input-bordered input-sm h-11 rounded-xl flex items-center gap-2 flex-1">
+                        <i class="bi bi-search text-base-content/30"></i>
+                        <input type="text" id="search-global" class="grow border-0 outline-none bg-transparent" placeholder="Buscar por nome ou produto..." onkeyup="filtrarTudo()">
+                    </label>
+
+                    <div class="flex flex-wrap gap-3">
+                        <select name="ordenar" class="select select-bordered select-sm h-11 rounded-xl min-w-[170px]" onchange="this.form.submit()">
+                            <option value="-data" {% if ordenar_por == '-data' or ordenar_por == '-data_cadastro' %}selected{% endif %}>Mais recentes</option>
+                            <option value="data" {% if ordenar_por == 'data' %}selected{% endif %}>Mais antigos</option>
+                            <option value="produto" {% if ordenar_por == 'produto' %}selected{% endif %}>Produto (A-Z)</option>
+                            <option value="usuario" {% if ordenar_por == 'usuario' %}selected{% endif %}>Membro (A-Z)</option>
+                            <option value="preco" {% if ordenar_por == 'preco' %}selected{% endif %}>Menor preço</option>
+                            <option value="-preco" {% if ordenar_por == '-preco' %}selected{% endif %}>Maior preço</option>
+                            <option value="melhor_preco" {% if ordenar_por == 'melhor_preco' %}selected{% endif %}>Melhor oferta</option>
+                        </select>
+
+                        <input type="number" name="preco_min" class="input input-bordered input-sm h-11 rounded-xl w-28" placeholder="R$ mín" step="0.01" value="{{ preco_min }}">
+                        <input type="number" name="preco_max" class="input input-bordered input-sm h-11 rounded-xl w-28" placeholder="R$ máx" step="0.01" value="{{ preco_max }}">
+
+                        <button type="submit" class="btn btn-primary btn-sm h-11 rounded-xl gap-1.5 px-4">
+                            <i class="bi bi-funnel-fill"></i> Filtrar
+                        </button>
+                        {% if preco_min or preco_max %}
+                        <a href="{% url 'lista_usuarios' %}" class="btn btn-ghost btn-sm h-11 rounded-xl" title="Limpar filtros">
+                            <i class="bi bi-x-lg"></i>
+                        </a>
+                        {% endif %}
+                    </div>
+                </div>
+            </form>
+
+            <!-- Filtro por status (JS) -->
+            <div class="flex items-center gap-1.5 mt-3 pt-3 border-t border-base-300/40">
+                <span class="text-[11px] font-bold uppercase tracking-wider text-base-content/40 mr-1">Mostrar:</span>
+                <button type="button" class="status-pill btn btn-xs rounded-xl btn-primary" data-status="todos" onclick="filtrarStatus('todos', this)">Todos</button>
+                <button type="button" class="status-pill btn btn-xs rounded-xl btn-ghost border border-base-300" data-status="ATIVO" onclick="filtrarStatus('ATIVO', this)">Disponíveis</button>
+                <button type="button" class="status-pill btn btn-xs rounded-xl btn-ghost border border-base-300" data-status="COMPRADO" onclick="filtrarStatus('COMPRADO', this)">Comprados</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- VISUALIZAÇÃO POR MEMBRO -->
+    <div id="view-usuarios" class="view-container">
+        {% if usuarios %}
+            <div id="busca-vazia-usuarios" style="display:none;" class="text-center py-12 text-base-content/50">
+                <i class="bi bi-search text-4xl text-base-300 block mb-2"></i>
+                Nenhum membro ou presente encontrado para a busca.
+            </div>
+            <div id="usuarios-container" class="space-y-5">
+                {% for usuario in usuarios %}
+                    <div class="usuario-card bg-base-100 border border-base-300/40 rounded-3xl shadow-sm overflow-hidden hover:shadow-md transition-all duration-300 animate-slide-up"
+                         data-nome="{{ usuario.first_name }} {{ usuario.last_name }}"
+                         data-presentes="{% for p in usuario.presentes_list %}{{ p.descricao|lower }} {% endfor %}">
+                        <!-- Cabeçalho do membro -->
+                        <div class="flex items-center gap-4 p-5 cursor-pointer select-none hover:bg-base-200/40 transition-colors" onclick="toggleUsuario(this)">
+                            {% user_avatar_html usuario "w-12 h-12" "text-2xl" %}
+                            <div class="flex-1 min-w-0">
+                                <h3 class="text-lg font-bold text-base-content truncate">
+                                    {{ usuario.first_name }} {{ usuario.last_name }}
+                                </h3>
+                                <div class="flex gap-2 text-xs mt-1 flex-wrap">
+                                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary/10 text-primary font-semibold">
+                                        <i class="bi bi-gift"></i> {{ usuario.presentes_ativos }} disponíve{{ usuario.presentes_ativos|pluralize:"l,is" }}
+                                    </span>
+                                    {% if usuario.presentes_comprados > 0 %}
+                                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-success/10 text-success font-semibold">
+                                        <i class="bi bi-bag-check"></i> {{ usuario.presentes_comprados }} comprado{{ usuario.presentes_comprados|pluralize }}
+                                    </span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <i class="bi bi-chevron-down text-xl text-base-content/30 transition-transform duration-300 expand-icon"></i>
+                        </div>
+
+                        <!-- Presentes do membro -->
+                        <div class="presentes-section hidden px-5 pb-5 border-t border-base-300/40 pt-5">
+                            {% if usuario.presentes_list %}
+                                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                                    {% for presente in usuario.presentes_list %}
+                                        <div class="presente-membro bg-base-100 border border-base-300/40 rounded-2xl overflow-hidden transition-all duration-300 hover:border-primary/40 hover:shadow-lg hover:-translate-y-0.5 flex flex-col {% if presente.status == 'COMPRADO' %}opacity-70{% endif %}" data-status="{{ presente.status }}">
+                                            <!-- Imagem (sem sobreposições de texto) -->
+                                            <div class="relative aspect-[4/3] bg-base-200 {% if presente.status == 'COMPRADO' %}grayscale-[40%]{% endif %}">
+                                                {% if presente.tem_imagem %}
+                                                    <img src="{{ presente.get_imagem_url }}" alt="{{ presente.descricao }}" loading="lazy" class="w-full h-full object-contain">
+                                                {% else %}
+                                                    <div class="w-full h-full flex items-center justify-center">
+                                                        <i class="bi bi-gift text-5xl text-base-300"></i>
+                                                    </div>
+                                                {% endif %}
+                                                {% if presente.status == 'COMPRADO' %}
+                                                <div class="absolute top-2 left-2">
+                                                    <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-base-content/60 text-white backdrop-blur-sm shadow">
+                                                        <i class="bi bi-bag-check text-[10px]"></i> Comprado
+                                                    </span>
+                                                </div>
+                                                {% endif %}
+                                                {% if presente.sugestoes.count > 0 %}
+                                                <div class="absolute top-2 right-2">
+                                                    <span class="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-bold bg-base-100/90 text-primary backdrop-blur-sm shadow">
+                                                        <i class="bi bi-shop"></i> {{ presente.sugestoes.count }}
+                                                    </span>
+                                                </div>
+                                                {% endif %}
+                                            </div>
+
+                                            <div class="p-3.5 flex flex-col flex-1">
+                                                <p class="font-semibold text-sm leading-snug line-clamp-2 mb-2">{{ presente.descricao|truncatewords:12 }}</p>
+
+                                                <!-- Preço + temperatura (no corpo, sem sobrepor a imagem) -->
+                                                <div class="flex items-center gap-2 mb-3 min-h-[24px]">
+                                                    {% if presente.preco %}
+                                                    <span class="text-base font-extrabold text-success">R$ {{ presente.preco }}</span>
+                                                    {% with temp=presente.temperatura %}
+                                                    {% if temp.codigo == 'quente' or temp.codigo == 'frio' %}
+                                                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold {{ temp.css }}" title="{{ temp.label }}">
+                                                        <i class="bi {{ temp.icone }}"></i>
+                                                    </span>
+                                                    {% endif %}
+                                                    {% endwith %}
+                                                    {% else %}
+                                                    <span class="text-xs text-base-content/30">Preço não informado</span>
+                                                    {% endif %}
+                                                </div>
+
+                                                <div class="mt-auto flex items-center gap-1.5">
+                                                    {% if presente.status == 'ATIVO' %}
+                                                    <form method="post" action="{% url 'marcar_comprado' presente.id %}" class="flex-1">
+                                                        {% csrf_token %}
+                                                        <button type="button" class="btn btn-primary btn-sm rounded-xl w-full gap-1.5"
+                                                                data-descricao="{{ presente.descricao|truncatewords:10 }}"
+                                                                data-destinatario="{{ usuario.first_name }} {{ usuario.last_name }}"
+                                                                data-preco="{% if presente.preco %}R$ {{ presente.preco }}{% endif %}"
+                                                                data-imagem="{% if presente.tem_imagem %}{{ presente.get_imagem_url }}{% endif %}"
+                                                                onclick="abrirConfirmacaoCompra(this)">
+                                                            <i class="bi bi-bag-heart"></i> Comprar
+                                                        </button>
+                                                    </form>
+                                                    {% else %}
+                                                    <span class="flex-1 inline-flex items-center justify-center gap-1.5 text-xs text-base-content/50 bg-base-200/60 rounded-xl py-2">
+                                                        <i class="bi bi-check-circle"></i> Já comprado
+                                                    </span>
+                                                    {% endif %}
+                                                    {% if presente.sugestoes.count > 0 %}
+                                                    <button type="button" class="btn btn-ghost btn-sm btn-square rounded-xl border border-base-300" title="Ver sugestões de lojas" onclick="document.getElementById('modalSugestoes{{ presente.id }}').showModal()">
+                                                        <i class="bi bi-shop"></i>
+                                                    </button>
+                                                    {% endif %}
+                                                    {% if presente.url %}
+                                                    <a href="{{ presente.url }}" target="_blank" rel="noopener noreferrer" class="btn btn-ghost btn-sm btn-square rounded-xl border border-base-300" title="Ver produto original">
+                                                        <i class="bi bi-box-arrow-up-right"></i>
+                                                    </a>
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    {% endfor %}
+                                </div>
+
+                                {% if usuario.total_presentes > usuario.presentes_list|length %}
+                                    <div class="text-center mt-5">
+                                        <a href="{% url 'presentes_usuario' usuario.id %}" class="btn btn-ghost btn-sm rounded-xl text-primary gap-1.5">
+                                            Ver todos os {{ usuario.total_presentes }} presentes
+                                            <i class="bi bi-arrow-right"></i>
+                                        </a>
+                                    </div>
+                                {% endif %}
+                                <p class="status-vazio-membro text-base-content/50 text-center py-6 text-sm hidden">
+                                    <i class="bi bi-inbox block text-3xl text-base-300 mb-2"></i>
+                                    Nenhum presente nesta categoria
+                                </p>
+                            {% else %}
+                                <p class="text-base-content/50 text-center py-6 text-sm">
+                                    <i class="bi bi-inbox block text-3xl text-base-300 mb-2"></i>
+                                    Nenhum presente cadastrado
+                                </p>
+                            {% endif %}
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="bg-base-100 border border-base-300/40 rounded-3xl shadow-sm animate-slide-up">
+                <div class="p-6 text-center py-20">
+                    <i class="bi bi-person-x text-7xl text-base-300 block mb-4"></i>
+                    <h3 class="text-xl font-extrabold text-base-content mb-2">Nenhum outro membro no grupo</h3>
+                    <p class="text-base-content/60 mb-6">Convide seus familiares e amigos para participarem!</p>
+                    <a href="{% url 'grupos_lista' %}" class="btn btn-primary rounded-xl gap-2">
+                        <i class="bi bi-people"></i> Gerenciar Grupos
+                    </a>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- VISUALIZAÇÃO POR PRODUTO -->
+    <div id="view-produtos" class="view-container hidden">
+        {% if todos_presentes %}
+            <div id="busca-vazia-produtos" style="display:none;" class="text-center py-12 text-base-content/50">
+                <i class="bi bi-search text-4xl text-base-300 block mb-2"></i>
+                Nenhum produto encontrado para a busca.
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5" id="produtos-container">
+                {% for presente in todos_presentes %}
+                    <div class="produto-card bg-base-100 border border-base-300/40 rounded-3xl shadow-sm hover:shadow-lg transition-all duration-300 hover:-translate-y-1 overflow-hidden flex flex-col animate-slide-up {% if presente.status == 'COMPRADO' %}opacity-70{% endif %}" data-descricao="{{ presente.descricao|lower }}" data-usuario="{{ presente.usuario.first_name }} {{ presente.usuario.last_name }}" data-status="{{ presente.status }}">
+                        <!-- Imagem -->
+                        <div class="relative aspect-[4/3] bg-base-200 {% if presente.status == 'COMPRADO' %}grayscale-[40%]{% endif %}">
+                            {% if presente.tem_imagem %}
+                                <img src="{{ presente.get_imagem_url }}" alt="{{ presente.descricao }}" loading="lazy" class="w-full h-full object-contain">
+                            {% else %}
+                                <div class="w-full h-full flex items-center justify-center">
+                                    <i class="bi bi-gift text-6xl text-base-300"></i>
+                                </div>
+                            {% endif %}
+
+                            <!-- Dono do presente -->
+                            <div class="absolute top-3 left-3">
+                                <span class="inline-flex items-center gap-1.5 pl-1 pr-2.5 py-1 rounded-full text-[11px] font-bold bg-base-100/90 backdrop-blur-sm shadow">
+                                    {% user_avatar_html presente.usuario "w-5 h-5" "text-xs" %}
+                                    {{ presente.usuario.first_name }}
+                                </span>
+                            </div>
+
+                            {% if presente.status == 'COMPRADO' %}
+                            <div class="absolute top-3 right-3">
+                                <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-base-content/60 text-white backdrop-blur-sm shadow">
+                                    <i class="bi bi-bag-check text-[10px]"></i> Comprado
+                                </span>
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        <div class="p-4 flex flex-col flex-1">
+                            <h5 class="font-bold text-sm leading-snug line-clamp-2 mb-2">{{ presente.descricao|truncatewords:14 }}</h5>
+
+                            <!-- Preço + temperatura + melhor oferta (no corpo) -->
+                            <div class="flex items-center flex-wrap gap-2 mb-3 min-h-[24px]">
+                                {% if presente.preco %}
+                                <span class="text-base font-extrabold text-success">R$ {{ presente.preco }}</span>
+                                {% with temp=presente.temperatura %}
+                                {% if temp.codigo == 'quente' or temp.codigo == 'frio' %}
+                                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold {{ temp.css }}" title="{{ temp.label }}">
+                                    <i class="bi {{ temp.icone }}"></i>
+                                </span>
+                                {% endif %}
+                                {% endwith %}
+                                {% else %}
+                                <span class="text-xs text-base-content/30">Preço não informado</span>
+                                {% endif %}
+                                {% if presente.melhor_preco and presente.preco and presente.melhor_preco < presente.preco %}
+                                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-success/10 text-success ml-auto" title="Melhor oferta encontrada">
+                                    <i class="bi bi-star-fill"></i> R$ {{ presente.melhor_preco }}
+                                </span>
+                                {% endif %}
+                            </div>
+
+                            <div class="mt-auto flex items-center gap-1.5">
+                                <form method="post" action="{% url 'marcar_comprado' presente.id %}" class="flex-1">
+                                    {% csrf_token %}
+                                    <button type="button" class="btn btn-primary btn-sm rounded-xl w-full gap-1.5"
+                                            data-descricao="{{ presente.descricao|truncatewords:10 }}"
+                                            data-destinatario="{{ presente.usuario.first_name }} {{ presente.usuario.last_name }}"
+                                            data-preco="{% if presente.preco %}R$ {{ presente.preco }}{% endif %}"
+                                            data-imagem="{% if presente.tem_imagem %}{{ presente.get_imagem_url }}{% endif %}"
+                                            onclick="abrirConfirmacaoCompra(this)">
+                                        <i class="bi bi-bag-heart"></i> Comprar
+                                    </button>
+                                </form>
+                                {% if presente.sugestoes.count > 0 %}
+                                <button type="button" class="btn btn-ghost btn-sm btn-square rounded-xl border border-base-300" title="Ver {{ presente.sugestoes.count }} sugestões de lojas" onclick="document.getElementById('modalSugestoes{{ presente.id }}').showModal()">
+                                    <i class="bi bi-shop"></i>
+                                </button>
+                                {% endif %}
+                                {% if presente.url %}
+                                <a href="{{ presente.url }}" target="_blank" rel="noopener noreferrer" class="btn btn-ghost btn-sm btn-square rounded-xl border border-base-300" title="Ver produto original">
+                                    <i class="bi bi-box-arrow-up-right"></i>
+                                </a>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="bg-base-100 border border-base-300/40 rounded-3xl shadow-sm animate-slide-up">
+                <div class="p-6 text-center py-20">
+                    <i class="bi bi-gift-fill text-7xl text-base-300 block mb-4"></i>
+                    <h3 class="text-xl font-extrabold text-base-content mb-2">Nenhum presente disponível</h3>
+                    <p class="text-base-content/60">Aguarde novos presentes serem cadastrados</p>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- Modais de Sugestões (compartilhado entre as duas views) -->
+    {% for presente in todos_presentes %}
+        {% if presente.sugestoes.count > 0 %}
+            <dialog id="modalSugestoes{{ presente.id }}" class="modal">
+                <div class="modal-box max-w-lg rounded-3xl p-0 overflow-hidden">
+                    <div class="bg-gradient-to-r from-primary to-secondary text-white px-6 py-4 flex items-center justify-between">
+                        <h3 class="font-bold text-base flex items-center gap-2 pr-2">
+                            <i class="bi bi-shop"></i>
+                            {{ presente.descricao|truncatewords:8 }}
+                        </h3>
+                        <form method="dialog">
+                            <button class="btn btn-ghost btn-sm btn-circle text-white hover:bg-white/20">
+                                <i class="bi bi-x-lg"></i>
+                            </button>
+                        </form>
+                    </div>
+
+                    <div class="p-5 space-y-2.5 max-h-[60vh] overflow-y-auto">
+                        {% with temp=presente.temperatura %}
+                        {% if temp.codigo != 'sem_dados' %}
+                        <div class="flex items-center justify-between gap-2 mb-1">
+                            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold {{ temp.css }}">
+                                <i class="bi {{ temp.icone }}"></i> {{ temp.label }}
+                            </span>
+                            {% if presente.preco %}
+                            <span class="text-[11px] text-base-content/40">Referência: R$ {{ presente.preco }}</span>
+                            {% endif %}
+                        </div>
+                        {% endif %}
+                        {% endwith %}
+
+                        <!-- Evolução de preço (estilo LPII) -->
+                        {% if presente.sparkline %}
+                        <div class="bg-base-200/40 rounded-2xl p-3 mb-2">
+                            <div class="flex items-center justify-between mb-1">
+                                <span class="text-[10px] font-bold uppercase tracking-wider text-base-content/40">
+                                    <i class="bi bi-graph-down-arrow"></i> Evolução de preço
+                                </span>
+                                <span class="text-[10px] text-base-content/40">
+                                    Mín R$ {{ presente.sparkline.min|floatformat:2 }} · Máx R$ {{ presente.sparkline.max|floatformat:2 }}
+                                </span>
+                            </div>
+                            <svg viewBox="0 0 {{ presente.sparkline.largura }} {{ presente.sparkline.altura }}" class="w-full" style="max-height: 170px;">
+                                <defs>
+                                    <linearGradient id="grad-modal-{{ presente.id }}" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="0%" stop-color="#e11d48" stop-opacity="0.2"/>
+                                        <stop offset="100%" stop-color="#e11d48" stop-opacity="0"/>
+                                    </linearGradient>
+                                </defs>
+                                {% for g in presente.sparkline.grades %}
+                                <line x1="{{ presente.sparkline.pad_esq }}" y1="{{ g.y }}" x2="{{ presente.sparkline.grade_x2 }}" y2="{{ g.y }}"
+                                      stroke="#94a3b8" stroke-opacity="0.18" stroke-width="1" stroke-dasharray="4 4"/>
+                                <text x="{{ presente.sparkline.pad_esq_texto }}" y="{{ g.y_texto }}" text-anchor="end"
+                                      font-size="11" fill="#94a3b8">{{ g.valor_fmt }}</text>
+                                {% endfor %}
+                                <path d="{{ presente.sparkline.area }}" fill="url(#grad-modal-{{ presente.id }})"/>
+                                <polyline points="{{ presente.sparkline.polyline }}" fill="none" stroke="#e11d48" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                                {% for p in presente.sparkline.pontos %}
+                                <circle cx="{{ p.x }}" cy="{{ p.y }}" r="4" fill="#fff" stroke="#e11d48" stroke-width="2.5">
+                                    <title>R$ {{ p.preco }} - {{ p.loja|default:"--" }} ({{ p.data|date:"d/m/Y" }})</title>
+                                </circle>
+                                {% if p.rotulo %}
+                                <text x="{{ p.x }}" y="{{ presente.sparkline.y_rotulo }}" text-anchor="middle"
+                                      font-size="12" font-weight="600" fill="#64748b">{{ p.data_fmt }}</text>
+                                {% endif %}
+                                {% endfor %}
+                            </svg>
+                        </div>
+                        {% endif %}
+
+                        {% with melhor=presente.sugestoes.all|first %}
+                        {% for sugestao in presente.sugestoes.all %}
+                            <div class="flex items-center justify-between gap-3 rounded-2xl p-3.5 border {% if forloop.first %}border-success/40 bg-success/5{% else %}border-base-300/40{% endif %}">
+                                <div class="flex-1 min-w-0">
+                                    <div class="flex items-center gap-2">
+                                        {% if forloop.first %}
+                                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-success text-success-content">
+                                            <i class="bi bi-trophy-fill"></i> Melhor
+                                        </span>
+                                        {% endif %}
+                                        <span class="font-semibold text-sm truncate">{{ sugestao.local_compra|loja_limpa }}</span>
+                                    </div>
+                                    {% if sugestao.preco_sugerido %}
+                                    <div class="flex items-baseline gap-2 mt-0.5">
+                                        <span class="text-lg font-extrabold {% if forloop.first %}text-success{% else %}text-base-content/70{% endif %}">
+                                            R$ {{ sugestao.preco_sugerido }}
+                                        </span>
+                                        {% if not forloop.first and melhor.preco_sugerido and sugestao.preco_sugerido > melhor.preco_sugerido %}
+                                        <span class="text-[11px] font-semibold text-error/60">
+                                            +R$ {{ sugestao.preco_sugerido|menos:melhor.preco_sugerido|floatformat:2 }}
+                                        </span>
+                                        {% endif %}
+                                    </div>
+                                    {% else %}
+                                    <div class="text-sm text-base-content/40 mt-0.5">Consultar preço</div>
+                                    {% endif %}
+                                </div>
+                                {% if sugestao.url_compra %}
+                                <a href="{{ sugestao.url_compra }}" target="_blank" rel="noopener noreferrer" class="btn btn-sm rounded-xl gap-1.5 {% if forloop.first %}btn-success{% else %}btn-ghost border border-base-300{% endif %}">
+                                    Visitar <i class="bi bi-box-arrow-up-right text-xs"></i>
+                                </a>
+                                {% endif %}
+                            </div>
+                        {% endfor %}
+                        {% endwith %}
+                    </div>
+                </div>
+                <form method="dialog" class="modal-backdrop">
+                    <button>close</button>
+                </form>
+            </dialog>
+        {% endif %}
+    {% endfor %}
+
+    <!-- Modal de Confirmação de Compra -->
+    <dialog id="modalConfirmarCompra" class="modal">
+        <div class="modal-box max-w-sm rounded-3xl p-0 overflow-hidden">
+            <div class="bg-gradient-to-r from-primary to-secondary text-white px-6 py-5 text-center">
+                <div class="w-14 h-14 rounded-2xl bg-white/15 backdrop-blur-sm flex items-center justify-center text-2xl mx-auto mb-2">
+                    <i class="bi bi-bag-heart-fill"></i>
+                </div>
+                <h3 class="font-extrabold text-lg">Confirmar Compra</h3>
+            </div>
+
+            <div class="p-6">
+                <div class="flex items-center gap-3.5 bg-base-200/60 rounded-2xl p-3.5 mb-4">
+                    <div class="w-16 h-16 rounded-xl bg-base-200 shrink-0 overflow-hidden flex items-center justify-center">
+                        <img id="confirma-imagem" class="w-full h-full object-contain" style="display:none;" alt="">
+                        <i id="confirma-imagem-placeholder" class="bi bi-gift text-2xl text-base-300"></i>
+                    </div>
+                    <div class="min-w-0">
+                        <p id="confirma-descricao" class="font-bold text-sm leading-snug line-clamp-2"></p>
+                        <p class="text-xs text-base-content/50 mt-0.5">
+                            Para: <span id="confirma-destinatario" class="font-semibold"></span>
+                        </p>
+                        <p id="confirma-preco" class="text-success font-extrabold text-sm mt-0.5"></p>
+                    </div>
+                </div>
+
+                <div class="flex items-start gap-2.5 text-xs text-base-content/50 bg-info/5 border border-info/10 rounded-xl p-3 mb-5">
+                    <i class="bi bi-info-circle text-info mt-0.5"></i>
+                    <span>O presente será marcado como comprado e os demais membros do grupo serão avisados para não comprarem em duplicidade.</span>
+                </div>
+
+                <div class="flex gap-2.5">
+                    <form method="dialog" class="flex-1">
+                        <button class="btn btn-ghost rounded-xl w-full">Cancelar</button>
+                    </form>
+                    <button type="button" class="btn btn-primary rounded-xl flex-1 gap-1.5" onclick="confirmarCompra(this)">
+                        <i class="bi bi-check2-circle"></i> Confirmar
+                    </button>
+                </div>
+            </div>
+        </div>
+        <form method="dialog" class="modal-backdrop"><button>close</button></form>
+    </dialog>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Alternar entre visualizações
+    function switchView(view) {
+        const btnUsuarios = document.getElementById('btn-view-usuarios');
+        const btnProdutos = document.getElementById('btn-view-produtos');
+        const viewUsuarios = document.getElementById('view-usuarios');
+        const viewProdutos = document.getElementById('view-produtos');
+        const viewInput = document.getElementById('view-input');
+
+        const ativo = ['bg-white', 'text-primary', 'shadow'];
+        const inativo = ['text-white/80', 'hover:bg-white/10'];
+
+        if (view === 'usuarios') {
+            btnUsuarios.classList.add(...ativo);
+            btnUsuarios.classList.remove(...inativo);
+            btnProdutos.classList.remove(...ativo);
+            btnProdutos.classList.add(...inativo);
+            viewUsuarios.classList.remove('hidden');
+            viewProdutos.classList.add('hidden');
+        } else {
+            btnProdutos.classList.add(...ativo);
+            btnProdutos.classList.remove(...inativo);
+            btnUsuarios.classList.remove(...ativo);
+            btnUsuarios.classList.add(...inativo);
+            viewProdutos.classList.remove('hidden');
+            viewUsuarios.classList.add('hidden');
+        }
+
+        if (viewInput) viewInput.value = view;
+        localStorage.setItem('viewPreference', view);
+        filtrarTudo();
+    }
+
+    // Restaurar visualização ao carregar a página
+    document.addEventListener('DOMContentLoaded', function() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const viewParam = urlParams.get('view');
+        const savedView = viewParam || localStorage.getItem('viewPreference') || 'usuarios';
+
+        if (savedView === 'produtos') {
+            switchView('produtos');
+        }
+
+        // Expandir automaticamente o primeiro membro
+        const primeiro = document.querySelector('.usuario-card .presentes-section');
+        if (primeiro) {
+            primeiro.classList.remove('hidden');
+            const icon = primeiro.closest('.usuario-card').querySelector('.expand-icon');
+            if (icon) icon.classList.add('rotate-180');
+        }
+    });
+
+    // Expandir/colapsar membro
+    function toggleUsuario(element) {
+        const card = element.closest('.usuario-card');
+        const section = card.querySelector('.presentes-section');
+        const icon = card.querySelector('.expand-icon');
+        section.classList.toggle('hidden');
+        icon.classList.toggle('rotate-180');
+    }
+
+    // Confirmação de compra com modal estilizado
+    let formCompraAtual = null;
+
+    function abrirConfirmacaoCompra(btn) {
+        formCompraAtual = btn.closest('form');
+
+        document.getElementById('confirma-descricao').textContent = btn.dataset.descricao || '';
+        document.getElementById('confirma-destinatario').textContent = btn.dataset.destinatario || '';
+        document.getElementById('confirma-preco').textContent = btn.dataset.preco || '';
+
+        const img = document.getElementById('confirma-imagem');
+        const placeholder = document.getElementById('confirma-imagem-placeholder');
+        if (btn.dataset.imagem) {
+            img.src = btn.dataset.imagem;
+            img.style.display = 'block';
+            placeholder.style.display = 'none';
+        } else {
+            img.style.display = 'none';
+            placeholder.style.display = 'block';
+        }
+
+        document.getElementById('modalConfirmarCompra').showModal();
+    }
+
+    function confirmarCompra(btn) {
+        if (!formCompraAtual) return;
+        btn.disabled = true;
+        btn.innerHTML = '<span class="loading loading-spinner loading-sm"></span> Comprando...';
+        formCompraAtual.submit();
+    }
+
+    // Filtro por status (Todos / Disponíveis / Comprados)
+    let statusAtual = 'todos';
+    function filtrarStatus(status, btn) {
+        statusAtual = status;
+        document.querySelectorAll('.status-pill').forEach(p => {
+            const on = p.dataset.status === status;
+            p.classList.toggle('btn-primary', on);
+            p.classList.toggle('btn-ghost', !on);
+            p.classList.toggle('border', !on);
+            p.classList.toggle('border-base-300', !on);
+        });
+        filtrarTudo();
+    }
+
+    function combinaStatus(cardStatus) {
+        return statusAtual === 'todos' || cardStatus === statusAtual;
+    }
+
+    // Busca + status: filtra membros (por nome/presentes) e produtos
+    function filtrarTudo() {
+        const filter = (document.getElementById('search-global').value || '').toLowerCase().trim();
+
+        let membrosVisiveis = 0;
+        document.querySelectorAll('#usuarios-container .usuario-card').forEach(card => {
+            const nome = (card.getAttribute('data-nome') || '').toLowerCase();
+            const presentes = (card.getAttribute('data-presentes') || '').toLowerCase();
+            const buscaOk = !filter || nome.includes(filter) || presentes.includes(filter);
+            card.style.display = buscaOk ? '' : 'none';
+            if (buscaOk) membrosVisiveis++;
+
+            // Filtrar os presentes dentro do card do membro pelo status
+            let visiveisNoCard = 0;
+            card.querySelectorAll('.presente-membro').forEach(p => {
+                const ok = combinaStatus(p.getAttribute('data-status'));
+                p.style.display = ok ? '' : 'none';
+                if (ok) visiveisNoCard++;
+            });
+            const vazio = card.querySelector('.status-vazio-membro');
+            if (vazio) vazio.classList.toggle('hidden', visiveisNoCard !== 0);
+        });
+
+        let produtosVisiveis = 0;
+        document.querySelectorAll('#produtos-container .produto-card').forEach(card => {
+            const descricao = (card.getAttribute('data-descricao') || '');
+            const usuario = (card.getAttribute('data-usuario') || '').toLowerCase();
+            const buscaOk = !filter || descricao.includes(filter) || usuario.includes(filter);
+            const statusOk = combinaStatus(card.getAttribute('data-status'));
+            const visivel = buscaOk && statusOk;
+            card.style.display = visivel ? '' : 'none';
+            if (visivel) produtosVisiveis++;
+        });
+
+        // Feedback quando nada é encontrado
+        const vazioMembros = document.getElementById('busca-vazia-usuarios');
+        const vazioProdutos = document.getElementById('busca-vazia-produtos');
+        if (vazioMembros) vazioMembros.style.display = (filter && membrosVisiveis === 0) ? '' : 'none';
+        if (vazioProdutos) vazioProdutos.style.display = (produtosVisiveis === 0) ? '' : 'none';
+    }
+</script>
+{% endblock %}

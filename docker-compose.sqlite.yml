@@ -1,0 +1,102 @@
+# Docker Compose para Desenvolvimento - ULTRA LEVE
+# Usa SQLite ao invés de PostgreSQL
+# Otimizado para 512MB RAM
+#
+# Uso: docker compose -f docker-compose.sqlite.yml up --watch
+#
+# ATENÇÃO: Use apenas para desenvolvimento/testes
+# Para produção, sempre use PostgreSQL
+#
+# Otimizações:
+# - SQLite ao invés de PostgreSQL (economiza ~256MB)
+# - Apenas 1 container (web)
+# - Runserver Django (mais leve que Gunicorn)
+# - Imagem Alpine Linux
+# - Total de RAM usado: ~300-400MB
+
+version: '3.8'
+
+services:
+  # Aplicação Django - ULTRA OTIMIZADA
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.minimal
+    container_name: lista_presentes_sqlite
+
+    # Limites de recursos
+    deploy:
+      resources:
+        limits:
+          memory: 512M  # Máximo 512MB
+        reservations:
+          memory: 256M  # Reserva 256MB
+
+    # Comando com SQLite
+    command: >
+      sh -c "
+        python manage.py migrate --noinput &&
+        python manage.py collectstatic --noinput &&
+        python manage.py runserver 0.0.0.0:8000
+      "
+
+    volumes:
+      - .:/app
+      - sqlite_data:/app/data
+      - static_volume_sqlite:/app/staticfiles
+      - media_volume_sqlite:/app/media
+
+    ports:
+      - "8000:8000"
+
+    environment:
+      - DEBUG=True
+      - SECRET_KEY=django-insecure-dev-key-change-in-production
+      # Usar SQLite ao invés de PostgreSQL
+      - USE_SQLITE=True
+      - ALLOWED_HOSTS=localhost,127.0.0.1,0.0.0.0
+      # Otimizações Django
+      - DJANGO_DEBUG_TOOLBAR=False
+      - DJANGO_LOG_LEVEL=WARNING
+      # APIs opcionais (comentar se não usar)
+      # - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      # - OPENAI_API_KEY=${OPENAI_API_KEY}
+      # - GEMINI_API_KEY=${GEMINI_API_KEY}
+
+    # File Watch
+    develop:
+      watch:
+        # Sync código Python
+        - action: sync
+          path: ./lista_presentes
+          target: /app/lista_presentes
+          ignore:
+            - __pycache__/
+            - "*.pyc"
+
+        - action: sync
+          path: ./presentes
+          target: /app/presentes
+          ignore:
+            - __pycache__/
+            - "*.pyc"
+            - migrations/
+
+        # Sync templates
+        - action: sync
+          path: ./templates
+          target: /app/templates
+
+        # Sync static
+        - action: sync
+          path: ./static
+          target: /app/static
+
+        # Rebuild se necessário
+        - action: rebuild
+          path: ./requirements.txt
+
+volumes:
+  sqlite_data:
+  static_volume_sqlite:
+  media_volume_sqlite:

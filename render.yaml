@@ -1,0 +1,141 @@
+# Configuração para deploy no Render.com
+# https://render.com/docs/yaml-spec
+
+services:
+  # Web Service (Django)
+  - type: web
+    name: lista-presentes
+    env: python
+    region: oregon # ou ohio, frankfurt, singapore
+    plan: free # ou starter, standard, pro
+    branch: main # branch para deploy automático
+
+    # Build - Usar script para garantir DJANGO_SETTINGS_MODULE correto
+    buildCommand: bash build.sh
+
+    # Start - Usa gunicorn.conf.py para configurações otimizadas
+    # Veja gunicorn.conf.py para detalhes de workers, threads, timeout, etc.
+    startCommand: |
+      gunicorn --config gunicorn.conf.py lista_presentes.wsgi:application
+
+    # Variáveis de ambiente
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+
+      - key: DEBUG
+        value: false
+
+      - key: DJANGO_SETTINGS_MODULE
+        value: lista_presentes.settings
+
+      - key: SECRET_KEY
+        generateValue: true
+
+      - key: ALLOWED_HOSTS
+        value: .onrender.com,lista-presentes-0hbp.onrender.com
+
+      # ==============================================================================
+      # Database Configuration - Supabase PostgreSQL com Schema Isolado
+      # ==============================================================================
+      # ✅ SUPABASE COM SCHEMA ISOLADO 'lista_presentes'
+      # ✅ Múltiplas apps Django no mesmo banco Supabase (isoladas)
+      # ✅ 500MB Free Tier (vs 256MB Render)
+      # ✅ Dashboard web para queries
+      # ⚠️  Configurar DATABASE_URL manualmente no Render Dashboard
+      #
+      # DATABASE_URL formato (schema configurado automaticamente no código):
+      # postgresql://postgres.PROJECT:PASS@aws-1-us-east-2.pooler.supabase.com:6543/postgres
+      #
+      # O search_path=lista_presentes é aplicado automaticamente via settings.py
+
+      - key: DATABASE_URL
+        sync: false  # Configurar manualmente no Dashboard
+
+      - key: SUPABASE_URL
+        sync: false  # Opcional
+
+      - key: SUPABASE_KEY
+        sync: false  # Opcional
+
+      # ==============================================================================
+      # Render PostgreSQL (Alternativa - mais simples, mas menos armazenamento)
+      # ==============================================================================
+      # Se preferir Render PostgreSQL ao invés de Supabase:
+      #   1. Comentar DATABASE_URL acima
+      #   2. Descomentar linhas abaixo
+      #   3. Ver docs/database/MIGRACAO_SUPABASE_RENDER.md
+
+      # - key: DATABASE_URL
+      #   fromDatabase:
+      #     name: lista-presentes-db
+      #     property: connectionString
+
+      # ==============================================================================
+      # API Keys
+      # ==============================================================================
+      - key: ANTHROPIC_API_KEY
+        sync: false  # Definir manualmente no dashboard
+
+      - key: OPENAI_API_KEY
+        sync: false  # Definir manualmente no dashboard
+
+      - key: GEMINI_API_KEY
+        sync: false  # Definir manualmente no dashboard
+
+      # ==============================================================================
+      # GitHub Integration
+      # ==============================================================================
+      - key: GITHUB_TOKEN
+        sync: false  # Token para criar issues automáticas
+
+      - key: GITHUB_REPO_OWNER
+        value: Maxwbh
+
+      - key: GITHUB_REPO_NAME
+        value: Lista_de_Presentes
+
+      - key: GITHUB_AUTO_CREATE_ISSUES
+        value: True
+
+      - key: SITE_URL
+        value: https://lista-presentes-1iwb.onrender.com
+
+      # Otimizações para Free Tier
+      - key: WEB_CONCURRENCY
+        value: 1  # Número de workers (Free: 1, Starter+: 2-4)
+
+      - key: GUNICORN_TIMEOUT
+        value: 120  # Timeout em segundos
+
+      - key: MAX_REQUESTS
+        value: 1000  # Reiniciar worker após N requests (previne memory leaks)
+
+    # Health check
+    healthCheckPath: /health/
+
+# ==============================================================================
+# Database - Render PostgreSQL (ALTERNATIVA)
+# ==============================================================================
+# ⚠️  ATUALMENTE USANDO SUPABASE COM SCHEMA ISOLADO
+#     Esta seção está comentada para não criar Render PostgreSQL
+#
+# Se quiser migrar para Render PostgreSQL:
+#   1. Descomentar seção databases: abaixo
+#   2. Comentar DATABASE_URL manual nas envVars (linha 51)
+#   3. Ver docs/database/MIGRACAO_SUPABASE_RENDER.md
+#
+# ✅ VANTAGENS RENDER POSTGRESQL:
+#    - Isolamento automático (1 banco por app)
+#    - Latência <1ms (mesma rede)
+#    - Setup automático via render.yaml
+#    - 256MB Free Tier
+# ==============================================================================
+
+# databases:
+#   - name: lista-presentes-db
+#     databaseName: lista_presentes
+#     user: lista_presentes_user
+#     region: oregon
+#     plan: free
+#     ipAllowList: []

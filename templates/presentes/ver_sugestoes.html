@@ -1,0 +1,283 @@
+{% extends 'base.html' %}
+{% load preco_tags %}
+
+{% block title %}Sugestoes de Compra - Lista de Presentes{% endblock %}
+
+{% block content %}
+<div class="bg-gradient-to-r from-primary via-primary/90 to-secondary text-white py-10 -mx-4 -mt-6 px-4 rounded-3xl mb-8 relative overflow-hidden">
+    <div class="absolute -top-10 -right-10 w-40 h-40 bg-white/10 rounded-full blur-2xl"></div>
+    <div class="max-w-7xl mx-auto relative z-10">
+        <h1 class="text-3xl font-extrabold">
+            <i class="bi bi-robot mr-2"></i>
+            Sugestoes de Compra com IA
+        </h1>
+        <p class="mt-2 opacity-90">Compare precos e encontre as melhores ofertas</p>
+    </div>
+</div>
+
+<div class="max-w-7xl mx-auto">
+    <!-- Informacoes do Presente -->
+    <div class="bg-base-100 border border-base-300/40 rounded-3xl shadow-lg mb-8 animate-fade-in">
+        <div class="card-body">
+            <div class="flex flex-col sm:flex-row items-start gap-6">
+                <div class="shrink-0">
+                    {% if presente.tem_imagem %}
+                        <img src="{{ presente.get_imagem_url }}" alt="{{ presente.descricao }}" class="w-36 h-36 object-contain object-center bg-base-200 rounded-2xl shadow-md">
+                    {% else %}
+                        <div class="w-36 h-36 bg-primary/10 rounded-2xl flex items-center justify-center text-5xl text-primary">
+                            <i class="bi bi-gift"></i>
+                        </div>
+                    {% endif %}
+                </div>
+
+                <div class="flex-1">
+                    <h2 class="text-2xl font-bold text-base-content mb-4">{{ presente.descricao }}</h2>
+
+                    <div class="flex flex-wrap gap-5 mb-4">
+                        {% if presente.preco %}
+                            <div class="flex items-center gap-2 text-base-content/60">
+                                <i class="bi bi-cash-coin text-primary"></i>
+                                <strong>Preco estimado:</strong> R$ {{ presente.preco }}
+                            </div>
+                        {% endif %}
+
+                        <!-- Temperatura de preços -->
+                        <div class="flex items-center gap-2">
+                            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold {{ temperatura.css }}" title="Comparação do preço atual com a média do histórico">
+                                <i class="bi {{ temperatura.icone }}"></i>
+                                {{ temperatura.label }}
+                            </span>
+                        </div>
+
+                        <div class="flex items-center gap-2 text-base-content/60">
+                            <i class="bi bi-flag-fill text-primary"></i>
+                            <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold {% if presente.status == 'ATIVO' %}bg-success text-success-content{% else %}bg-base-300 text-base-content/60{% endif %}">
+                                {{ presente.get_status_display }}
+                            </span>
+                        </div>
+
+                        {% if presente.url %}
+                            <div class="flex items-center gap-2 text-base-content/60">
+                                <i class="bi bi-link-45deg text-primary"></i>
+                                <a href="{{ presente.url }}" target="_blank" class="link link-primary">Ver link original</a>
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="flex flex-wrap gap-3 mt-5">
+                        <a href="{% url 'buscar_sugestoes' presente.id %}" class="btn btn-primary btn-sm rounded-xl gap-2 btn-search-ia">
+                            <i class="bi bi-stars"></i> Buscar com IA
+                        </a>
+                        <a href="{% url 'meus_presentes' %}" class="btn btn-neutral btn-sm rounded-xl gap-2">
+                            <i class="bi bi-arrow-left"></i> Voltar
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Evolução de Preço (sparkline estilo LPII) -->
+    {% if sparkline %}
+    <div class="bg-base-100 border border-base-300/40 rounded-3xl shadow-md mb-8 animate-fade-in">
+        <div class="card-body">
+            <div class="flex items-center justify-between mb-2">
+                <h3 class="font-extrabold text-sm uppercase tracking-wider text-base-content/40">
+                    <i class="bi bi-graph-down-arrow"></i> Evolução de Preço
+                </h3>
+                <div class="flex items-center gap-3 text-xs text-base-content/50">
+                    <span><strong class="text-success">Mín:</strong> R$ {{ sparkline.min|floatformat:2 }}</span>
+                    <span><strong class="text-error">Máx:</strong> R$ {{ sparkline.max|floatformat:2 }}</span>
+                </div>
+            </div>
+
+            <svg viewBox="0 0 {{ sparkline.largura }} {{ sparkline.altura }}" class="w-full" style="max-height: 240px;">
+                <defs>
+                    <linearGradient id="grad-preco" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stop-color="#e11d48" stop-opacity="0.2"/>
+                        <stop offset="100%" stop-color="#e11d48" stop-opacity="0"/>
+                    </linearGradient>
+                </defs>
+
+                <!-- Grade horizontal com valores (estilo LPII) -->
+                {% for g in sparkline.grades %}
+                <line x1="{{ sparkline.pad_esq }}" y1="{{ g.y }}" x2="{{ sparkline.grade_x2 }}" y2="{{ g.y }}"
+                      stroke="#94a3b8" stroke-opacity="0.18" stroke-width="1" stroke-dasharray="4 4"/>
+                <text x="{{ sparkline.pad_esq_texto }}" y="{{ g.y_texto }}" text-anchor="end"
+                      font-size="11" fill="#94a3b8">{{ g.valor_fmt }}</text>
+                {% endfor %}
+
+                <!-- Área em gradiente + linha -->
+                <path d="{{ sparkline.area }}" fill="url(#grad-preco)"/>
+                <polyline points="{{ sparkline.polyline }}" fill="none" stroke="#e11d48" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+
+                <!-- Pontos e datas -->
+                {% for p in sparkline.pontos %}
+                <circle cx="{{ p.x }}" cy="{{ p.y }}" r="4.5" fill="#fff" stroke="#e11d48" stroke-width="2.5">
+                    <title>R$ {{ p.preco }} - {{ p.loja|default:"--" }} ({{ p.data|date:"d/m/Y" }})</title>
+                </circle>
+                {% if p.rotulo %}
+                <text x="{{ p.x }}" y="{{ sparkline.y_rotulo }}" text-anchor="middle"
+                      font-size="12" font-weight="600" fill="#64748b">{{ p.data_fmt }}</text>
+                {% endif %}
+                {% endfor %}
+            </svg>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Sugestoes -->
+    {% if sugestoes %}
+        <div class="flex justify-between items-center mb-6">
+            <h2 class="font-extrabold text-sm uppercase tracking-wider text-base-content/40">
+                <i class="bi bi-shop"></i>
+                Lojas Encontradas
+            </h2>
+            <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-primary text-primary-content">
+                {{ sugestoes|length }} {% if sugestoes|length == 1 %}opcao{% else %}opcoes{% endif %}
+            </span>
+        </div>
+
+        <!-- Lista de comparação ranqueada -->
+        <div class="bg-base-100 border border-base-300/40 rounded-3xl shadow-sm overflow-hidden mb-8 animate-slide-up">
+            {% for sugestao in sugestoes %}
+                <div class="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 p-4 sm:p-5 transition-colors hover:bg-base-200/30 {% if not forloop.last %}border-b border-base-300/40{% endif %} {% if forloop.first %}bg-success/5{% endif %}">
+                    <!-- Posição -->
+                    <div class="flex items-center gap-3 sm:gap-4 flex-1 min-w-0">
+                        <div class="w-9 h-9 rounded-xl flex items-center justify-center font-extrabold text-sm shrink-0 {% if forloop.first %}bg-success text-success-content{% else %}bg-base-200 text-base-content/40{% endif %}">
+                            {% if forloop.first %}<i class="bi bi-trophy-fill"></i>{% else %}{{ forloop.counter }}{% endif %}
+                        </div>
+
+                        <!-- Loja -->
+                        <div class="flex-1 min-w-0">
+                            <div class="flex items-center gap-2 flex-wrap">
+                                <span class="font-bold text-sm truncate">{{ sugestao.local_compra|loja_limpa }}</span>
+                                {% if forloop.first %}
+                                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-success text-success-content">
+                                    Melhor preço
+                                </span>
+                                {% endif %}
+                                {% if economia and sugestao == melhor_sugestao %}
+                                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-warning text-warning-content">
+                                    <i class="bi bi-piggy-bank"></i> Economize R$ {{ economia|floatformat:2 }}
+                                </span>
+                                {% endif %}
+                            </div>
+                            <span class="text-[11px] text-base-content/40">
+                                <i class="bi bi-clock"></i> {{ sugestao.data_busca|date:"d/m/Y H:i" }}
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- Preço + ações -->
+                    <div class="flex items-center justify-between sm:justify-end gap-3 sm:gap-4 pl-12 sm:pl-0">
+                        <div class="text-right min-w-[90px]">
+                            {% if sugestao.preco_sugerido %}
+                                <div class="text-xl font-extrabold leading-none {% if forloop.first %}text-success{% else %}text-base-content/70{% endif %}">
+                                    R$ {{ sugestao.preco_sugerido }}
+                                </div>
+                                {% if not forloop.first and melhor_sugestao.preco_sugerido and sugestao.preco_sugerido > melhor_sugestao.preco_sugerido %}
+                                <div class="text-[11px] font-semibold text-error/60 mt-0.5">
+                                    +R$ {{ sugestao.preco_sugerido|menos:melhor_sugestao.preco_sugerido|floatformat:2 }}
+                                </div>
+                                {% endif %}
+                            {% else %}
+                                <div class="text-sm font-semibold text-base-content/40">Consultar</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="flex gap-1.5">
+                            {% if sugestao.preco_sugerido %}
+                            <form method="post" action="{% url 'aplicar_preco' presente.id sugestao.id %}">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-sm rounded-xl gap-1.5 {% if sugestao == melhor_sugestao %}btn-success{% else %}btn-ghost border border-base-300{% endif %}"
+                                        title="Atualizar o preço do presente com este valor">
+                                    <i class="bi bi-check2-circle"></i> Aplicar
+                                </button>
+                            </form>
+                            {% endif %}
+                            <a href="{{ sugestao.url_compra }}" target="_blank" rel="noopener noreferrer" class="btn btn-primary btn-sm btn-square rounded-xl" title="Visitar loja">
+                                <i class="bi bi-box-arrow-up-right"></i>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+
+        <!-- Estatisticas de Comparacao -->
+        {% if sugestoes|length > 1 %}
+            <div class="mt-8">
+                <h4 class="font-extrabold text-sm uppercase tracking-wider text-base-content/40 text-center mb-4">
+                    <i class="bi bi-bar-chart-fill"></i>
+                    Analise de Precos
+                </h4>
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div class="bg-base-100 border border-base-300/40 rounded-3xl p-5 text-center">
+                        <div class="text-xl font-extrabold text-primary">
+                            {% with menor=sugestoes.first %}R$ {{ menor.preco_sugerido|default:"--" }}{% endwith %}
+                        </div>
+                        <div class="text-xs text-base-content/50 mt-1">Menor Preco</div>
+                    </div>
+                    <div class="bg-base-100 border border-base-300/40 rounded-3xl p-5 text-center">
+                        <div class="text-xl font-extrabold text-primary">
+                            {% with maior=sugestoes.last %}R$ {{ maior.preco_sugerido|default:"--" }}{% endwith %}
+                        </div>
+                        <div class="text-xs text-base-content/50 mt-1">Maior Preco</div>
+                    </div>
+                    <div class="bg-base-100 border border-base-300/40 rounded-3xl p-5 text-center">
+                        <div class="text-xl font-extrabold text-primary">{{ sugestoes|length }}</div>
+                        <div class="text-xs text-base-content/50 mt-1">Lojas</div>
+                    </div>
+                </div>
+            </div>
+        {% endif %}
+
+    {% else %}
+        <div class="bg-base-100 border border-base-300/40 rounded-3xl shadow-lg">
+            <div class="card-body items-center text-center py-20">
+                <i class="bi bi-search text-7xl text-base-300 mb-5"></i>
+                <h3 class="text-xl font-bold text-base-content/70 mb-2">Nenhuma sugestao encontrada ainda</h3>
+                <p class="text-base-content/50 mb-8">Use os botoes acima para buscar opcoes de compra com inteligencia artificial</p>
+
+                <div class="flex flex-wrap gap-3 justify-center">
+                    <a href="{% url 'buscar_sugestoes' presente.id %}" class="btn btn-primary btn-sm rounded-xl gap-2 btn-search-ia">
+                        <i class="bi bi-stars"></i> Buscar com IA
+                    </a>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Animar cards conforme aparecem na tela
+    const cards = document.querySelectorAll('.sugestao-card');
+
+    cards.forEach((card, index) => {
+        card.style.animationDelay = `${index * 0.1}s`;
+    });
+
+    // Adicionar indicador de carregamento ao clicar em buscar
+    document.querySelectorAll('.btn-search-ia').forEach(btn => {
+        if (btn.href.includes('buscar_sugestoes_ia')) {
+            btn.addEventListener('click', function(e) {
+                const icon = this.querySelector('i');
+                const originalIcon = icon.className;
+
+                icon.className = 'bi bi-hourglass-split';
+                this.style.opacity = '0.7';
+                this.style.pointerEvents = 'none';
+
+                setTimeout(() => {
+                    icon.className = originalIcon;
+                    this.style.opacity = '1';
+                    this.style.pointerEvents = 'auto';
+                }, 5000);
+            });
+        }
+    });
+</script>
+{% endblock %}

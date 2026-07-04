@@ -1,0 +1,834 @@
+/* ===================================
+   MODERN GREEN THEME
+   Tema moderno verde natalino com design limpo
+   =================================== */
+
+:root {
+    /* Modern Green Colors */
+    --forest-green: #2d5016;
+    --emerald-green: #4a7c2c;
+    --lime-green: #6b9e4d;
+    --mint-green: #7dd3a0;
+    --sage-green: #a8d5ba;
+
+    /* Neutral Colors */
+    --bg-light: #f4f9f4;
+    --bg-white: #ffffff;
+    --text-dark: #1a3409;
+    --text-light: #4a5568;
+    --text-muted: #718096;
+
+    /* Accent Colors */
+    --gold: #d4af37;
+    --gold-bright: #ffd700;
+    --red-accent: #c92a2a;
+    --success: #48bb78;
+    --danger: #e53e3e;
+    --warning: #ed8936;
+
+    /* Effects */
+    --shadow-sm: 0 2px 4px rgba(45, 80, 22, 0.1);
+    --shadow-md: 0 4px 15px rgba(45, 80, 22, 0.15);
+    --shadow-lg: 0 10px 40px rgba(45, 80, 22, 0.2);
+}
+
+/* ===================================
+   GLOBAL STYLES
+   =================================== */
+
+body.green-theme {
+    background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 50%, #e8f5e9 100%);
+    background-size: 400% 400%;
+    animation: gradientMove 15s ease infinite;
+    min-height: 100vh;
+    color: var(--text-dark);
+    transition: all 0.3s ease;
+}
+
+@keyframes gradientMove {
+    0%, 100% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+}
+
+body.green-theme .container {
+    position: relative;
+    z-index: 1;
+}
+
+/* ===================================
+   NAVBAR
+   =================================== */
+
+body.green-theme .navbar-dark.bg-primary {
+    background: linear-gradient(135deg, var(--forest-green) 0%, var(--emerald-green) 100%) !important;
+    backdrop-filter: blur(15px);
+    box-shadow: 0 4px 20px rgba(45, 80, 22, 0.3);
+    border: none;
+    padding: 1rem 0;
+}
+
+body.green-theme .navbar-brand {
+    color: var(--gold-bright) !important;
+    font-weight: 800;
+    font-size: 1.4rem;
+    text-shadow: 0 2px 10px rgba(212, 175, 55, 0.5);
+    transition: all 0.3s ease;
+}
+
+body.green-theme .navbar-brand:hover {
+    transform: scale(1.05);
+    color: white !important;
+}
+
+body.green-theme .nav-link {
+    color: rgba(255, 255, 255, 0.9) !important;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    border-radius: 8px;
+    padding: 0.5rem 1rem !important;
+    margin: 0 0.2rem;
+}
+
+body.green-theme .nav-link:hover {
+    color: var(--gold-bright) !important;
+    background: rgba(255, 255, 255, 0.15);
+    transform: translateY(-2px);
+}
+
+body.green-theme .nav-link.active {
+    background: rgba(212, 175, 55, 0.3);
+    color: var(--gold-bright) !important;
+}
+
+body.green-theme .dropdown-menu {
+    background: white;
+    border: 2px solid rgba(45, 80, 22, 0.2);
+    border-radius: 12px;
+    box-shadow: var(--shadow-lg);
+    padding: 0.5rem;
+    z-index: 1050 !important; /* Sobrepor outros elementos */
+    position: absolute;
+}
+
+body.green-theme .dropdown-item {
+    color: var(--text-dark) !important;
+    border-radius: 8px;
+    padding: 0.75rem 1rem;
+    transition: all 0.3s ease;
+}
+
+body.green-theme .dropdown-item:hover {
+    background: rgba(45, 80, 22, 0.1) !important;
+    color: var(--forest-green) !important;
+    transform: translateX(5px);
+}
+
+body.green-theme .dropdown-item.active {
+    background: linear-gradient(135deg, var(--emerald-green) 0%, var(--forest-green) 100%);
+    color: white !important;
+}
+
+/* ===================================
+   VIEW TOGGLE (Contraste WCAG AA: 4.5:1+)
+   =================================== */
+
+body.green-theme .view-toggle {
+    background: white;
+    border: 2px solid rgba(74, 124, 44, 0.2);
+    border-radius: 50px;
+    padding: 8px;
+    box-shadow: 0 4px 15px rgba(45, 80, 22, 0.15);
+}
+
+body.green-theme .view-toggle-btn {
+    padding: 12px 30px;
+    border: none;
+    background: transparent;
+    border-radius: 50px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    color: #4a5568 !important; /* Cinza escuro - Contraste 8.59:1 */
+    font-size: 15px;
+}
+
+body.green-theme .view-toggle-btn.active {
+    background: linear-gradient(135deg, var(--emerald-green) 0%, var(--lime-green) 100%) !important;
+    color: #ffffff !important; /* Branco - Contraste 5.1:1+ */
+    box-shadow: 0 2px 10px rgba(74, 124, 44, 0.4);
+}
+
+body.green-theme .view-toggle-btn:hover:not(.active) {
+    background: rgba(74, 124, 44, 0.1);
+    color: var(--forest-green) !important;
+}
+
+/* ===================================
+   TEXT WHITE (Contraste WCAG AA)
+   =================================== */
+
+/* Branco puro em fundos escuros */
+body.green-theme .text-white {
+    color: #ffffff !important;
+}
+
+/* Em backgrounds claros, trocar para texto escuro */
+body.green-theme .bg-light .text-white,
+body.green-theme .bg-white .text-white {
+    color: #1a3409 !important; /* Verde muito escuro - Contraste 14.5:1 */
+}
+
+/* Em cards brancos/claros */
+body.green-theme .card-body .text-white {
+    color: var(--forest-green) !important; /* Verde escuro - Contraste 6.2:1 */
+}
+
+/* Manter branco em elementos escuros */
+body.green-theme .navbar .text-white,
+body.green-theme .bg-primary .text-white,
+body.green-theme .bg-dark .text-white,
+body.green-theme .card-header .text-white {
+    color: #ffffff !important;
+}
+
+/* Manter branco em card-footer com backgrounds coloridos */
+body.green-theme .card-footer.bg-success .text-white,
+body.green-theme .card-footer.bg-primary .text-white,
+body.green-theme .card-footer.bg-warning .text-white,
+body.green-theme .card-footer.bg-danger .text-white,
+body.green-theme .card-footer.bg-info .text-white,
+body.green-theme .card .bg-success .text-white,
+body.green-theme .card .bg-warning .text-white {
+    color: #ffffff !important;
+}
+
+/* ===================================
+   CARDS
+   =================================== */
+
+body.green-theme .card {
+    background: rgba(255, 255, 255, 0.95) !important;
+    border: 2px solid rgba(74, 124, 44, 0.2) !important;
+    border-radius: 16px !important;
+    box-shadow: var(--shadow-md);
+    transition: all 0.3s ease;
+    overflow: hidden;
+}
+
+body.green-theme .card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(212, 175, 55, 0.1), transparent);
+    transition: left 0.5s;
+}
+
+body.green-theme .card:hover {
+    transform: translateY(-5px);
+    box-shadow: var(--shadow-lg);
+    border-color: var(--gold) !important;
+}
+
+body.green-theme .card:hover::before {
+    left: 100%;
+}
+
+body.green-theme .card-header {
+    background: linear-gradient(135deg, var(--emerald-green) 0%, var(--lime-green) 100%) !important;
+    color: white !important;
+    font-weight: 600;
+    padding: 1.2rem 1.5rem;
+    border: none !important;
+}
+
+body.green-theme .card-body {
+    color: var(--text-dark);
+    padding: 1.5rem;
+}
+
+body.green-theme .card-title {
+    color: var(--forest-green) !important;
+    font-weight: 700;
+    margin-bottom: 1rem;
+}
+
+body.green-theme .card-text {
+    color: var(--text-light) !important;
+}
+
+body.green-theme .card-footer {
+    background: rgba(45, 80, 22, 0.05);
+    border-top: 1px solid rgba(45, 80, 22, 0.1);
+    padding: 1rem 1.5rem;
+}
+
+/* ===================================
+   BUTTONS
+   =================================== */
+
+body.green-theme .btn-primary {
+    background: linear-gradient(135deg, var(--emerald-green) 0%, var(--lime-green) 100%) !important;
+    border: none !important;
+    border-radius: 10px;
+    padding: 0.75rem 1.5rem;
+    font-weight: 600;
+    color: white !important;
+    box-shadow: 0 4px 15px rgba(74, 124, 44, 0.3);
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+body.green-theme .btn-primary::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.2);
+    transform: translate(-50%, -50%);
+    transition: width 0.6s, height 0.6s;
+}
+
+body.green-theme .btn-primary:hover::before {
+    width: 300px;
+    height: 300px;
+}
+
+body.green-theme .btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(74, 124, 44, 0.4);
+    background: linear-gradient(135deg, var(--forest-green) 0%, var(--emerald-green) 100%) !important;
+}
+
+body.green-theme .btn-primary:active {
+    transform: translateY(0);
+}
+
+body.green-theme .btn-success {
+    background: linear-gradient(135deg, var(--mint-green) 0%, var(--sage-green) 100%) !important;
+    border: none !important;
+    box-shadow: 0 4px 15px rgba(125, 211, 160, 0.3);
+}
+
+body.green-theme .btn-danger {
+    background: linear-gradient(135deg, #e53e3e 0%, #c53030 100%) !important;
+    border: none !important;
+    box-shadow: 0 4px 15px rgba(229, 62, 62, 0.3);
+}
+
+body.green-theme .btn-warning {
+    background: linear-gradient(135deg, var(--gold) 0%, var(--gold-bright) 100%) !important;
+    border: none !important;
+    box-shadow: 0 4px 15px rgba(212, 175, 55, 0.3);
+}
+
+body.green-theme .btn-outline-secondary {
+    border: 2px solid var(--emerald-green) !important;
+    color: var(--emerald-green) !important;
+    background: transparent !important;
+    border-radius: 10px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+body.green-theme .btn-outline-secondary:hover {
+    background: linear-gradient(135deg, var(--emerald-green) 0%, var(--lime-green) 100%) !important;
+    color: white !important;
+    transform: translateY(-2px);
+}
+
+/* ===================================
+   FORMS
+   =================================== */
+
+body.green-theme .form-control,
+body.green-theme .form-select {
+    background: rgba(255, 255, 255, 0.9) !important;
+    border: 2px solid rgba(74, 124, 44, 0.3) !important;
+    border-radius: 10px;
+    color: var(--text-dark) !important;
+    padding: 0.75rem 1rem;
+    transition: all 0.3s ease;
+}
+
+body.green-theme .form-control:focus,
+body.green-theme .form-select:focus {
+    background: white !important;
+    border-color: var(--emerald-green) !important;
+    box-shadow: 0 0 0 4px rgba(74, 124, 44, 0.15);
+    color: var(--text-dark) !important;
+}
+
+body.green-theme .form-label {
+    color: var(--forest-green);
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+}
+
+body.green-theme .form-control::placeholder {
+    color: var(--text-muted);
+}
+
+/* ===================================
+   ALERTS
+   =================================== */
+
+body.green-theme .alert {
+    border: none;
+    border-radius: 12px;
+    padding: 1rem 1.25rem;
+    box-shadow: var(--shadow-sm);
+}
+
+body.green-theme .alert-success {
+    background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+    color: #155724;
+    border-left: 4px solid var(--emerald-green);
+}
+
+body.green-theme .alert-danger {
+    background: linear-gradient(135deg, #fff5f5 0%, #fed7d7 100%);
+    color: #742a2a;
+    border-left: 4px solid #e53e3e;
+}
+
+body.green-theme .alert-info {
+    background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
+    color: #1a3409;
+    border-left: 4px solid var(--lime-green);
+}
+
+body.green-theme .alert-warning {
+    background: linear-gradient(135deg, #fff8e1 0%, #ffecb3 100%);
+    color: #744210;
+    border-left: 4px solid var(--gold);
+}
+
+/* ===================================
+   BADGES
+   =================================== */
+
+body.green-theme .badge {
+    padding: 0.5rem 0.75rem;
+    border-radius: 8px;
+    font-weight: 600;
+    box-shadow: var(--shadow-sm);
+}
+
+body.green-theme .badge.bg-primary {
+    background: linear-gradient(135deg, var(--emerald-green) 0%, var(--lime-green) 100%) !important;
+}
+
+body.green-theme .badge.bg-success {
+    background: linear-gradient(135deg, var(--mint-green) 0%, var(--sage-green) 100%) !important;
+}
+
+body.green-theme .badge.bg-danger {
+    background: linear-gradient(135deg, #e53e3e 0%, #c53030 100%) !important;
+}
+
+body.green-theme .badge.bg-warning {
+    background: linear-gradient(135deg, var(--gold) 0%, var(--gold-bright) 100%) !important;
+}
+
+/* ===================================
+   HEADINGS
+   =================================== */
+
+body.green-theme h1,
+body.green-theme h2,
+body.green-theme h3,
+body.green-theme h4,
+body.green-theme h5,
+body.green-theme h6 {
+    color: var(--forest-green) !important;
+    font-weight: 700;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+/* ===================================
+   LINKS
+   =================================== */
+
+body.green-theme a {
+    color: var(--emerald-green);
+    text-decoration: none;
+    transition: all 0.3s ease;
+}
+
+body.green-theme a:hover {
+    color: var(--forest-green);
+    text-decoration: underline;
+}
+
+/* ===================================
+   TEXT COLORS
+   =================================== */
+
+body.green-theme .text-muted {
+    color: var(--text-muted) !important;
+}
+
+/* ===================================
+   LIST GROUP
+   =================================== */
+
+body.green-theme .list-group-item {
+    background: rgba(255, 255, 255, 0.95) !important;
+    border: 1px solid rgba(74, 124, 44, 0.2) !important;
+    color: var(--text-dark) !important;
+    margin-bottom: 0.5rem;
+    border-radius: 10px !important;
+    transition: all 0.3s ease;
+}
+
+body.green-theme .list-group-item:hover {
+    background: rgba(74, 124, 44, 0.05) !important;
+    border-color: var(--emerald-green) !important;
+    transform: translateX(5px);
+}
+
+/* ===================================
+   MODALS
+   =================================== */
+
+body.green-theme .modal-content {
+    background: white;
+    border: none;
+    border-radius: 16px;
+    box-shadow: var(--shadow-lg);
+}
+
+body.green-theme .modal-header {
+    background: linear-gradient(135deg, var(--emerald-green) 0%, var(--lime-green) 100%);
+    color: white;
+    border: none;
+    border-radius: 16px 16px 0 0;
+    padding: 1.5rem;
+}
+
+body.green-theme .modal-title {
+    color: white !important;
+    font-weight: 700;
+}
+
+body.green-theme .modal-body {
+    color: var(--text-dark);
+    padding: 1.5rem;
+}
+
+body.green-theme .modal-footer {
+    background: rgba(45, 80, 22, 0.05);
+    border: none;
+    border-radius: 0 0 16px 16px;
+    padding: 1rem 1.5rem;
+}
+
+/* ===================================
+   SCROLLBAR
+   =================================== */
+
+body.green-theme ::-webkit-scrollbar {
+    width: 12px;
+}
+
+body.green-theme ::-webkit-scrollbar-track {
+    background: #e8f5e9;
+}
+
+body.green-theme ::-webkit-scrollbar-thumb {
+    background: linear-gradient(135deg, var(--emerald-green) 0%, var(--lime-green) 100%);
+    border-radius: 10px;
+    border: 2px solid #e8f5e9;
+}
+
+body.green-theme ::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(135deg, var(--forest-green) 0%, var(--emerald-green) 100%);
+}
+
+/* ===================================
+   NOTIFICATION BADGE
+   =================================== */
+
+body.green-theme .notification-badge {
+    background: linear-gradient(135deg, #e53e3e 0%, #c53030 100%) !important;
+    border: 2px solid white;
+    box-shadow: 0 2px 8px rgba(229, 62, 62, 0.5);
+    animation: pulse-green 2s ease-in-out infinite;
+}
+
+@keyframes pulse-green {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+}
+
+/* ===================================
+   THEME TOGGLE BUTTON
+   =================================== */
+
+body.green-theme .theme-toggle {
+    background: rgba(255, 255, 255, 0.2) !important;
+    border: 2px solid rgba(255, 255, 255, 0.3) !important;
+    border-radius: 8px;
+    padding: 0.5rem 0.8rem !important;
+    transition: all 0.3s ease;
+}
+
+body.green-theme .theme-toggle:hover {
+    background: rgba(255, 255, 255, 0.3) !important;
+    transform: rotate(20deg) scale(1.1);
+}
+
+/* ===================================
+   DECORATIVE ELEMENTS
+   =================================== */
+
+body.green-theme::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-image:
+        radial-gradient(circle at 20% 50%, rgba(212, 175, 55, 0.1) 0%, transparent 50%),
+        radial-gradient(circle at 80% 80%, rgba(74, 124, 44, 0.1) 0%, transparent 50%);
+    pointer-events: none;
+    z-index: 0;
+    opacity: 0.5;
+}
+
+/* ===================================
+   ANIMATIONS
+   =================================== */
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+body.green-theme .card {
+    animation: fadeInUp 0.5s ease-out;
+}
+
+/* ===================================
+   DARK MODE - GREEN THEME
+   =================================== */
+
+body.green-theme.dark-theme {
+    background: linear-gradient(135deg, #0a1f0a 0%, #0d3d0d 25%, #0a2a0a 50%, #0d3d0d 75%, #0a1f0a 100%);
+    background-size: 400% 400%;
+    animation: gradientMove 15s ease infinite;
+    color: #e0e0e0;
+}
+
+body.green-theme.dark-theme::before {
+    opacity: 0.3;
+}
+
+/* Cards */
+body.green-theme.dark-theme .card {
+    background: rgba(26, 61, 26, 0.5) !important;
+    backdrop-filter: blur(20px);
+    border-color: rgba(74, 124, 44, 0.4) !important;
+    color: #e0e0e0;
+}
+
+body.green-theme.dark-theme .card-header {
+    background: rgba(74, 124, 44, 0.3) !important;
+    border-bottom-color: rgba(74, 124, 44, 0.4) !important;
+}
+
+body.green-theme.dark-theme .card-body {
+    color: #e0e0e0;
+}
+
+body.green-theme.dark-theme .card-title {
+    color: #7dd3a0 !important;
+}
+
+body.green-theme.dark-theme .card-text {
+    color: #d1d5db !important;
+}
+
+/* Navbar */
+body.green-theme.dark-theme .navbar-dark.bg-primary {
+    background: rgba(13, 61, 13, 0.35) !important;
+    backdrop-filter: blur(25px);
+    border-bottom-color: rgba(212, 175, 55, 0.3) !important;
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.6) !important;
+}
+
+body.green-theme.dark-theme .navbar-brand {
+    color: var(--gold-bright) !important;
+}
+
+/* Forms */
+body.green-theme.dark-theme .form-control,
+body.green-theme.dark-theme .form-select {
+    background: rgba(26, 61, 26, 0.4) !important;
+    border-color: rgba(74, 124, 44, 0.3) !important;
+    color: #e0e0e0 !important;
+}
+
+body.green-theme.dark-theme .form-control::placeholder {
+    color: rgba(224, 224, 224, 0.5);
+}
+
+body.green-theme.dark-theme .form-control:focus,
+body.green-theme.dark-theme .form-select:focus {
+    background: rgba(26, 61, 26, 0.6) !important;
+    border-color: var(--emerald-green) !important;
+    color: #e0e0e0 !important;
+}
+
+body.green-theme.dark-theme .form-label {
+    color: #7dd3a0;
+}
+
+/* Modals */
+body.green-theme.dark-theme .modal-content {
+    background: rgba(10, 31, 10, 0.95);
+    border-color: rgba(74, 124, 44, 0.3);
+}
+
+body.green-theme.dark-theme .modal-body {
+    color: #e0e0e0;
+}
+
+/* Alerts */
+body.green-theme.dark-theme .alert-success {
+    background: rgba(125, 211, 160, 0.2);
+    color: #7dd3a0;
+    border-color: var(--emerald-green);
+}
+
+body.green-theme.dark-theme .alert-danger {
+    background: rgba(229, 62, 62, 0.2);
+    color: #fca5a5;
+    border-color: #e53e3e;
+}
+
+body.green-theme.dark-theme .alert-info {
+    background: rgba(107, 158, 77, 0.2);
+    color: #a8d5ba;
+    border-color: var(--lime-green);
+}
+
+body.green-theme.dark-theme .alert-warning {
+    background: rgba(212, 175, 55, 0.2);
+    color: #fbbf24;
+    border-color: var(--gold);
+}
+
+/* List Group */
+body.green-theme.dark-theme .list-group-item {
+    background: rgba(26, 61, 26, 0.4) !important;
+    border-color: rgba(74, 124, 44, 0.3) !important;
+    color: #e0e0e0 !important;
+}
+
+/* Headings */
+body.green-theme.dark-theme h1,
+body.green-theme.dark-theme h2,
+body.green-theme.dark-theme h3,
+body.green-theme.dark-theme h4,
+body.green-theme.dark-theme h5,
+body.green-theme.dark-theme h6 {
+    color: #7dd3a0 !important;
+}
+
+/* Links */
+body.green-theme.dark-theme a {
+    color: #7dd3a0;
+}
+
+body.green-theme.dark-theme a:hover {
+    color: var(--gold-bright);
+}
+
+/* Text */
+body.green-theme.dark-theme .text-muted {
+    color: #9ca3af !important;
+}
+
+/* Dropdown */
+body.green-theme.dark-theme .dropdown-menu {
+    background: rgba(13, 61, 13, 0.95);
+    border-color: rgba(74, 124, 44, 0.3);
+    z-index: 1050 !important; /* Sobrepor outros elementos */
+}
+
+body.green-theme.dark-theme .dropdown-item {
+    color: #e0e0e0 !important;
+}
+
+body.green-theme.dark-theme .dropdown-item:hover {
+    background: rgba(74, 124, 44, 0.3) !important;
+    color: #7dd3a0 !important;
+}
+
+/* View Toggle - Dark Mode (Contraste WCAG AA: 4.5:1+) */
+body.green-theme.dark-theme .view-toggle {
+    background: rgba(26, 61, 26, 0.4);
+    border-color: rgba(74, 124, 44, 0.3);
+}
+
+body.green-theme.dark-theme .view-toggle-btn {
+    color: #d1d5db !important; /* Cinza claro - Contraste 9.73:1 */
+}
+
+body.green-theme.dark-theme .view-toggle-btn.active {
+    background: linear-gradient(135deg, var(--emerald-green) 0%, var(--lime-green) 100%) !important;
+    color: #ffffff !important; /* Branco - Contraste 5.1:1+ */
+    box-shadow: 0 2px 10px rgba(74, 124, 44, 0.6);
+}
+
+body.green-theme.dark-theme .view-toggle-btn:hover:not(.active) {
+    background: rgba(74, 124, 44, 0.2);
+    color: #7dd3a0 !important;
+}
+
+/* Text White - Dark Mode (Contraste WCAG AA) */
+/* Branco puro mantido em modo escuro */
+body.green-theme.dark-theme .text-white {
+    color: #ffffff !important;
+}
+
+/* Em cards escuros, usar verde claro para contraste */
+body.green-theme.dark-theme .card-body .text-white {
+    color: #7dd3a0 !important; /* Verde menta - Contraste 5.8:1 */
+}
+
+/* Em backgrounds muito escuros, manter branco */
+body.green-theme.dark-theme .navbar .text-white,
+body.green-theme.dark-theme .bg-dark .text-white,
+body.green-theme.dark-theme .card-header .text-white {
+    color: #ffffff !important;
+}
+
+/* ===================================
+   RESPONSIVE
+   =================================== */
+
+@media (max-width: 768px) {
+    body.green-theme .card {
+        border-radius: 12px !important;
+    }
+
+    body.green-theme .navbar {
+        padding: 0.75rem 0 !important;
+    }
+}

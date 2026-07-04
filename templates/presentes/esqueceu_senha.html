@@ -1,0 +1,95 @@
+{% extends 'base.html' %}
+
+{% block title %}Esqueceu a Senha - Lista de Presentes{% endblock %}
+
+{% block content %}
+<div class="max-w-md mx-auto animate-slide-up">
+    <div class="card bg-base-100 border border-base-300/40 shadow-sm rounded-3xl overflow-hidden">
+        <!-- Header -->
+        <div class="bg-gradient-to-r from-primary via-primary/90 to-secondary text-white text-center py-10 px-8 rounded-t-3xl">
+            <i class="bi bi-key-fill text-5xl mb-4 block"></i>
+            <h2 class="text-2xl font-bold">Esqueceu a Senha?</h2>
+            <p class="mt-2 opacity-90">Vamos ajuda-lo a recuperar o acesso</p>
+        </div>
+
+        <!-- Body -->
+        <div class="card-body p-8">
+            {% if mensagem_sucesso %}
+                <div class="alert alert-success">
+                    <i class="bi bi-check-circle-fill"></i>
+                    <span>{{ mensagem_sucesso }}</span>
+                </div>
+                <div class="text-center mt-4">
+                    <a href="{% url 'login' %}" class="text-primary font-semibold hover:underline">
+                        <i class="bi bi-arrow-left mr-1"></i>Voltar para o Login
+                    </a>
+                </div>
+            {% else %}
+                <!-- Info text -->
+                <div class="bg-base-200 border-l-4 border-primary rounded-r-xl p-4 mb-6 text-sm text-base-content/60">
+                    <i class="bi bi-info-circle-fill text-primary mr-2"></i>
+                    Digite seu email cadastrado. Se existir uma conta associada, enviaremos instrucoes para redefinir sua senha.
+                </div>
+
+                <form method="post" novalidate>
+                    {% csrf_token %}
+
+                    {% if form.errors %}
+                        <div class="alert alert-error mb-4">
+                            <div>
+                                <i class="bi bi-x-circle-fill"></i>
+                                {% for field, errors in form.errors.items %}
+                                    {% for error in errors %}
+                                        <p>{{ error }}</p>
+                                    {% endfor %}
+                                {% endfor %}
+                            </div>
+                        </div>
+                    {% endif %}
+
+                    {% if erro %}
+                        <div class="alert alert-warning mb-4">
+                            <i class="bi bi-exclamation-triangle-fill"></i>
+                            <span>{{ erro }}</span>
+                        </div>
+                    {% endif %}
+
+                    <!-- Email field -->
+                    <div class="form-control mb-6">
+                        <label class="label" for="email">
+                            <span class="label-text font-semibold">
+                                <i class="bi bi-envelope-fill text-primary"></i> Email cadastrado
+                            </span>
+                        </label>
+                        <label class="input input-bordered flex items-center gap-2">
+                            <i class="bi bi-envelope text-base-content/40"></i>
+                            <input type="email" name="email" id="email" class="grow" placeholder="seu@email.com" required value="{{ email_preenchido|default:'' }}">
+                        </label>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary w-full btn-lg rounded-xl text-white">
+                        <i class="bi bi-send mr-2"></i>
+                        Enviar Instrucoes
+                    </button>
+                </form>
+
+                <div class="text-center mt-6">
+                    <p class="text-base-content/50 text-sm">
+                        Lembrou a senha?
+                        <a href="{% url 'login' %}" class="text-primary font-semibold hover:underline">
+                            <i class="bi bi-box-arrow-in-right mr-1"></i>Fazer Login
+                        </a>
+                    </p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="text-center mt-6">
+        <p class="text-base-content/40 text-sm">
+            <i class="bi bi-shield-check"></i>
+            Suas informacoes estao seguras conosco
+        </p>
+    </div>
+</div>
+{% endblock %}

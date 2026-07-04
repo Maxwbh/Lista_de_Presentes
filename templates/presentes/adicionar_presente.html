@@ -1,0 +1,416 @@
+{% extends 'base.html' %}
+
+{% block title %}Adicionar Presente - Lista de Presentes{% endblock %}
+
+{% block content %}
+<!-- Page Header -->
+<div class="max-w-3xl mx-auto">
+    <div class="bg-gradient-to-r from-primary via-primary/90 to-secondary rounded-3xl p-8 mb-6 text-primary-content animate-fade-in relative overflow-hidden">
+        <div class="absolute -top-10 -right-10 w-40 h-40 bg-white/10 rounded-full blur-2xl"></div>
+        <div class="relative">
+            <h1 class="text-2xl font-extrabold flex items-center gap-3 tracking-tight">
+                <i class="bi bi-plus-circle-fill"></i>
+                Adicionar Presente
+            </h1>
+            <p class="mt-1.5 opacity-80 text-sm">Preencha os detalhes do presente que você deseja ganhar</p>
+        </div>
+    </div>
+</div>
+
+<div class="max-w-3xl mx-auto animate-slide-up">
+    <form method="post" enctype="multipart/form-data" novalidate id="presente-form">
+        {% csrf_token %}
+
+        <!-- Auto-Preenchimento Inteligente (destaque LPII) -->
+        <div class="bg-primary/5 border border-primary/15 rounded-3xl p-6 mb-6">
+            <div class="flex items-center gap-2 mb-1">
+                <i class="bi bi-stars text-primary animate-pulse"></i>
+                <h4 class="font-extrabold text-sm uppercase tracking-wider text-primary">Auto-Preenchimento Inteligente</h4>
+            </div>
+            <p class="text-xs text-base-content/50 mb-4">Cole o link do produto e deixe a mágica acontecer — descrição, preço e imagem preenchidos automaticamente</p>
+
+            <div class="flex flex-col sm:flex-row gap-2">
+                {{ form.url }}
+                <button class="btn btn-primary rounded-xl gap-2 shrink-0" type="button" id="btn-buscar-info" title="Buscar informações do produto">
+                    <i class="bi bi-search"></i> Buscar Informações
+                </button>
+            </div>
+
+            <div id="loading-info" class="alert alert-info mt-3 rounded-xl text-sm" style="display: none;">
+                <i class="bi bi-hourglass-split"></i> Buscando informações do produto...
+            </div>
+            {% if form.url.errors %}
+                <p class="text-error text-xs mt-2">{{ form.url.errors.0 }}</p>
+            {% endif %}
+        </div>
+
+        <!-- Detalhes do Presente -->
+        <div class="bg-base-100 border border-base-300/40 rounded-3xl p-6 sm:p-8 mb-6">
+            <h3 class="font-extrabold text-sm uppercase tracking-wider text-base-content/40 mb-5 flex items-center gap-2">
+                <i class="bi bi-card-text"></i> Detalhes
+            </h3>
+
+            <!-- Descrição -->
+            <div class="form-control w-full mb-6">
+                <label class="label pb-1.5" for="{{ form.descricao.id_for_label }}">
+                    <span class="label-text font-semibold text-sm">Descrição do Presente <span class="text-error">*</span></span>
+                    <span class="label-text-alt text-base-content/40 text-xs"><span id="char-count">0</span> caracteres</span>
+                </label>
+                {{ form.descricao }}
+                <label class="label pt-1">
+                    <span class="label-text-alt text-base-content/40 text-xs">Seja específico: modelo, cor, tamanho, voltagem...</span>
+                </label>
+                {% if form.descricao.errors %}
+                    <p class="text-error text-xs mt-1">{{ form.descricao.errors.0 }}</p>
+                {% endif %}
+            </div>
+
+            <!-- Preço -->
+            <div class="form-control w-full max-w-xs">
+                <label class="label pb-1.5" for="{{ form.preco.id_for_label }}">
+                    <span class="label-text font-semibold text-sm">Preço Estimado</span>
+                </label>
+                <div class="relative">
+                    <span class="absolute left-4 top-1/2 -translate-y-1/2 text-success font-bold pointer-events-none">R$</span>
+                    {{ form.preco }}
+                </div>
+                <label class="label pt-1">
+                    <span class="label-text-alt text-base-content/40 text-xs">Ajuda a IA a encontrar as melhores ofertas</span>
+                </label>
+                {% if form.preco.errors %}
+                    <p class="text-error text-xs mt-1">{{ form.preco.errors.0 }}</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Imagem -->
+        <div class="bg-base-100 border border-base-300/40 rounded-3xl p-6 sm:p-8 mb-6">
+            <h3 class="font-extrabold text-sm uppercase tracking-wider text-base-content/40 mb-5 flex items-center gap-2">
+                <i class="bi bi-image"></i> Imagem
+            </h3>
+
+            <!-- Upload area -->
+            <div class="w-full h-44 border-2 border-dashed border-primary/30 rounded-2xl flex flex-col items-center justify-center cursor-pointer transition-all hover:border-primary hover:bg-primary/5 group"
+                 id="drop-area"
+                 onclick="document.getElementById('{{ form.imagem.id_for_label }}').click();">
+                <div class="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                    <i class="bi bi-cloud-upload text-xl text-primary"></i>
+                </div>
+                <p class="font-bold text-sm">Clique para fazer upload</p>
+                <p class="text-xs text-base-content/40 mt-0.5">arraste uma imagem ou Ctrl+V para colar</p>
+            </div>
+            {{ form.imagem }}
+
+            <!-- Image preview -->
+            <div class="mt-4 text-center">
+                <img id="image-preview" class="max-w-full max-h-72 rounded-2xl shadow-md mx-auto" alt="Preview" style="display: none;">
+            </div>
+            <div class="text-center mt-3" id="preview-container" style="display: none;">
+                <button type="button" class="btn btn-sm btn-ghost text-error rounded-xl gap-1.5 hover:bg-error/10" onclick="removeImage()">
+                    <i class="bi bi-trash"></i> Remover imagem
+                </button>
+            </div>
+
+            <!-- Divider "ou" -->
+            <div class="divider text-base-content/30 text-xs my-5">ou use uma URL</div>
+
+            <!-- Image URL input -->
+            <div class="flex gap-2">
+                {{ form.url_imagem }}
+                <button class="btn btn-ghost border border-base-300 rounded-xl shrink-0" type="button" id="load-from-url" title="Carregar imagem da URL">
+                    <i class="bi bi-download"></i>
+                </button>
+            </div>
+
+            {% if form.imagem.errors %}
+                <p class="text-error text-xs mt-2">{{ form.imagem.errors.0 }}</p>
+            {% endif %}
+            {% if form.url_imagem.errors %}
+                <p class="text-error text-xs mt-2">{{ form.url_imagem.errors.0 }}</p>
+            {% endif %}
+        </div>
+
+        <!-- Actions -->
+        <div class="flex items-center justify-between gap-3 mb-4">
+            <a href="{% url 'meus_presentes' %}" class="btn btn-ghost rounded-xl gap-2 text-base-content/60">
+                <i class="bi bi-arrow-left"></i>
+                Cancelar
+            </a>
+            <button type="submit" class="btn btn-primary rounded-xl px-8 gap-2">
+                <i class="bi bi-check-circle"></i>
+                Adicionar Presente
+            </button>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Preview de imagem
+    const imageInput = document.getElementById('{{ form.imagem.id_for_label }}');
+    const imagePreview = document.getElementById('image-preview');
+    const previewContainer = document.getElementById('preview-container');
+    const placeholder = document.getElementById('drop-area');
+    const urlImagemInput = document.getElementById('url-imagem-input');
+    const loadFromUrlBtn = document.getElementById('load-from-url');
+
+    // Função para exibir preview
+    function showImagePreview(src) {
+        imagePreview.src = src;
+        imagePreview.style.display = 'block';
+        previewContainer.style.display = 'block';
+        placeholder.style.display = 'none';
+    }
+
+    imageInput.addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                showImagePreview(event.target.result);
+            };
+            reader.readAsDataURL(file);
+        }
+    });
+
+    // Carregar imagem de URL
+    async function loadImageFromUrl(url) {
+        if (!url || !url.trim()) {
+            alert('Por favor, insira uma URL válida');
+            return;
+        }
+
+        // Mostrar loading
+        loadFromUrlBtn.innerHTML = '<span class="loading loading-spinner loading-sm"></span>';
+        loadFromUrlBtn.disabled = true;
+
+        try {
+            // Fazer fetch da imagem através de um proxy CORS ou direto
+            const response = await fetch(url);
+
+            if (!response.ok) {
+                throw new Error('Não foi possível carregar a imagem');
+            }
+
+            const blob = await response.blob();
+
+            // Verificar se é uma imagem
+            if (!blob.type.startsWith('image/')) {
+                throw new Error('URL não é uma imagem válida');
+            }
+
+            // Criar arquivo a partir do blob
+            const filename = url.split('/').pop().split('?')[0] || 'imagem.jpg';
+            const file = new File([blob], filename, { type: blob.type });
+
+            // Criar DataTransfer para simular upload de arquivo
+            const dataTransfer = new DataTransfer();
+            dataTransfer.items.add(file);
+            imageInput.files = dataTransfer.files;
+
+            // Disparar evento de change
+            const event = new Event('change', { bubbles: true });
+            imageInput.dispatchEvent(event);
+
+        } catch (error) {
+            console.error('Erro ao carregar imagem:', error);
+            alert('Erro ao carregar imagem da URL: ' + error.message + '\n\nTente fazer download da imagem e fazer upload direto.');
+        } finally {
+            // Restaurar botão
+            loadFromUrlBtn.innerHTML = '<i class="bi bi-download"></i>';
+            loadFromUrlBtn.disabled = false;
+        }
+    }
+
+    // Evento do botão de carregar da URL
+    loadFromUrlBtn.addEventListener('click', function() {
+        loadImageFromUrl(urlImagemInput.value);
+    });
+
+    // Carregar ao pressionar Enter no campo de URL
+    urlImagemInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            loadImageFromUrl(this.value);
+        }
+    });
+
+    // PASTE DE IMAGEM (Ctrl+V)
+    document.addEventListener('paste', function(e) {
+        const items = e.clipboardData.items;
+
+        for (let i = 0; i < items.length; i++) {
+            // Verificar se é uma imagem
+            if (items[i].type.indexOf('image') !== -1) {
+                e.preventDefault();
+
+                const blob = items[i].getAsFile();
+                const dataTransfer = new DataTransfer();
+                dataTransfer.items.add(blob);
+                imageInput.files = dataTransfer.files;
+
+                // Disparar evento de change
+                const event = new Event('change', { bubbles: true });
+                imageInput.dispatchEvent(event);
+
+                break;
+            }
+            // Verificar se é texto (pode ser URL)
+            else if (items[i].type === 'text/plain') {
+                items[i].getAsString(function(text) {
+                    // Verificar se é uma URL de imagem
+                    const urlPattern = /^https?:\/\/.+\.(jpg|jpeg|png|gif|webp|svg)(\?.*)?$/i;
+                    if (urlPattern.test(text.trim())) {
+                        urlImagemInput.value = text.trim();
+                        loadImageFromUrl(text.trim());
+                    }
+                });
+            }
+        }
+    });
+
+    // Drag and drop
+    const dropArea = placeholder;
+
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+        dropArea.addEventListener(eventName, preventDefaults, false);
+    });
+
+    function preventDefaults(e) {
+        e.preventDefault();
+        e.stopPropagation();
+    }
+
+    ['dragenter', 'dragover'].forEach(eventName => {
+        dropArea.addEventListener(eventName, highlight, false);
+    });
+
+    ['dragleave', 'drop'].forEach(eventName => {
+        dropArea.addEventListener(eventName, unhighlight, false);
+    });
+
+    function highlight(e) {
+        dropArea.classList.add('border-primary', 'bg-primary/10');
+        dropArea.classList.remove('border-primary/30');
+    }
+
+    function unhighlight(e) {
+        dropArea.classList.remove('border-primary', 'bg-primary/10');
+        dropArea.classList.add('border-primary/30');
+    }
+
+    dropArea.addEventListener('drop', handleDrop, false);
+
+    function handleDrop(e) {
+        const dt = e.dataTransfer;
+        const files = dt.files;
+
+        imageInput.files = files;
+        const event = new Event('change', { bubbles: true });
+        imageInput.dispatchEvent(event);
+    }
+
+    function removeImage() {
+        imageInput.value = '';
+        urlImagemInput.value = '';
+        imagePreview.style.display = 'none';
+        previewContainer.style.display = 'none';
+        placeholder.style.display = 'flex';
+    }
+
+    // Contador de caracteres
+    const descricaoInput = document.getElementById('{{ form.descricao.id_for_label }}');
+    const charCount = document.getElementById('char-count');
+
+    descricaoInput.addEventListener('input', function() {
+        charCount.textContent = this.value.length;
+    });
+
+    // Formatar input de preço
+    const precoInput = document.getElementById('{{ form.preco.id_for_label }}');
+    if (precoInput) {
+        precoInput.classList.add('pl-10');
+    }
+
+    // ===== BUSCAR INFORMAÇÕES DO PRODUTO =====
+    const btnBuscarInfo = document.getElementById('btn-buscar-info');
+    const urlProdutoInput = document.getElementById('{{ form.url.id_for_label }}');
+    const loadingInfo = document.getElementById('loading-info');
+
+    btnBuscarInfo.addEventListener('click', async function() {
+        const url = urlProdutoInput.value.trim();
+
+        if (!url) {
+            alert('Por favor, cole o link do produto primeiro');
+            urlProdutoInput.focus();
+            return;
+        }
+
+        // Mostrar loading
+        loadingInfo.style.display = 'flex';
+        btnBuscarInfo.disabled = true;
+        btnBuscarInfo.innerHTML = '<span class="loading loading-spinner loading-sm mr-2"></span>Buscando...';
+
+        try {
+            const formData = new FormData();
+            formData.append('url', url);
+            formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+
+            const response = await fetch('{% url "extrair_info_produto" %}', {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}'
+                }
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.error || 'Erro ao buscar informações');
+            }
+
+            // Preencher campos
+            if (data.titulo && !descricaoInput.value) {
+                descricaoInput.value = data.titulo;
+                charCount.textContent = data.titulo.length;
+            }
+
+            if (data.preco && !precoInput.value) {
+                precoInput.value = data.preco.toString().replace('.', ',');
+            }
+
+            if (data.imagem_url && !urlImagemInput.value && !imageInput.files.length) {
+                urlImagemInput.value = data.imagem_url;
+                // Mostrar preview da imagem
+                showImagePreview(data.imagem_url);
+            }
+
+            // Mostrar mensagem de sucesso
+            loadingInfo.className = 'alert alert-success mt-3 rounded-xl text-sm';
+            loadingInfo.innerHTML = '<i class="bi bi-check-circle"></i> Informações carregadas com sucesso!';
+
+            setTimeout(() => {
+                loadingInfo.style.display = 'none';
+                loadingInfo.className = 'alert alert-info mt-3 rounded-xl text-sm';
+                loadingInfo.innerHTML = '<i class="bi bi-hourglass-split"></i> Buscando informações do produto...';
+            }, 3000);
+
+        } catch (error) {
+            console.error('Erro:', error);
+            loadingInfo.className = 'alert alert-error mt-3 rounded-xl text-sm';
+            loadingInfo.innerHTML = '<i class="bi bi-exclamation-triangle"></i> ' + (error.message || 'Erro ao buscar informações. Preencha manualmente.');
+
+            setTimeout(() => {
+                loadingInfo.style.display = 'none';
+                loadingInfo.className = 'alert alert-info mt-3 rounded-xl text-sm';
+                loadingInfo.innerHTML = '<i class="bi bi-hourglass-split"></i> Buscando informações do produto...';
+            }, 5000);
+        } finally {
+            btnBuscarInfo.disabled = false;
+            btnBuscarInfo.innerHTML = '<i class="bi bi-search"></i> Buscar Informações';
+        }
+    });
+</script>
+{% endblock %}

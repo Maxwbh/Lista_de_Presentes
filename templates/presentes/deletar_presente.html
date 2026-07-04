@@ -1,0 +1,138 @@
+{% extends 'base.html' %}
+
+{% block title %}Excluir Presente - Lista de Presentes{% endblock %}
+
+{% block content %}
+<div class="max-w-xl mx-auto animate-fade-in">
+    <div class="bg-base-100 border border-base-300/40 rounded-3xl shadow-xl overflow-hidden">
+        <!-- Header -->
+        <div class="bg-gradient-to-r from-error to-red-500 rounded-3xl text-white text-center py-10 px-8 relative overflow-hidden">
+            <div class="absolute -top-10 -right-10 w-40 h-40 bg-white/10 rounded-full blur-2xl"></div>
+            <div class="relative z-10">
+                <i class="bi bi-exclamation-triangle-fill text-6xl mb-4 block animate-pulse"></i>
+                <h2 class="text-2xl font-bold">Confirmar Exclusao</h2>
+                <p class="mt-2 opacity-90">Esta acao nao podera ser desfeita!</p>
+            </div>
+        </div>
+
+        <!-- Body -->
+        <div class="card-body p-8">
+            <!-- Gift details -->
+            <div class="bg-base-100 border border-base-300/40 rounded-3xl p-5 mb-6">
+                <h5 class="font-extrabold text-sm uppercase tracking-wider text-base-content/40 mb-4">
+                    <i class="bi bi-gift-fill mr-2"></i>
+                    Presente que sera excluido
+                </h5>
+
+                <div class="mb-2 text-base-content/60">
+                    <i class="bi bi-card-text text-error w-6 inline-block"></i>
+                    <strong>Descricao:</strong> {{ presente.descricao }}
+                </div>
+
+                {% if presente.preco %}
+                    <div class="mb-2 text-base-content/60">
+                        <i class="bi bi-cash-coin text-error w-6 inline-block"></i>
+                        <strong>Preco:</strong> R$ {{ presente.preco }}
+                    </div>
+                {% endif %}
+
+                {% if presente.url %}
+                    <div class="mb-2 text-base-content/60">
+                        <i class="bi bi-link-45deg text-error w-6 inline-block"></i>
+                        <strong>Link:</strong>
+                        <a href="{{ presente.url }}" target="_blank" class="text-primary hover:underline">Ver produto</a>
+                    </div>
+                {% endif %}
+
+                <div class="mb-2 text-base-content/60">
+                    <i class="bi bi-calendar3 text-error w-6 inline-block"></i>
+                    <strong>Cadastrado em:</strong> {{ presente.data_cadastro|date:"d/m/Y às H:i" }}
+                </div>
+
+                <div class="mb-2 text-base-content/60">
+                    <i class="bi bi-flag-fill text-error w-6 inline-block"></i>
+                    <strong>Status:</strong>
+                    <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold {% if presente.status == 'ATIVO' %}bg-success text-success-content{% else %}bg-base-300 text-base-content/60{% endif %}">
+                        {{ presente.get_status_display }}
+                    </span>
+                </div>
+
+                {% if presente.tem_imagem %}
+                    <img src="{{ presente.get_imagem_url }}" alt="{{ presente.descricao }}" class="max-w-full max-h-48 rounded-3xl mt-4 shadow-md">
+                {% endif %}
+            </div>
+
+            <!-- Warning box -->
+            <div class="bg-warning/10 border border-warning/30 rounded-3xl p-4 mb-6">
+                <div class="flex items-start gap-3">
+                    <i class="bi bi-exclamation-triangle-fill text-warning text-xl mt-0.5"></i>
+                    <div>
+                        <strong>Atencao!</strong> Ao excluir este presente:
+                        <ul class="list-none p-0 mt-3 space-y-2">
+                            <li class="py-2 border-b border-base-300/40 text-base-content/50">
+                                <i class="bi bi-x-circle text-error mr-2"></i> Todas as sugestoes de compra da IA serao perdidas
+                            </li>
+                            <li class="py-2 border-b border-base-300/40 text-base-content/50">
+                                <i class="bi bi-x-circle text-error mr-2"></i> O historico de pesquisas sera apagado
+                            </li>
+                            <li class="py-2 text-base-content/50">
+                                <i class="bi bi-x-circle text-error mr-2"></i> Esta acao e permanente e irreversivel
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Form -->
+            <form method="post">
+                {% csrf_token %}
+
+                <div class="flex flex-col sm:flex-row gap-3 justify-center">
+                    <a href="{% url 'meus_presentes' %}" class="btn btn-ghost border-2 border-base-300 rounded-xl px-8">
+                        <i class="bi bi-arrow-left mr-2"></i>
+                        Cancelar
+                    </a>
+                    <button type="submit" class="btn btn-error rounded-xl px-8 text-white shadow-lg hover:shadow-xl transition-all">
+                        <i class="bi bi-trash3 mr-2"></i>
+                        Sim, Excluir Presente
+                    </button>
+                </div>
+            </form>
+
+            <div class="text-center mt-6">
+                <p class="text-base-content/40 text-sm">
+                    <i class="bi bi-shield-check"></i>
+                    Voce pode adicionar um novo presente a qualquer momento
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Adicionar confirmação dupla no botão de exclusão
+    const deleteBtn = document.querySelector('.btn-error');
+    let clickCount = 0;
+
+    deleteBtn.addEventListener('click', function(e) {
+        clickCount++;
+
+        if (clickCount === 1) {
+            e.preventDefault();
+            this.innerHTML = '<i class="bi bi-exclamation-circle mr-2"></i> Clique novamente para confirmar';
+            this.classList.add('animate-pulse');
+
+            // Reset após 3 segundos
+            setTimeout(() => {
+                if (clickCount === 1) {
+                    clickCount = 0;
+                    this.innerHTML = '<i class="bi bi-trash3 mr-2"></i> Sim, Excluir Presente';
+                    this.classList.remove('animate-pulse');
+                }
+            }, 3000);
+        }
+    });
+</script>
+{% endblock %}

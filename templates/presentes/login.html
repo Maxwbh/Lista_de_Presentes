@@ -1,0 +1,249 @@
+{% extends 'base.html' %}
+{% load static socialaccount %}
+
+{% block title %}Login - Lista de Presentes{% endblock %}
+
+{% block content %}
+<div class="-mx-4 -my-6 min-h-[calc(100vh-0.375rem)] flex">
+
+    <!-- Lado Esquerdo: Branding (oculto em mobile) -->
+    <div class="hidden lg:flex w-1/2 bg-gradient-to-br from-primary via-primary/90 to-secondary flex-col justify-center items-center p-16 relative overflow-hidden">
+        <!-- Blobs decorativos -->
+        <div class="absolute -top-20 -right-20 w-96 h-96 bg-white/10 rounded-full blur-3xl animate-pulse-slow"></div>
+        <div class="absolute -bottom-24 -left-24 w-80 h-80 bg-secondary/30 rounded-full blur-3xl animate-pulse-slow" style="animation-delay:2s"></div>
+
+        <div class="relative z-10 text-white max-w-md">
+            <!-- Logo -->
+            <div class="flex items-center gap-4 mb-10">
+                <div class="w-16 h-16 rounded-3xl bg-white/15 backdrop-blur-sm flex items-center justify-center" style="animation: float 3s ease-in-out infinite;">
+                    <i class="bi bi-gift-fill text-3xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-2xl font-extrabold tracking-tight">Lista de Presentes</h1>
+                    <p class="text-xs uppercase tracking-widest opacity-70 font-semibold">Planejamento inteligente</p>
+                </div>
+            </div>
+
+            <p class="text-lg opacity-90 mb-10 leading-relaxed">
+                Organize listas de desejos em grupo, evite presentes duplicados
+                e encontre os melhores preços com ajuda da IA.
+            </p>
+
+            <!-- Features -->
+            <div class="space-y-3">
+                <div class="flex items-center gap-4 p-4 rounded-2xl bg-white/10 backdrop-blur-sm border border-white/10 hover:bg-white/15 transition-all hover:translate-x-1">
+                    <div class="w-11 h-11 rounded-xl bg-white/15 flex items-center justify-center shrink-0">
+                        <i class="bi bi-people-fill text-xl"></i>
+                    </div>
+                    <div>
+                        <p class="font-bold text-sm">Grupos Compartilhados</p>
+                        <p class="text-xs opacity-80">Família, amigos e trabalho — listas isoladas por grupo</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-4 p-4 rounded-2xl bg-white/10 backdrop-blur-sm border border-white/10 hover:bg-white/15 transition-all hover:translate-x-1">
+                    <div class="w-11 h-11 rounded-xl bg-white/15 flex items-center justify-center shrink-0">
+                        <i class="bi bi-stars text-xl"></i>
+                    </div>
+                    <div>
+                        <p class="font-bold text-sm">Inteligência Artificial</p>
+                        <p class="text-xs opacity-80">Preenchimento automático e comparação de preços</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-4 p-4 rounded-2xl bg-white/10 backdrop-blur-sm border border-white/10 hover:bg-white/15 transition-all hover:translate-x-1">
+                    <div class="w-11 h-11 rounded-xl bg-white/15 flex items-center justify-center shrink-0">
+                        <i class="bi bi-bell-fill text-xl"></i>
+                    </div>
+                    <div>
+                        <p class="font-bold text-sm">Notificações em Tempo Real</p>
+                        <p class="text-xs opacity-80">Saiba na hora quando um presente for comprado</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Lado Direito: Formulário -->
+    <div class="flex-1 flex items-center justify-center p-6 bg-base-200">
+        <div class="w-full max-w-md bg-base-100 rounded-3xl border border-base-300/40 shadow-sm animate-slide-up">
+            <div class="p-8">
+
+                <!-- Header -->
+                <div class="text-center mb-8">
+                    <div class="lg:hidden inline-flex w-14 h-14 rounded-2xl bg-primary/10 items-center justify-center mb-4">
+                        <i class="bi bi-gift-fill text-2xl text-primary"></i>
+                    </div>
+                    <h2 class="text-2xl font-extrabold tracking-tight">Bem-vindo de volta!</h2>
+                    <p class="text-base-content/50 text-sm mt-1.5">Entre na sua conta para continuar</p>
+                </div>
+
+                <!-- Erros globais -->
+                {% if form.non_field_errors %}
+                <div role="alert" class="alert alert-error mb-5 rounded-xl text-sm">
+                    <i class="bi bi-exclamation-triangle-fill"></i>
+                    <span>{{ form.non_field_errors.0 }}</span>
+                </div>
+                {% endif %}
+
+                <!-- Formulário -->
+                <form method="post" novalidate id="loginForm" class="space-y-4">
+                    {% csrf_token %}
+                    {% if request.GET.next %}<input type="hidden" name="next" value="{{ request.GET.next }}">{% endif %}
+
+                    <!-- Email -->
+                    <div class="form-control">
+                        <label class="label pb-1.5">
+                            <span class="label-text font-semibold text-sm">Email</span>
+                        </label>
+                        <label class="input input-bordered rounded-xl flex items-center gap-2.5 focus-within:border-primary transition-colors">
+                            <i class="bi bi-envelope text-base-content/30"></i>
+                            {{ form.email }}
+                        </label>
+                        {% if form.email.errors %}
+                        <p class="text-error text-xs mt-1.5 flex items-center gap-1">
+                            <i class="bi bi-exclamation-circle"></i> {{ form.email.errors.0 }}
+                        </p>
+                        {% endif %}
+                    </div>
+
+                    <!-- Senha -->
+                    <div class="form-control">
+                        <label class="label pb-1.5">
+                            <span class="label-text font-semibold text-sm">Senha</span>
+                        </label>
+                        <label class="input input-bordered rounded-xl flex items-center gap-2.5 focus-within:border-primary transition-colors">
+                            <i class="bi bi-lock text-base-content/30"></i>
+                            {{ form.password }}
+                            <button type="button" id="togglePassword" class="text-base-content/30 hover:text-base-content/60 transition-colors" tabindex="-1" title="Mostrar senha">
+                                <i class="bi bi-eye"></i>
+                            </button>
+                        </label>
+                        {% if form.password.errors %}
+                        <p class="text-error text-xs mt-1.5 flex items-center gap-1">
+                            <i class="bi bi-exclamation-circle"></i> {{ form.password.errors.0 }}
+                        </p>
+                        {% endif %}
+                    </div>
+
+                    <!-- Lembrar / Esqueceu -->
+                    <div class="flex items-center justify-between text-sm pt-1">
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <input type="checkbox" name="remember" class="checkbox checkbox-primary checkbox-sm rounded-md">
+                            <span class="text-base-content/60 text-xs font-medium">Lembrar-me</span>
+                        </label>
+                        <a href="{% url 'esqueceu_senha' %}" class="link link-primary text-xs font-semibold no-underline hover:underline">
+                            Esqueceu a senha?
+                        </a>
+                    </div>
+
+                    <!-- Botão Entrar -->
+                    <button type="submit" id="loginBtn"
+                            class="btn btn-primary w-full rounded-xl font-bold mt-2">
+                        <i class="bi bi-box-arrow-in-right"></i>
+                        Entrar
+                    </button>
+                </form>
+
+                {% if social_login_disponivel %}
+                <!-- Divider -->
+                <div class="divider text-base-content/30 text-[10px] uppercase tracking-widest my-6">Ou entre com</div>
+
+                <!-- Social Login (somente provedores com credenciais configuradas) -->
+                <div class="flex flex-wrap gap-2.5">
+                    {% if social_google %}
+                    <a href="{% provider_login_url 'google' %}"
+                       class="btn btn-sm btn-ghost border border-base-300 rounded-xl gap-2 font-semibold text-xs hover:border-base-content/30 flex-1 min-w-[45%]">
+                        <i class="bi bi-google"></i> Google
+                    </a>
+                    {% endif %}
+                    {% if social_facebook %}
+                    <a href="{% provider_login_url 'facebook' %}"
+                       class="btn btn-sm btn-ghost border border-base-300 rounded-xl gap-2 font-semibold text-xs hover:border-base-content/30 flex-1 min-w-[45%]">
+                        <i class="bi bi-facebook"></i> Facebook
+                    </a>
+                    {% endif %}
+                    {% if social_linkedin %}
+                    <a href="{% provider_login_url 'linkedin_oauth2' %}"
+                       class="btn btn-sm btn-ghost border border-base-300 rounded-xl gap-2 font-semibold text-xs hover:border-base-content/30 flex-1 min-w-[45%]">
+                        <i class="bi bi-linkedin"></i> LinkedIn
+                    </a>
+                    {% endif %}
+                    {% if social_apple %}
+                    <a href="{% provider_login_url 'apple' %}"
+                       class="btn btn-sm btn-ghost border border-base-300 rounded-xl gap-2 font-semibold text-xs hover:border-base-content/30 flex-1 min-w-[45%]">
+                        <i class="bi bi-apple"></i> Apple
+                    </a>
+                    {% endif %}
+                </div>
+                {% endif %}
+
+                <!-- Cadastro -->
+                <div class="text-center mt-7 pt-5 border-t border-base-300/50">
+                    <p class="text-base-content/50 text-sm">
+                        Ainda não tem conta?
+                        <a href="{% url 'registro' %}" class="link link-primary font-bold no-underline hover:underline">
+                            Cadastre-se grátis
+                        </a>
+                    </p>
+                </div>
+
+                <!-- Security badge -->
+                <div class="text-center text-[11px] text-base-content/30 flex items-center justify-center gap-1.5 mt-3">
+                    <i class="bi bi-shield-check text-success"></i>
+                    Conexão segura e criptografada
+                </div>
+
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+  /* Inputs sem fundo padrão (daisyUI override) */
+  #loginForm input[type="email"],
+  #loginForm input[type="password"],
+  #loginForm input[type="text"] {
+    background: transparent;
+    border: none;
+    outline: none;
+    box-shadow: none;
+    flex: 1;
+    width: 100%;
+  }
+
+  @keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50%       { transform: translateY(-12px); }
+  }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Autofocus no email
+    const emailInput = document.querySelector('#loginForm input[type="email"]');
+    if (emailInput && !emailInput.value) emailInput.focus();
+
+    // Mostrar/ocultar senha
+    const toggleBtn = document.getElementById('togglePassword');
+    const passwordInput = document.querySelector('#loginForm input[type="password"], #loginForm input[name*="password"]');
+    if (toggleBtn && passwordInput) {
+        toggleBtn.addEventListener('click', function() {
+            const isHidden = passwordInput.type === 'password';
+            passwordInput.type = isHidden ? 'text' : 'password';
+            this.innerHTML = isHidden ? '<i class="bi bi-eye-slash"></i>' : '<i class="bi bi-eye"></i>';
+        });
+    }
+
+    // Evitar duplo submit
+    const form = document.getElementById('loginForm');
+    let submitting = false;
+
+    form.addEventListener('submit', function() {
+        if (submitting) return false;
+        submitting = true;
+        const btn = document.getElementById('loginBtn');
+        btn.disabled = true;
+        btn.innerHTML = '<span class="loading loading-spinner loading-sm"></span> Entrando...';
+    });
+</script>
+{% endblock %}

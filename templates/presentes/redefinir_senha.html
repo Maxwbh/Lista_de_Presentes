@@ -1,0 +1,113 @@
+{% extends 'base.html' %}
+
+{% block title %}Redefinir Senha - Lista de Presentes{% endblock %}
+
+{% block content %}
+<div class="max-w-md mx-auto animate-slide-up">
+    <div class="card bg-base-100 border border-base-300/40 shadow-sm rounded-3xl overflow-hidden">
+        <!-- Header -->
+        <div class="bg-gradient-to-r from-primary via-primary/90 to-secondary text-white text-center py-10 px-8 rounded-t-3xl">
+            <i class="bi bi-shield-lock-fill text-5xl mb-4 block"></i>
+            <h2 class="text-2xl font-bold">Redefinir Senha</h2>
+            <p class="mt-2 opacity-90">Crie uma nova senha segura</p>
+        </div>
+
+        <!-- Body -->
+        <div class="card-body p-8">
+            {% if token_valido %}
+                <!-- Password requirements -->
+                <div class="bg-base-200 rounded-xl p-4 mb-6 text-sm">
+                    <h6 class="font-semibold text-base-content/70 mb-2">
+                        <i class="bi bi-info-circle mr-2 text-primary"></i>Requisitos da senha:
+                    </h6>
+                    <ul class="list-disc list-inside text-base-content/50 space-y-1">
+                        <li>Minimo de 8 caracteres</li>
+                        <li>Pelo menos uma letra maiuscula</li>
+                        <li>Pelo menos uma letra minuscula</li>
+                        <li>Pelo menos um numero</li>
+                    </ul>
+                </div>
+
+                <form method="post" novalidate>
+                    {% csrf_token %}
+
+                    {% if erro %}
+                        <div class="alert alert-error mb-4">
+                            <i class="bi bi-exclamation-triangle-fill"></i>
+                            <span>{{ erro }}</span>
+                        </div>
+                    {% endif %}
+
+                    <!-- New password -->
+                    <div class="form-control mb-4">
+                        <label class="label" for="nova_senha">
+                            <span class="label-text font-semibold">
+                                <i class="bi bi-lock-fill text-primary"></i> Nova Senha
+                            </span>
+                        </label>
+                        <label class="input input-bordered flex items-center gap-2">
+                            <i class="bi bi-lock text-base-content/40"></i>
+                            <input type="password" name="nova_senha" id="nova_senha" class="grow" placeholder="Digite sua nova senha" required minlength="8">
+                        </label>
+                    </div>
+
+                    <!-- Confirm password -->
+                    <div class="form-control mb-6">
+                        <label class="label" for="confirmar_senha">
+                            <span class="label-text font-semibold">
+                                <i class="bi bi-lock-fill text-primary"></i> Confirmar Senha
+                            </span>
+                        </label>
+                        <label class="input input-bordered flex items-center gap-2">
+                            <i class="bi bi-lock text-base-content/40"></i>
+                            <input type="password" name="confirmar_senha" id="confirmar_senha" class="grow" placeholder="Confirme sua nova senha" required minlength="8">
+                        </label>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary w-full btn-lg rounded-xl text-white">
+                        <i class="bi bi-check-circle mr-2"></i>
+                        Redefinir Senha
+                    </button>
+                </form>
+            {% else %}
+                <div class="alert alert-error">
+                    <div>
+                        <i class="bi bi-exclamation-triangle-fill"></i>
+                        <span>
+                            <strong>Link invalido ou expirado!</strong><br>
+                            O link para redefinicao de senha e invalido ou ja expirou. Por favor, solicite um novo link.
+                        </span>
+                    </div>
+                </div>
+                <div class="text-center mt-4">
+                    <a href="{% url 'esqueceu_senha' %}" class="text-primary font-semibold hover:underline">
+                        <i class="bi bi-arrow-clockwise mr-1"></i>Solicitar novo link
+                    </a>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="text-center mt-6">
+        <p class="text-base-content/40 text-sm">
+            <i class="bi bi-shield-check"></i>
+            Suas informacoes estao seguras conosco
+        </p>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Validar se as senhas são iguais
+    document.querySelector('form')?.addEventListener('submit', function(e) {
+        const novaSenha = document.getElementById('nova_senha').value;
+        const confirmarSenha = document.getElementById('confirmar_senha').value;
+
+        if (novaSenha !== confirmarSenha) {
+            e.preventDefault();
+            alert('As senhas não conferem!');
+        }
+    });
+</script>
+{% endblock %}
