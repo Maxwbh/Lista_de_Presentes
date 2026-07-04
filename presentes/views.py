@@ -10,7 +10,7 @@ from django.core.mail import send_mail
 from django.conf import settings
 from django.utils import timezone
 from django.contrib.auth.hashers import make_password
-from .models import Usuario, Presente, Compra, Notificacao, SugestaoCompra, Grupo, GrupoMembro, PrecoHistorico, PesquisaPrecoLog
+from .models import Usuario, Presente, Compra, Notificacao, SugestaoCompra, Grupo, GrupoMembro, PrecoHistorico, PesquisaPrecoLog, PushSubscription
 from .forms import UsuarioRegistroForm, PresenteForm, LoginForm, GrupoForm, EditarPerfilForm
 from .services import IAService
 from .github_helper import criar_issue_falha_imagem

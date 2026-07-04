@@ -368,6 +368,26 @@ class Notificacao(models.Model):
             models.Index(fields=['usuario', 'lida', '-data_notificacao'], name='notif_usuario_lida_data_idx'),
             models.Index(fields=['lida', '-data_notificacao'], name='notif_lida_data_idx'),
         ]
-    
+
     def __str__(self):
         return f"Notificação para {self.usuario} - {self.mensagem[:30]}"
+
+
+class PushSubscription(models.Model):
+    """Assinatura de push notification (Web Push) de um usuário/dispositivo."""
+    endpoint = models.URLField(max_length=500, unique=True)
+    p256dh = models.CharField(max_length=200)
+    auth = models.CharField(max_length=100)
+    criado_em = models.DateTimeField(auto_now_add=True)
+    usuario = models.ForeignKey(
+        Usuario,
+        on_delete=models.CASCADE,
+        related_name='push_subscriptions'
+    )
+
+    class Meta:
+        verbose_name = 'Push Subscription'
+        verbose_name_plural = 'Push Subscriptions'
+
+    def __str__(self):
+        return f"Push de {self.usuario} ({self.endpoint[:40]}...)"

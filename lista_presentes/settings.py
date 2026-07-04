@@ -376,14 +376,14 @@ AUTHENTICATION_BACKENDS = [
     'allauth.account.auth_backends.AuthenticationBackend',
 ]
 
-# Allauth settings — sintaxe da versão pinada (django-allauth 65.4.1).
-# Não usar ACCOUNT_LOGIN_METHODS/ACCOUNT_SIGNUP_FIELDS aqui: são de versões
-# mais novas e a ausência das chaves abaixo derruba o system check no boot.
-ACCOUNT_AUTHENTICATION_METHOD = 'email'  # Use email instead of username
+# Allauth settings (django-allauth 65.4.1).
+# ACCOUNT_LOGIN_METHODS substitui o ACCOUNT_AUTHENTICATION_METHOD (deprecado) e
+# EXIGE ACCOUNT_EMAIL_REQUIRED = True — sem essa chave o system check derruba o boot.
+ACCOUNT_LOGIN_METHODS = {'email'}  # login por email (não por username)
 ACCOUNT_EMAIL_REQUIRED = True
 ACCOUNT_UNIQUE_EMAIL = True
 ACCOUNT_USERNAME_REQUIRED = False
-ACCOUNT_EMAIL_VERIFICATION = 'optional'  # Can be 'mandatory', 'optional', or 'none'
+ACCOUNT_EMAIL_VERIFICATION = 'optional'  # 'mandatory', 'optional', ou 'none'
 ACCOUNT_SIGNUP_EMAIL_ENTER_TWICE = False
 ACCOUNT_SESSION_REMEMBER = True
 ACCOUNT_LOGOUT_ON_GET = False
