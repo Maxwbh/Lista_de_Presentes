@@ -1,6 +1,7 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import login, logout, authenticate
 from django.contrib.auth.decorators import login_required
+from django.views.decorators.csrf import csrf_exempt
 from django.contrib import messages
 from django.db.models import Count, Prefetch, Q
 from django.db import transaction
@@ -1065,6 +1066,83 @@ def notificacoes_nao_lidas_json(request):
         'count': count,
         'notificacoes': list(notificacoes)
     })
+
+
+@login_required
+def compras_grupo_json(request):
+    """
+    API: dados de compra do grupo ativo (presentes já comprados), para
+    consulta e para evitar compra em duplicidade.
+
+    Preserva a surpresa: NÃO retorna compras dos presentes do próprio
+    solicitante (a pessoa não deve descobrir o que compraram para ela).
+    Filtro opcional ?tipo=minhas retorna apenas as compras feitas por você.
+    """
+    grupo_ativo = request.user.grupo_ativo
+    if not grupo_ativo:
+        return JsonResponse({'total': 0, 'compras': [], 'erro': 'Sem grupo ativo'}, status=400)
+
+    tipo = request.GET.get('tipo', 'grupo')
+
+    compras = Compra.objects.filter(
+        grupo=grupo_ativo
+    ).select_related('presente', 'presente__usuario', 'comprador')
+
+    if tipo == 'minhas':
+        # Compras que EU fiz (posso ver tudo)
+        compras = compras.filter(comprador=request.user)
+    else:
+        # Compras do grupo, exceto as dos meus presentes (protege a surpresa)
+        compras = compras.exclude(presente__usuario=request.user)
+
+    compras = compras.order_by('-data_compra')[:100]
+
+    dados = [{
+        'presente': c.presente.descricao[:80],
+        'para': c.presente.usuario.get_full_name() or c.presente.usuario.first_name,
+        'comprador': c.comprador.get_full_name() or c.comprador.first_name,
+        'foi_voce': c.comprador_id == request.user.id,
+        'preco': str(c.presente.preco) if c.presente.preco else None,
+        'data': c.data_compra.isoformat(),
+    } for c in compras]
+
+    return JsonResponse({'tipo': tipo, 'total': len(dados), 'compras': dados})
+
+
+@csrf_exempt
+def cron_pesquisar_precos(request):
+    """
+    Endpoint de cron para a pesquisa semanal de preços. Protegido por token
+    (header 'X-Cron-Token' ou ?token=). Chamado por um agendador externo
+    (GitHub Actions) — mais confiável e observável que depender só do tráfego.
+
+    Respeita o intervalo de 7 dias (use ?forcar=1 para ignorar). Dispara em
+    background e responde imediatamente.
+    """
+    from django.conf import settings
+    from .pesquisa_precos import pesquisa_em_atraso, executar_pesquisa
+
+    token_esperado = getattr(settings, 'CRON_TOKEN', '') or ''
+    token_recebido = request.headers.get('X-Cron-Token') or request.GET.get('token', '')
+
+    if not token_esperado:
+        return JsonResponse({'erro': 'CRON_TOKEN não configurado no servidor'}, status=503)
+    if token_recebido != token_esperado:
+        return JsonResponse({'erro': 'Token inválido'}, status=403)
+
+    forcar = request.GET.get('forcar') in ('1', 'true', 'sim')
+    if not forcar and not pesquisa_em_atraso():
+        return JsonResponse({'status': 'ignorado', 'motivo': 'Última pesquisa tem menos de 7 dias'})
+
+    import threading
+    threading.Thread(
+        target=executar_pesquisa,
+        kwargs={'origem': 'comando'},
+        daemon=True
+    ).start()
+
+    return JsonResponse({'status': 'iniciado', 'mensagem': 'Pesquisa de preços disparada em background'})
+
 
 @login_required
 def extrair_info_produto_view(request):

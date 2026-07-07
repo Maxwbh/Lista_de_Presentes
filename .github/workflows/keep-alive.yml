@@ -20,12 +20,18 @@ jobs:
 
     steps:
       - name: Ping Health Endpoint
+        env:
+          # Defina a variável de repositório RENDER_URL (Settings > Secrets and
+          # variables > Actions > Variables) com a URL base, ex.:
+          # https://lista-presentes-im4b.onrender.com
+          RENDER_BASE: ${{ vars.RENDER_URL }}
         run: |
           echo "🏓 Fazendo ping no serviço Render..."
           echo "Timestamp: $(date)"
 
-          # Substitua pela URL do seu app
-          RENDER_URL="https://lista-presentes.onrender.com/health/"
+          BASE="${RENDER_BASE:-https://lista-presentes-im4b.onrender.com}"
+          RENDER_URL="${BASE%/}/health/"
+          echo "Pingando: $RENDER_URL"
 
           # Fazer request
           response=$(curl -s -o /dev/null -w "%{http_code}" "$RENDER_URL")
@@ -39,4 +45,5 @@ jobs:
           echo "Próximo ping em 14 minutos..."
 
       - name: Log Timestamp
-        run: echo "Last ping: $(date -u +"%Y-%m-%d %H:%M:%S UTC")"
+        run: |
+          echo "Last ping: $(date -u +'%Y-%m-%d %H:%M:%S UTC')"

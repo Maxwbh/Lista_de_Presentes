@@ -364,6 +364,9 @@ GITHUB_API_BASE_URL = 'https://api.github.com'
 # Site URL para links em issues
 SITE_URL = os.getenv('SITE_URL', 'http://localhost:8000')
 
+# Token do endpoint de cron (pesquisa semanal de precos via agendador externo)
+CRON_TOKEN = os.getenv('CRON_TOKEN', '')
+
 # ==============================================================================
 # Django-allauth Configuration - Social Authentication
 # ==============================================================================

@@ -1,0 +1,62 @@
+# GitHub Actions: Pesquisa semanal de precos
+# Chama o endpoint protegido /api/cron/pesquisar-precos/ que dispara a
+# atualizacao de precos de todos os presentes ativos (alimenta a temperatura
+# e o grafico de evolucao). Substitui o cron nativo, indisponivel no Render Free.
+
+name: Pesquisa Semanal de Precos
+
+on:
+  schedule:
+    # Toda segunda-feira as 08:00 UTC (05:00 no horario de Brasilia)
+    - cron: '0 8 * * 1'
+
+  # Permite executar manualmente (Actions > Run workflow)
+  workflow_dispatch:
+    inputs:
+      forcar:
+        description: 'Forcar mesmo se a ultima pesquisa tem menos de 7 dias'
+        required: false
+        default: 'false'
+
+jobs:
+  pesquisar-precos:
+    name: Disparar pesquisa de precos
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Chamar endpoint de cron
+        env:
+          # Variavel de repositorio com a URL base do app
+          RENDER_BASE: ${{ vars.RENDER_URL }}
+          # Secret com o mesmo valor do CRON_TOKEN configurado no Render
+          CRON_TOKEN: ${{ secrets.CRON_TOKEN }}
+          FORCAR: ${{ github.event.inputs.forcar }}
+        run: |
+          if [ -z "$CRON_TOKEN" ]; then
+            echo "❌ Secret CRON_TOKEN nao configurado no repositorio."
+            echo "   Settings > Secrets and variables > Actions > New secret: CRON_TOKEN"
+            exit 1
+          fi
+
+          BASE="${RENDER_BASE:-https://lista-presentes-im4b.onrender.com}"
+          URL="${BASE%/}/api/cron/pesquisar-precos/"
+          if [ "$FORCAR" = "true" ]; then
+            URL="${URL}?forcar=1"
+          fi
+          echo "🔎 Chamando: $URL"
+
+          resposta=$(curl -s -w "\n%{http_code}" -X POST \
+            -H "X-Cron-Token: $CRON_TOKEN" \
+            "$URL")
+
+          corpo=$(echo "$resposta" | head -n -1)
+          codigo=$(echo "$resposta" | tail -n 1)
+
+          echo "HTTP $codigo"
+          echo "$corpo"
+
+          if [ "$codigo" != "200" ]; then
+            echo "⚠️  Falha ao disparar a pesquisa (HTTP $codigo)"
+            exit 1
+          fi
+          echo "✅ Pesquisa disparada com sucesso"

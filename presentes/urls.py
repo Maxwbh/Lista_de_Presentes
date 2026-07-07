@@ -34,6 +34,8 @@ urlpatterns = [
     # Notificações
     path('notificacoes/', views.notificacoes_view, name='notificacoes'),
     path('api/notificacoes/', views.notificacoes_nao_lidas_json, name='notificacoes_json'),
+    path('api/compras/', views.compras_grupo_json, name='compras_json'),
+    path('api/cron/pesquisar-precos/', views.cron_pesquisar_precos, name='cron_pesquisar_precos'),
 
     # Dados de teste (apenas superusuários)
     path('gerar-dados-teste/', views.gerar_dados_teste_view, name='gerar_dados_teste'),
