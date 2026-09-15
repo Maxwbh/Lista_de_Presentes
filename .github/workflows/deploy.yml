@@ -34,13 +34,19 @@ jobs:
 
       - name: Check deployment status
         continue-on-error: true
+        env:
+          # Variavel de repositorio com a URL base do app
+          # (Settings > Secrets and variables > Actions > Variables)
+          RENDER_BASE: ${{ vars.RENDER_URL }}
         run: |
           echo "🔍 Verificando status do deployment..."
+
+          BASE="${RENDER_BASE:-https://lista-presentes-im4b.onrender.com}"
 
           # Tentar fazer ping no health check
           for i in {1..10}; do
             echo "Tentativa $i de 10..."
-            RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" https://lista-presentes-1iwb.onrender.com/health/ || echo "000")
+            RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" "${BASE%/}/health/" || echo "000")
 
             if [ "$RESPONSE" -eq 200 ]; then
               echo "✅ Aplicação está respondendo! Status: $RESPONSE"
@@ -56,10 +62,12 @@ jobs:
 
       - name: Deployment summary
         if: always()
+        env:
+          RENDER_BASE: ${{ vars.RENDER_URL }}
         run: |
           echo "📊 Resumo do Deploy:"
           echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-          echo "🌐 URL: https://lista-presentes-1iwb.onrender.com"
+          echo "🌐 URL: ${RENDER_BASE:-https://lista-presentes-im4b.onrender.com}"
           echo "📋 Versão: $(cat VERSION 2>/dev/null || echo 'unknown')"
           echo "📅 Data: $(date '+%Y-%m-%d %H:%M:%S UTC')"
           echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"

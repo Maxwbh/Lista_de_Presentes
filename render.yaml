@@ -33,7 +33,7 @@ services:
         generateValue: true
 
       - key: ALLOWED_HOSTS
-        value: .onrender.com,lista-presentes-0hbp.onrender.com
+        value: .onrender.com,lista-presentes-im4b.onrender.com
 
       # ==============================================================================
       # Database Configuration - Supabase PostgreSQL com Schema Isolado
@@ -99,7 +99,7 @@ services:
         value: True
 
       - key: SITE_URL
-        value: https://lista-presentes-1iwb.onrender.com
+        value: https://lista-presentes-im4b.onrender.com
 
       # Otimizações para Free Tier
       - key: WEB_CONCURRENCY

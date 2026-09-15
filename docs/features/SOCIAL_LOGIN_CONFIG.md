@@ -33,7 +33,7 @@ GOOGLE_CLIENT_SECRET=your_google_client_secret_here
 3. Vá em "APIs & Services" > "Credentials"
 4. Clique em "Create Credentials" > "OAuth 2.0 Client ID"
 5. Configure as URLs de redirect:
-   - Authorized redirect URIs: `https://lista-presentes-1iwb.onrender.com/accounts/google/login/callback/`
+   - Authorized redirect URIs: `https://lista-presentes-im4b.onrender.com/accounts/google/login/callback/`
 
 #### Facebook OAuth
 ```
@@ -47,7 +47,7 @@ FACEBOOK_APP_SECRET=your_facebook_app_secret_here
 3. Vá em "Settings" > "Basic"
 4. Copie o App ID e App Secret
 5. Em "Facebook Login" > "Settings", adicione:
-   - Valid OAuth Redirect URIs: `https://lista-presentes-1iwb.onrender.com/accounts/facebook/login/callback/`
+   - Valid OAuth Redirect URIs: `https://lista-presentes-im4b.onrender.com/accounts/facebook/login/callback/`
 
 #### LinkedIn OAuth
 ```
@@ -60,7 +60,7 @@ LINKEDIN_CLIENT_SECRET=your_linkedin_client_secret_here
 2. Crie um aplicativo
 3. Copie o Client ID e Client Secret
 4. Em "Auth", adicione:
-   - Redirect URLs: `https://lista-presentes-1iwb.onrender.com/accounts/linkedin_oauth2/login/callback/`
+   - Redirect URLs: `https://lista-presentes-im4b.onrender.com/accounts/linkedin_oauth2/login/callback/`
 
 #### Apple Sign In
 ```
@@ -82,7 +82,7 @@ APPLE_PRIVATE_KEY=your_apple_private_key_content
 1. Acesse o admin: `/admin/`
 2. Vá em "Sites"
 3. Edite o site existente (ID=1) para:
-   - Domain name: `lista-presentes-1iwb.onrender.com`
+   - Domain name: `lista-presentes-im4b.onrender.com`
    - Display name: `Lista de Presentes`
 
 ### 4. Testar Login Social
@@ -94,10 +94,10 @@ APPLE_PRIVATE_KEY=your_apple_private_key_content
 
 ## URLs de Callback (Para Configurar nas Plataformas)
 
-- **Google**: `https://lista-presentes-1iwb.onrender.com/accounts/google/login/callback/`
-- **Facebook**: `https://lista-presentes-1iwb.onrender.com/accounts/facebook/login/callback/`
-- **LinkedIn**: `https://lista-presentes-1iwb.onrender.com/accounts/linkedin_oauth2/login/callback/`
-- **Apple**: `https://lista-presentes-1iwb.onrender.com/accounts/apple/login/callback/`
+- **Google**: `https://lista-presentes-im4b.onrender.com/accounts/google/login/callback/`
+- **Facebook**: `https://lista-presentes-im4b.onrender.com/accounts/facebook/login/callback/`
+- **LinkedIn**: `https://lista-presentes-im4b.onrender.com/accounts/linkedin_oauth2/login/callback/`
+- **Apple**: `https://lista-presentes-im4b.onrender.com/accounts/apple/login/callback/`
 
 ## Desenvolvimento Local
 

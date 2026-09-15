@@ -18,6 +18,7 @@
         <!-- Body -->
         <div class="p-6 sm:p-8">
             <form method="post" enctype="multipart/form-data" novalidate id="registerForm">
+                {% if request.GET.next %}<input type="hidden" name="next" value="{{ request.GET.next }}">{% endif %}
                 {% csrf_token %}
 
                 {% if form.non_field_errors %}
@@ -168,7 +169,7 @@
 
             <p class="text-center text-sm text-base-content/50">
                 Já tem conta?
-                <a href="{% url 'login' %}" class="link link-primary font-bold no-underline hover:underline">Fazer Login</a>
+                <a href="{% url 'login' %}{% if request.GET.next %}?next={{ request.GET.next|urlencode }}{% endif %}" class="link link-primary font-bold no-underline hover:underline">Fazer Login</a>
             </p>
         </div>
     </div>

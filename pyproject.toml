@@ -72,7 +72,7 @@ Documentation = "https://github.com/Maxwbh/Lista_de_Presentes#readme"
 Repository = "https://github.com/Maxwbh/Lista_de_Presentes"
 "Bug Reports" = "https://github.com/Maxwbh/Lista_de_Presentes/issues"
 Changelog = "https://github.com/Maxwbh/Lista_de_Presentes/blob/main/CHANGELOG.md"
-Demo = "https://lista-presentes-0hbp.onrender.com"
+Demo = "https://lista-presentes-im4b.onrender.com"
 
 [project.optional-dependencies]
 dev = [

@@ -115,7 +115,7 @@ Neste exemplo, o erro é **conexão com banco de dados**.
 1. Dashboard → **"Environment"**
 2. Editar `ALLOWED_HOSTS`:
    ```
-   .onrender.com,lista-presentes-0hbp.onrender.com
+   .onrender.com,lista-presentes-im4b.onrender.com
    ```
 
 ---
@@ -296,7 +296,7 @@ User: AnonymousUser
 **Causa**: Usuário não autenticado tentando acessar página protegida
 
 **Solução**:
-1. Acesse primeiro: https://lista-presentes-0hbp.onrender.com/login/
+1. Acesse primeiro: https://lista-presentes-im4b.onrender.com/login/
 2. Faça login
 3. Depois acesse /meus-presentes/
 

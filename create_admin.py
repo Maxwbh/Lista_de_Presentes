@@ -66,7 +66,7 @@ def create_admin():
     print(f"👑 Superuser: {user.is_superuser}")
     print(f"👔 Staff: {user.is_staff}")
     print(f"")
-    print(f"🌐 Acesse: https://lista-presentes-0hbp.onrender.com/admin/")
+    print(f"🌐 Acesse: https://lista-presentes-im4b.onrender.com/admin/")
     print(f"")
 
     return user

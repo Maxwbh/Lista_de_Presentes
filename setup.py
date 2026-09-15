@@ -33,7 +33,7 @@ setup(
         'Bug Reports': 'https://github.com/Maxwbh/Lista_de_Presentes/issues',
         'Source': 'https://github.com/Maxwbh/Lista_de_Presentes',
         'Documentation': 'https://github.com/Maxwbh/Lista_de_Presentes#readme',
-        'Demo': 'https://lista-presentes-0hbp.onrender.com',
+        'Demo': 'https://lista-presentes-im4b.onrender.com',
         'Changelog': 'https://github.com/Maxwbh/Lista_de_Presentes/blob/main/CHANGELOG.md',
     },
     license='MIT',
