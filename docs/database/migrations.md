@@ -205,7 +205,7 @@ GITHUB_TOKEN=github_pat_11AAPSJEQ0XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 GITHUB_REPO_OWNER=Maxwbh
 GITHUB_REPO_NAME=Lista_de_Presentes
 GITHUB_AUTO_CREATE_ISSUES=True
-SITE_URL=https://lista-presentes-1iwb.onrender.com
+SITE_URL=https://lista-presentes-im4b.onrender.com
 ```
 
 ### O Que Acontece no Deploy
@@ -243,7 +243,7 @@ SITE_URL=https://lista-presentes-1iwb.onrender.com
 
 Após o deploy com sucesso:
 
-- [ ] Acesse o site: https://lista-presentes-1iwb.onrender.com
+- [ ] Acesse o site: https://lista-presentes-im4b.onrender.com
 - [ ] Verifique que login funciona
 - [ ] Teste criar/editar presentes
 - [ ] Verifique que dados foram preservados

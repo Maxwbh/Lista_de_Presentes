@@ -50,7 +50,7 @@ class Command(BaseCommand):
                 self.stdout.write('   Senha mantida (defina RESET_ADMIN_PASSWORD=true para redefinir)')
 
             self.stdout.write(self.style.SUCCESS(f'\n🎉 Usuário {email} agora tem acesso ao admin!'))
-            self.stdout.write(self.style.HTTP_INFO('🌐 Acesse: https://lista-presentes-0hbp.onrender.com/admin/'))
+            self.stdout.write(self.style.HTTP_INFO('🌐 Acesse: https://lista-presentes-im4b.onrender.com/admin/'))
 
         except Usuario.DoesNotExist:
             self.stdout.write(self.style.ERROR(f'❌ Usuário {email} não existe!'))

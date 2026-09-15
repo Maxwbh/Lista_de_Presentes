@@ -17,7 +17,7 @@ DEBUG = os.getenv('DEBUG', 'True') == 'True'
 ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
 
 CSRF_TRUSTED_ORIGINS = [
-    'https://lista-presentes-0hbp.onrender.com',
+    'https://lista-presentes-im4b.onrender.com',
     'https://*.onrender.com',
 ]
 
@@ -109,6 +109,12 @@ USE_SQLITE = os.getenv('USE_SQLITE', 'False') == 'True'
 # Supabase - Variáveis adicionais (opcionais, para uso futuro com Supabase SDK)
 SUPABASE_URL = os.getenv('SUPABASE_URL', '')
 SUPABASE_KEY = os.getenv('SUPABASE_KEY', '')
+
+# True durante 'manage.py test'. O banco de teste e criado do zero pelo Django
+# e nao tem o schema lista_presentes; quem o cria e o signal connection_created
+# em presentes/apps.py, que consulta esta flag.
+import sys
+TESTING = 'test' in sys.argv
 
 # Adicionar search_path=lista_presentes na DATABASE_URL se for PostgreSQL
 if DATABASE_URL and not USE_SQLITE and 'postgresql' in DATABASE_URL:

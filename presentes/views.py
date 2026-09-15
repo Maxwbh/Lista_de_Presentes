@@ -135,8 +135,16 @@ def registro_view(request):
                     usuario.foto_base64 = foto_data
                     usuario.foto_tipo = foto_file.content_type
                     usuario.save(update_fields=['foto_base64', 'foto_tipo'])
-            login(request, usuario)
+            # Ha dois backends em AUTHENTICATION_BACKENDS (ModelBackend e allauth),
+            # entao o backend precisa ser explicito: sem ele o login() levanta
+            # ValueError e o cadastro morre em erro 500.
+            login(request, usuario, backend='django.contrib.auth.backends.ModelBackend')
             messages.success(request, 'Cadastro realizado com sucesso!')
+            # Respeitar ?next= (ex.: convite de grupo aberto por quem ainda nao tem conta)
+            from django.utils.http import url_has_allowed_host_and_scheme
+            next_url = request.POST.get('next') or request.GET.get('next')
+            if next_url and url_has_allowed_host_and_scheme(next_url, allowed_hosts={request.get_host()}):
+                return redirect(next_url)
             return redirect('dashboard')
     else:
         form = UsuarioRegistroForm()
@@ -1833,7 +1841,10 @@ def convite_grupo_view(request, codigo):
     # Verificar se ja e membro
     if GrupoMembro.objects.filter(grupo=grupo, usuario=request.user).exists():
         messages.info(request, f'Voce ja e membro do grupo "{grupo.nome}".')
-        return redirect('grupos_lista')
+        if request.user.grupo_ativo_id != grupo.id:
+            request.user.grupo_ativo = grupo
+            request.user.save(update_fields=['grupo_ativo'])
+        return redirect('dashboard')
 
     # Adicionar como membro
     GrupoMembro.objects.create(
@@ -1842,15 +1853,14 @@ def convite_grupo_view(request, codigo):
         e_mantenedor=False
     )
 
-    # Se usuario nao tem grupo ativo, definir este
-    if not request.user.grupo_ativo:
-        request.user.grupo_ativo = grupo
-        request.user.save()
+    # Ativar o grupo do convite: quem abriu o link quer ver este grupo
+    request.user.grupo_ativo = grupo
+    request.user.save(update_fields=['grupo_ativo'])
 
     messages.success(request, f'Bem-vindo ao grupo "{grupo.nome}"!')
     logger.info(f"Usuario {request.user.email} entrou no grupo {grupo.id} via convite")
 
-    return redirect('grupos_lista')
+    return redirect('dashboard')
 
 
 def servir_imagem_grupo_view(request, pk):

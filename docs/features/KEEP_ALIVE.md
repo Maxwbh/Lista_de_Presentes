@@ -8,7 +8,7 @@ Este documento explica como manter seu app no Render.com ativo 24/7, evitando qu
 
 ✅ **Endpoint de Health Check**: `/health/` já configurado
 ✅ **GitHub Action**: Ping automático a cada 10 minutos
-✅ **URL do app**: https://lista-presentes-0hbp.onrender.com
+✅ **URL do app**: https://lista-presentes-im4b.onrender.com
 
 ---
 
@@ -59,7 +59,7 @@ O arquivo `.github/workflows/keep-alive.yml` já está criado e faz:
    - Clique em "+ Add New Monitor"
    - Monitor Type: `HTTP(s)`
    - Friendly Name: `Lista de Presentes`
-   - URL: `https://lista-presentes-0hbp.onrender.com/health/`
+   - URL: `https://lista-presentes-im4b.onrender.com/health/`
    - Monitoring Interval: `5 minutes` (plano grátis)
    - Monitor Timeout: `30 seconds`
    - HTTP Method: `GET`
@@ -92,7 +92,7 @@ O arquivo `.github/workflows/keep-alive.yml` já está criado e faz:
 3. **Criar cron job**:
    - Menu → Cronjobs → Create cronjob
    - Title: `Keep Render Alive - Lista Presentes`
-   - Address: `https://lista-presentes-0hbp.onrender.com/health/`
+   - Address: `https://lista-presentes-im4b.onrender.com/health/`
    - Schedule:
      - Every: `10 minutes` (recomendado)
      - ou Every: `5 minutes` (mais agressivo)
@@ -126,7 +126,7 @@ import requests
 import time
 from datetime import datetime
 
-URL = "https://lista-presentes-0hbp.onrender.com/health/"
+URL = "https://lista-presentes-im4b.onrender.com/health/"
 INTERVAL = 600  # 10 minutos em segundos
 
 def ping():
@@ -208,7 +208,7 @@ Com essa configuração tripla, seu app **nunca** vai dormir!
 ### 1. Testar Health Check Manualmente:
 
 ```bash
-curl -i https://lista-presentes-0hbp.onrender.com/health/
+curl -i https://lista-presentes-im4b.onrender.com/health/
 ```
 
 Resposta esperada:
@@ -319,7 +319,7 @@ Se quiser estatísticas detalhadas, use **Better Stack** (ex-Logtail):
 
 ## 🚀 Status: TUDO CONFIGURADO!
 
-✅ Health check endpoint: `https://lista-presentes-0hbp.onrender.com/health/`
+✅ Health check endpoint: `https://lista-presentes-im4b.onrender.com/health/`
 ✅ GitHub Action: Ping a cada 10 minutos
 ✅ Logs: https://github.com/Maxwbh/Lista_de_Presentes/actions
 
