@@ -7,6 +7,7 @@ from urllib.parse import quote_plus
 from bs4 import BeautifulSoup
 from django.conf import settings
 from .models import SugestaoCompra
+from .relevancia import resultado_relevante
 
 logger = logging.getLogger(__name__)
 
@@ -80,6 +81,18 @@ class IAService:
 
                     logger.debug(f"Zoom: Loja encontrada: {loja}")
 
+                    # Extrair o titulo do produto. Sem ele nao da para saber
+                    # se o card e mesmo o produto procurado - a pagina de
+                    # resultados tambem traz recomendacoes e produtos soltos.
+                    titulo_elem = (
+                        card.find(attrs={'data-testid': 'product-card::name'}) or
+                        card.find('h2') or
+                        card.find('h3') or
+                        card.find(class_=lambda x: x and 'name' in x.lower() if x else False)
+                    )
+                    titulo = titulo_elem.text.strip() if titulo_elem else ''
+                    logger.debug(f"Zoom: Titulo encontrado: {titulo}")
+
                     # Extrair preço (múltiplos seletores)
                     # No HTML real: <strong data-testid="product-card::price">R$ 4.749,00</strong>
                     preco_elem = (
@@ -119,6 +132,7 @@ class IAService:
 
                     produtos.append({
                         'loja': loja,
+                        'titulo': titulo,
                         'preco': preco,
                         'url': url_produto,
                         'fonte': 'Zoom'
@@ -202,6 +216,17 @@ class IAService:
 
                     logger.debug(f"Buscapé: Loja encontrada: {loja}")
 
+                    # Extrair o titulo do produto - sem ele nao da para
+                    # conferir se o card e mesmo o produto procurado
+                    titulo_elem = (
+                        card.find(attrs={'data-testid': 'product-card::name'}) or
+                        card.find('h2') or
+                        card.find('h3') or
+                        card.find(class_=lambda x: x and 'name' in x.lower() if x else False)
+                    )
+                    titulo = titulo_elem.text.strip() if titulo_elem else ''
+                    logger.debug(f"Buscapé: Titulo encontrado: {titulo}")
+
                     # Extrair preço
                     # Real HTML: <strong data-testid="product-card::price">R$ 4.749,00</strong>
                     preco_elem = (
@@ -246,6 +271,7 @@ class IAService:
 
                     produtos.append({
                         'loja': loja,
+                        'titulo': titulo,
                         'preco': preco,
                         'url': url_produto,
                         'fonte': 'Buscapé'
@@ -321,6 +347,31 @@ class IAService:
                 logger.warning("Nenhum produto encontrado em nenhuma fonte")
                 return False, "Não foram encontrados produtos nas fontes de busca."
 
+            # Descartar o que nao e o produto procurado. A pagina de resultados
+            # dos buscadores tambem traz recomendacoes e produtos soltos, e sem
+            # essa conferencia um item de R$ 28 acabava com "melhor oferta" de
+            # R$ 219 de um produto sem nenhuma relacao - preco que ainda entrava
+            # no historico e estourava a temperatura do card.
+            relevantes = []
+            for produto in todos_produtos:
+                if resultado_relevante(query, produto.get('titulo', '')):
+                    relevantes.append(produto)
+                else:
+                    logger.info(
+                        "Descartado por nao corresponder ao presente "
+                        f"'{query}': titulo='{produto.get('titulo', '')}' "
+                        f"loja='{produto.get('loja', '')}' fonte={produto.get('fonte', '')}"
+                    )
+
+            if not relevantes:
+                logger.warning(f"Nenhum resultado correspondeu ao presente: {query}")
+                return False, (
+                    "Nenhum resultado da busca corresponde a este presente. "
+                    "Tente uma descrição mais específica."
+                )
+
+            todos_produtos = relevantes
+
             # Ordenar por preço (menor primeiro), ignorando preços zerados
             todos_produtos_com_preco = [p for p in todos_produtos if p.get('preco', 0) > 0]
             if todos_produtos_com_preco:
@@ -375,6 +426,7 @@ class IAService:
                     grupo=presente.grupo,
                     presente=presente,
                     local_compra=loja_nome,
+                    titulo_produto=(produto.get('titulo') or '')[:300],
                     url_compra=url,
                     preco_sugerido=preco
                 )
@@ -418,13 +470,16 @@ class IAService:
             "sugestoes": [
                 {{
                     "loja": "Nome da Loja",
+                    "produto": "Titulo do produto na loja",
                     "url": "https://www.loja.com.br/produto",
                     "preco": 199.90
                 }}
             ]
         }}
-        
+
         Busque por lojas reais e conhecidas como Amazon, Mercado Livre, Magazine Luiza, Americanas, etc.
+        O campo "produto" deve trazer o titulo do anuncio na loja, exatamente como aparece la.
+        Nao sugira acessorios nem produtos parecidos: se nao encontrar o produto exato, devolva a lista vazia.
         """
         
         try:
@@ -464,9 +519,12 @@ class IAService:
         Retorne em formato JSON:
         {{
             "sugestoes": [
-                {{"loja": "Nome", "url": "URL", "preco": 199.90}}
+                {{"loja": "Nome", "produto": "Titulo do produto na loja", "url": "URL", "preco": 199.90}}
             ]
         }}
+
+        O campo "produto" deve trazer o titulo do anuncio na loja, exatamente como aparece la.
+        Nao sugira acessorios nem produtos parecidos: se nao encontrar o produto exato, devolva a lista vazia.
         """
         
         try:
@@ -510,11 +568,13 @@ class IAService:
         Retorne APENAS um JSON válido (sem markdown, sem texto extra) no formato:
         {{
             "sugestoes": [
-                {{"loja": "Nome da Loja", "url": "https://www.loja.com.br/produto", "preco": 199.90}}
+                {{"loja": "Nome da Loja", "produto": "Titulo do produto na loja", "url": "https://www.loja.com.br/produto", "preco": 199.90}}
             ]
         }}
 
         Busque por lojas reais e conhecidas como Amazon, Mercado Livre, Magazine Luiza, Americanas, Kabum, etc.
+        O campo "produto" deve trazer o titulo do anuncio na loja, exatamente como aparece la.
+        Nao sugira acessorios nem produtos parecidos: se nao encontrar o produto exato, devolva a lista vazia.
         """
 
         payload = {
@@ -662,10 +722,20 @@ class IAService:
             loja = IAService._limpar_nome_loja(sug.get('loja', ''))
             url = sug.get('url', '').strip()
             preco = sug.get('preco')
+            titulo = (sug.get('produto') or sug.get('titulo') or '').strip()
 
             # Validar dados antes de salvar
             if not loja or not url:
                 logger.warning(f"Ignorando sugestão da IA com dados vazios: {sug}")
+                continue
+
+            # A IA tambem erra o produto: sem titulo que confira com o
+            # presente, a sugestao nao entra
+            if not resultado_relevante(presente.descricao, titulo):
+                logger.info(
+                    f"Sugestão da IA descartada por não corresponder ao presente "
+                    f"'{presente.descricao}': titulo='{titulo}' loja='{loja}'"
+                )
                 continue
 
             if loja.lower() in lojas_salvas:
@@ -676,6 +746,7 @@ class IAService:
                 grupo=presente.grupo,
                 presente=presente,
                 local_compra=loja,
+                titulo_produto=titulo[:300],
                 url_compra=url,
                 preco_sugerido=preco
             )

@@ -325,6 +325,12 @@ class SugestaoCompra(models.Model):
     )
     presente = models.ForeignKey(Presente, on_delete=models.CASCADE, related_name='sugestoes')
     local_compra = models.CharField(max_length=200)
+    titulo_produto = models.CharField(
+        max_length=300,
+        blank=True,
+        default='',
+        help_text='Titulo do produto no resultado da busca, para conferir se e o mesmo item'
+    )
     url_compra = models.URLField(max_length=1000)
     preco_sugerido = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     data_busca = models.DateTimeField(auto_now_add=True)

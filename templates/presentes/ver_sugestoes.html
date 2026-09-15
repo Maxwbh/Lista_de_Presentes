@@ -163,6 +163,11 @@
                                 </span>
                                 {% endif %}
                             </div>
+                            {% if sugestao.titulo_produto %}
+                            <p class="text-xs text-base-content/60 line-clamp-2 mt-0.5" title="{{ sugestao.titulo_produto }}">
+                                {{ sugestao.titulo_produto }}
+                            </p>
+                            {% endif %}
                             <span class="text-[11px] text-base-content/40">
                                 <i class="bi bi-clock"></i> {{ sugestao.data_busca|date:"d/m/Y H:i" }}
                             </span>

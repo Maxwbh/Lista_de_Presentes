@@ -31,6 +31,35 @@
         height: 100%;
         object-fit: contain;
     }
+
+    /*
+     * Item comprado: o cinza vai SO na imagem, nao no card inteiro.
+     * Um filter no card atingiria toda a subarvore e deixaria o banner
+     * "Comprado" cinza tambem, que e justamente o que precisa saltar aos
+     * olhos.
+     *
+     * O esmaecimento vai dentro do filter em vez da classe opacity-75:
+     * aquela classe nao tem efeito aqui, porque o animate-slide-up termina
+     * em opacity:1 com fill-mode both e vence. O filter a animacao nao toca.
+     */
+    .presente-comprado .presente-img-box {
+        filter: grayscale(1) opacity(0.75);
+    }
+
+    /* Banner de item comprado: faixa cheia, logo abaixo da imagem */
+    .presente-banner-comprado {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.4rem;
+        padding: 0.4rem 0.5rem;
+        background: #047857;          /* emerald 700 */
+        color: #ffffff;
+        font-size: 0.72rem;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+    }
 </style>
 {% endblock %}
 
@@ -146,7 +175,7 @@
                             {% if usuario.presentes_list %}
                                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                                     {% for presente in usuario.presentes_list %}
-                                        <div class="presente-membro bg-base-100 border border-base-300/40 rounded-2xl overflow-hidden transition-all duration-300 hover:border-primary/40 hover:shadow-lg hover:-translate-y-0.5 flex flex-col {% if presente.status == 'COMPRADO' %}grayscale opacity-75{% endif %}" data-status="{{ presente.status }}">
+                                        <div class="presente-membro bg-base-100 border border-base-300/40 rounded-2xl overflow-hidden transition-all duration-300 hover:border-primary/40 hover:shadow-lg hover:-translate-y-0.5 flex flex-col {% if presente.status == 'COMPRADO' %}presente-comprado{% endif %}" data-status="{{ presente.status }}">
                                             <!-- Imagem limpa (nenhuma sobreposição de texto) -->
                                             <div class="relative presente-img-box bg-base-200">
                                                 {% if presente.tem_imagem %}
@@ -157,6 +186,12 @@
                                                     </div>
                                                 {% endif %}
                                             </div>
+
+                                            {% if presente.status == 'COMPRADO' %}
+                                            <div class="presente-banner-comprado">
+                                                <i class="bi bi-bag-check-fill"></i> Comprado
+                                            </div>
+                                            {% endif %}
 
                                             <div class="p-3.5 flex flex-col flex-1">
                                                 <p class="font-semibold text-sm leading-snug line-clamp-2 mb-2">{{ presente.descricao|truncatewords:12 }}</p>
@@ -177,15 +212,15 @@
                                                     {% else %}
                                                     <span class="text-xs text-base-content/30">Sem preço</span>
                                                     {% endif %}
-                                                    {% if presente.sugestoes.count > 0 %}
+                                                    {% if presente.status == 'ATIVO' and presente.sugestoes.count > 0 %}
                                                     <span class="ml-auto inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-base-200 text-base-content/50" title="{{ presente.sugestoes.count }} sugestões de lojas">
                                                         <i class="bi bi-shop"></i> {{ presente.sugestoes.count }}
                                                     </span>
                                                     {% endif %}
                                                 </div>
 
+                                                {% if presente.status == 'ATIVO' %}
                                                 <div class="mt-auto flex items-center gap-1.5">
-                                                    {% if presente.status == 'ATIVO' %}
                                                     <form method="post" action="{% url 'marcar_comprado' presente.id %}" class="flex-1">
                                                         {% csrf_token %}
                                                         <button type="button" class="btn btn-primary btn-sm rounded-xl w-full gap-1.5"
@@ -197,11 +232,6 @@
                                                             <i class="bi bi-bag-heart"></i> Comprar
                                                         </button>
                                                     </form>
-                                                    {% else %}
-                                                    <span class="flex-1 inline-flex items-center justify-center gap-1.5 text-xs text-base-content/50 bg-base-200/60 rounded-xl py-2">
-                                                        <i class="bi bi-check-circle"></i> Já comprado
-                                                    </span>
-                                                    {% endif %}
                                                     {% if presente.sugestoes.count > 0 %}
                                                     <button type="button" class="btn btn-ghost btn-sm btn-square rounded-xl border border-base-300" title="Ver sugestões de lojas" onclick="document.getElementById('modalSugestoes{{ presente.id }}').showModal()">
                                                         <i class="bi bi-shop"></i>
@@ -213,6 +243,7 @@
                                                     </a>
                                                     {% endif %}
                                                 </div>
+                                                {% endif %}
                                             </div>
                                         </div>
                                     {% endfor %}
@@ -263,7 +294,7 @@
             </div>
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5" id="produtos-container">
                 {% for presente in todos_presentes %}
-                    <div class="produto-card bg-base-100 border border-base-300/40 rounded-3xl shadow-sm hover:shadow-lg transition-all duration-300 hover:-translate-y-1 overflow-hidden flex flex-col animate-slide-up {% if presente.status == 'COMPRADO' %}grayscale opacity-75{% endif %}" data-descricao="{{ presente.descricao|lower }}" data-usuario="{{ presente.usuario.first_name }} {{ presente.usuario.last_name }}" data-status="{{ presente.status }}">
+                    <div class="produto-card bg-base-100 border border-base-300/40 rounded-3xl shadow-sm hover:shadow-lg transition-all duration-300 hover:-translate-y-1 overflow-hidden flex flex-col animate-slide-up {% if presente.status == 'COMPRADO' %}presente-comprado{% endif %}" data-descricao="{{ presente.descricao|lower }}" data-usuario="{{ presente.usuario.first_name }} {{ presente.usuario.last_name }}" data-status="{{ presente.status }}">
                         <!-- Imagem (apenas o dono como identificador, sem selo de texto) -->
                         <div class="relative presente-img-box bg-base-200">
                             {% if presente.tem_imagem %}
@@ -283,20 +314,20 @@
                             </div>
                         </div>
 
-                        <div class="p-4 flex flex-col flex-1">
-                            <!-- Status comprado (no corpo, sem sobrepor) -->
-                            {% if presente.status == 'COMPRADO' %}
-                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-base-300 text-base-content/60 mb-2 self-start">
-                                <i class="bi bi-bag-check text-[10px]"></i> Comprado
-                            </span>
-                            {% endif %}
+                        {% if presente.status == 'COMPRADO' %}
+                        <div class="presente-banner-comprado">
+                            <i class="bi bi-bag-check-fill"></i> Comprado
+                        </div>
+                        {% endif %}
 
+                        <div class="p-4 flex flex-col flex-1">
                             <h5 class="font-bold text-sm leading-snug line-clamp-2 mb-2">{{ presente.descricao|truncatewords:14 }}</h5>
 
-                            <!-- Preço + temperatura + melhor oferta (no corpo) -->
+                            <!-- Status + preço + temperatura + melhor oferta (no corpo, sem sobrepor a imagem) -->
                             <div class="flex items-center flex-wrap gap-2 mb-3 min-h-[24px]">
                                 {% if presente.preco %}
                                 <span class="text-base font-extrabold {% if presente.status == 'COMPRADO' %}text-base-content/50{% else %}text-success{% endif %}">R$ {{ presente.preco }}</span>
+                                {% if presente.status == 'ATIVO' %}
                                 {% with temp=presente.temperatura %}
                                 {% if temp.codigo == 'quente' or temp.codigo == 'frio' %}
                                 <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold {{ temp.css }}" title="{{ temp.label }}">
@@ -304,16 +335,18 @@
                                 </span>
                                 {% endif %}
                                 {% endwith %}
+                                {% endif %}
                                 {% else %}
                                 <span class="text-xs text-base-content/30">Preço não informado</span>
                                 {% endif %}
-                                {% if presente.melhor_preco and presente.preco and presente.melhor_preco < presente.preco %}
+                                {% if presente.status == 'ATIVO' and presente.melhor_preco and presente.preco and presente.melhor_preco < presente.preco %}
                                 <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-success/10 text-success ml-auto" title="Melhor oferta encontrada">
                                     <i class="bi bi-star-fill"></i> R$ {{ presente.melhor_preco }}
                                 </span>
                                 {% endif %}
                             </div>
 
+                            {% if presente.status == 'ATIVO' %}
                             <div class="mt-auto flex items-center gap-1.5">
                                 <form method="post" action="{% url 'marcar_comprado' presente.id %}" class="flex-1">
                                     {% csrf_token %}
@@ -337,6 +370,7 @@
                                 </a>
                                 {% endif %}
                             </div>
+                            {% endif %}
                         </div>
                     </div>
                 {% endfor %}
@@ -434,6 +468,11 @@
                                         {% endif %}
                                         <span class="font-semibold text-sm truncate">{{ sugestao.local_compra|loja_limpa }}</span>
                                     </div>
+                                    {% if sugestao.titulo_produto %}
+                                    <p class="text-[11px] text-base-content/50 line-clamp-2 mt-0.5" title="{{ sugestao.titulo_produto }}">
+                                        {{ sugestao.titulo_produto }}
+                                    </p>
+                                    {% endif %}
                                     {% if sugestao.preco_sugerido %}
                                     <div class="flex items-baseline gap-2 mt-0.5">
                                         <span class="text-lg font-extrabold {% if forloop.first %}text-success{% else %}text-base-content/70{% endif %}">
