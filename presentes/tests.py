@@ -9,7 +9,8 @@ from django.utils import timezone
 from django.urls import reverse
 
 from .models import (
-    Compra, Grupo, GrupoMembro, MercadoLivreToken, Presente, PrecoHistorico, SugestaoCompra,
+    Compra, Grupo, GrupoMembro, MercadoLivreToken, Presente, PrecoHistorico, PushSubscription,
+    SugestaoCompra,
     Usuario,
 )
 from .mercadolivre_api import buscar_produto, extrair_ids, obter_access_token
@@ -797,3 +798,29 @@ class MercadoLivreAPITest(TestCase):
         self.assertEqual(post.call_args[1]['data']['grant_type'], 'authorization_code')
         self.assertEqual(post.call_args[1]['data']['code'], 'abc')
         self.assertEqual(MercadoLivreToken.objects.get().refresh_token, 'ref')
+
+
+class PushRotasTest(TestCase):
+    """O base.html chama /api/push/vapid-key/ e /api/push/subscribe/ em toda pagina logada."""
+
+    def setUp(self):
+        self.usuario = Usuario.objects.create_user(
+            email='push@exemplo.com', username='push', password='SenhaForte!2026',
+        )
+        self.client.force_login(self.usuario)
+
+    @override_settings(VAPID_PUBLIC_KEY='')
+    def test_vapid_key_sem_chave_retorna_json_vazio(self):
+        resposta = self.client.get('/api/push/vapid-key/')
+        self.assertEqual(resposta.status_code, 200)
+        self.assertEqual(resposta.json(), {'public_key': ''})
+
+    @override_settings(VAPID_PUBLIC_KEY='chave-publica')
+    def test_vapid_key_com_chave(self):
+        self.assertEqual(self.client.get('/api/push/vapid-key/').json(), {'public_key': 'chave-publica'})
+
+    def test_subscribe_salva_assinatura(self):
+        dados = {'endpoint': 'https://push.exemplo.com/abc', 'keys': {'p256dh': 'p', 'auth': 'a'}}
+        resposta = self.client.post('/api/push/subscribe/', data=dados, content_type='application/json')
+        self.assertEqual(resposta.status_code, 200)
+        self.assertTrue(PushSubscription.objects.filter(usuario=self.usuario, endpoint=dados['endpoint']).exists())

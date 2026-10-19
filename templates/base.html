@@ -275,13 +275,16 @@
         {% if user.is_authenticated %}
         async function initPushNotifications(registration) {
             if (!('PushManager' in window)) return;
-            const permission = await Notification.requestPermission();
-            if (permission !== 'granted') return;
 
             try {
+                // Sem chave VAPID no servidor nao ha push: nem pede permissao
                 const resp = await fetch('/api/push/vapid-key/');
+                if (!resp.ok) return;
                 const { public_key } = await resp.json();
                 if (!public_key) return;
+
+                const permission = await Notification.requestPermission();
+                if (permission !== 'granted') return;
 
                 const subscription = await registration.pushManager.subscribe({
                     userVisibleOnly: true,

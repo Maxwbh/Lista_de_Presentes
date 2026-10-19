@@ -378,6 +378,13 @@ SITE_URL = os.getenv('SITE_URL', 'http://localhost:8000')
 MERCADOLIVRE_CLIENT_ID = os.getenv('MERCADOLIVRE_CLIENT_ID', '')
 MERCADOLIVRE_CLIENT_SECRET = os.getenv('MERCADOLIVRE_CLIENT_SECRET', '')
 
+# ==============================================================================
+# Web Push - chaves VAPID (sem chave publica o navegador nao assina push)
+# ==============================================================================
+VAPID_PUBLIC_KEY = os.getenv('VAPID_PUBLIC_KEY', '')
+VAPID_PRIVATE_KEY = os.getenv('VAPID_PRIVATE_KEY', '')
+VAPID_ADMIN_EMAIL = os.getenv('VAPID_ADMIN_EMAIL', '')
+
 # Token do endpoint de cron (pesquisa semanal de precos via agendador externo)
 CRON_TOKEN = os.getenv('CRON_TOKEN', '')
 
