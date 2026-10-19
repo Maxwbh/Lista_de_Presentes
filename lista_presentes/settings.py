@@ -61,6 +61,7 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'presentes.pesquisa_precos.PesquisaPrecoMiddleware',  # Pesquisa semanal de preços
+    'presentes.acessos.RegistroAcessoMiddleware',  # Despertares do servidor e acessos por hora
 ]
 
 ROOT_URLCONF = 'lista_presentes.urls'

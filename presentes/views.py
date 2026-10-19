@@ -2067,3 +2067,19 @@ def compartilhar_view(request):
     logger.info(f"Compartilhamento recebido de {request.user.email}: url={bool(url)} descricao={bool(descricao)}")
     destino = reverse('adicionar_presente')
     return redirect(f"{destino}?{urlencode(params)}" if params else destino)
+
+
+@login_required
+def acessos_resumo_view(request):
+    """Resumo de acessos por hora e despertares do servidor, com sugestao de cron (superusuarios)"""
+    from .acessos import resumo_acessos
+
+    if not request.user.is_superuser:
+        return JsonResponse({'error': 'Apenas administradores'}, status=403)
+    try:
+        dias = min(max(int(request.GET.get('dias', 30)), 1), 365)
+        limite = float(request.GET.get('limite', 5))
+    except ValueError:
+        return JsonResponse({'error': 'Parametros invalidos'}, status=400)
+    return JsonResponse(resumo_acessos(dias=dias, limite_percentual=limite),
+                        json_dumps_params={'ensure_ascii': False, 'indent': 2})
