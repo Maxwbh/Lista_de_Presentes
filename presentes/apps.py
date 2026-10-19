@@ -28,3 +28,8 @@ class PresentesConfig(AppConfig):
 
     def ready(self):
         connection_created.connect(_forcar_search_path)
+
+        from django.db.models.signals import post_save
+        from .models import Notificacao
+        from .push import notificacao_criada
+        post_save.connect(notificacao_criada, sender=Notificacao, dispatch_uid='push_notificacao_criada')

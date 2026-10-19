@@ -9,11 +9,12 @@ from django.utils import timezone
 from django.urls import reverse
 
 from .models import (
-    Compra, Grupo, GrupoMembro, MercadoLivreToken, Presente, PrecoHistorico, PushSubscription,
-    SugestaoCompra,
+    Compra, Grupo, GrupoMembro, MercadoLivreToken, Notificacao, Presente, PrecoHistorico,
+    PushSubscription, SugestaoCompra,
     Usuario,
 )
 from .mercadolivre_api import buscar_produto, extrair_ids, obter_access_token
+from .push import enviar_push
 from .scrapers import ScraperFactory
 from .relevancia import calcular_relevancia, resultado_relevante
 from .services import IAService
@@ -824,3 +825,109 @@ class PushRotasTest(TestCase):
         resposta = self.client.post('/api/push/subscribe/', data=dados, content_type='application/json')
         self.assertEqual(resposta.status_code, 200)
         self.assertTrue(PushSubscription.objects.filter(usuario=self.usuario, endpoint=dados['endpoint']).exists())
+
+
+class EnvioPushTest(TestCase):
+    """Envio real pelo pywebpush, so com o POST ao servico de push simulado."""
+
+    def setUp(self):
+        import base64
+        import os
+
+        from cryptography.hazmat.primitives import serialization
+        from cryptography.hazmat.primitives.asymmetric import ec
+
+        from .push import gerar_chaves_vapid
+
+        def b64url(dados):
+            return base64.urlsafe_b64encode(dados).rstrip(b'=').decode()
+
+        self.publica, self.privada = gerar_chaves_vapid()
+        self.usuario = Usuario.objects.create_user(
+            email='push@exemplo.com', username='push', password='SenhaForte!2026',
+        )
+        # Chaves que o navegador geraria ao assinar
+        self.chave_navegador = ec.generate_private_key(ec.SECP256R1())
+        self.auth = os.urandom(16)
+        p256dh = self.chave_navegador.public_key().public_bytes(
+            serialization.Encoding.X962, serialization.PublicFormat.UncompressedPoint
+        )
+        self.assinatura = PushSubscription.objects.create(
+            usuario=self.usuario, endpoint='https://fcm.googleapis.com/fcm/send/abc',
+            p256dh=b64url(p256dh), auth=b64url(self.auth),
+        )
+
+    def _settings(self):
+        return override_settings(
+            VAPID_PUBLIC_KEY=self.publica, VAPID_PRIVATE_KEY=self.privada,
+            VAPID_ADMIN_EMAIL='maxwbh@gmail.com',
+        )
+
+    def test_envia_payload_criptografado_e_assinado(self):
+        import json
+
+        import http_ece
+
+        with self._settings(), mock.patch('pywebpush.requests.post',
+                                          return_value=mock.Mock(status_code=201)) as post:
+            self.assertEqual(enviar_push(self.usuario, 'Seu presente foi comprado!'), 1)
+
+        args, kwargs = post.call_args
+        self.assertEqual(args[0], self.assinatura.endpoint)
+        self.assertIn('vapid t=', kwargs['headers']['Authorization'])
+        self.assertIn(f'k={self.publica}', kwargs['headers']['Authorization'])
+
+        corpo = http_ece.decrypt(kwargs['data'], private_key=self.chave_navegador,
+                                 auth_secret=self.auth, version='aes128gcm')
+        self.assertEqual(json.loads(corpo), {
+            'title': 'Lista de Presentes', 'body': 'Seu presente foi comprado!', 'url': '/notificacoes/',
+        })
+
+    def test_remove_assinatura_expirada(self):
+        with self._settings(), mock.patch('pywebpush.requests.post',
+                                          return_value=mock.Mock(status_code=410, text='Gone')):
+            self.assertEqual(enviar_push(self.usuario, 'Teste'), 0)
+        self.assertFalse(PushSubscription.objects.exists())
+
+    def test_sem_chaves_nao_envia(self):
+        with override_settings(VAPID_PRIVATE_KEY=''), mock.patch('pywebpush.requests.post') as post:
+            self.assertEqual(enviar_push(self.usuario, 'Teste'), 0)
+        post.assert_not_called()
+
+    def test_notificacao_criada_dispara_push_apos_commit(self):
+        with self._settings(), mock.patch('presentes.push.enviar_push') as enviar, \
+                mock.patch('presentes.push.connection.close'):
+            with self.captureOnCommitCallbacks(execute=False) as callbacks:
+                notificacao = Notificacao.objects.create(usuario=self.usuario, mensagem='Oi')
+            self.assertEqual(len(callbacks), 1)
+            # Executa a thread de forma sincrona para o teste
+            with mock.patch('presentes.push.threading.Thread') as thread:
+                callbacks[0]()
+            alvo, args = thread.call_args[1]['target'], thread.call_args[1]['args']
+            alvo(*args)
+        enviar.assert_called_once_with(notificacao.usuario, 'Oi')
+
+
+class ExtrairInfoProdutoTextoSemLinkTest(TestCase):
+    """Nome do produto digitado no campo do link nao deve virar requisicao para 'https://sabonete natura'."""
+
+    def setUp(self):
+        self.usuario = Usuario.objects.create_user(
+            email='link@exemplo.com', username='link', password='SenhaForte!2026',
+        )
+        self.client.force_login(self.usuario)
+
+    def test_texto_sem_link_retorna_erro_claro_sem_acessar_rede(self):
+        for texto in ('sabonete natura', 'sabonete'):
+            with mock.patch('presentes.scrapers.requests.get') as get:
+                resposta = self.client.post(reverse('extrair_info_produto'), {'url': texto})
+            self.assertEqual(resposta.status_code, 400)
+            self.assertEqual(resposta.json()['error_type'], 'invalid_url')
+            get.assert_not_called()
+
+    def test_link_sem_protocolo_continua_aceito(self):
+        with mock.patch('presentes.scrapers.ScraperFactory.extract_product_info',
+                        return_value={'success': True, 'titulo': 'Sabonete', 'preco': 10.0, 'imagem_url': ''}) as extrair:
+            resposta = self.client.post(reverse('extrair_info_produto'), {'url': 'www.natura.com.br/p/sabonete'})
+        self.assertEqual(resposta.status_code, 200)
+        extrair.assert_called_once_with('https://www.natura.com.br/p/sabonete')
