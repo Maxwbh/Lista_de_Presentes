@@ -249,6 +249,17 @@ class MercadoLivreScraper(BaseScraper):
         Lanca NetworkError para erros de rede/HTTP.
         Lanca ParsingError se conseguir acessar mas nao extrair dados minimos.
         """
+        # A API oficial e o caminho preferido: o site bloqueia consultas
+        # automaticas com uma pagina de verificacao anti-robo
+        from .mercadolivre_api import buscar_produto, MercadoLivreAPIError
+        try:
+            resultado = buscar_produto(url)
+            if resultado and resultado[0]:
+                logger.info(f"Mercado Livre (API) - Título: True, Preço: {resultado[1]}, Imagem: {bool(resultado[2])}")
+                return resultado
+        except MercadoLivreAPIError as e:
+            logger.warning(f"API do Mercado Livre falhou, tentando a pagina: {e}")
+
         # get_soup() pode lancar NetworkError (propagamos)
         soup = self.get_soup(url)
 

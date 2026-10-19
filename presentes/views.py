@@ -6,6 +6,7 @@ from django.contrib import messages
 from django.db.models import Count, Prefetch, Q
 from django.db import transaction
 from django.http import JsonResponse, HttpResponse
+from django.urls import reverse
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.core.mail import send_mail
 from django.conf import settings
@@ -1950,3 +1951,49 @@ def push_subscription_delete(request):
 def vapid_public_key_view(request):
     """Retorna a chave publica VAPID para o frontend"""
     return JsonResponse({'public_key': settings.VAPID_PUBLIC_KEY})
+
+
+@login_required
+def mercadolivre_conectar_view(request):
+    """Inicia a autorizacao OAuth do app na API do Mercado Livre (apenas superusuarios)"""
+    from .mercadolivre_api import credenciais_configuradas, url_autorizacao
+
+    if not request.user.is_superuser:
+        messages.error(request, 'Apenas administradores podem conectar o Mercado Livre.')
+        return redirect('dashboard')
+
+    if not credenciais_configuradas():
+        messages.error(request, 'Configure MERCADOLIVRE_CLIENT_ID e MERCADOLIVRE_CLIENT_SECRET no servidor.')
+        return redirect('dashboard')
+
+    state = secrets.token_urlsafe(32)
+    request.session['mercadolivre_oauth_state'] = state
+    redirect_uri = request.build_absolute_uri(reverse('mercadolivre_callback'))
+    return redirect(url_autorizacao(redirect_uri, state))
+
+
+@login_required
+def mercadolivre_callback_view(request):
+    """Recebe o code do OAuth do Mercado Livre e guarda o token"""
+    from .mercadolivre_api import trocar_codigo_por_token, MercadoLivreAPIError
+
+    if not request.user.is_superuser:
+        messages.error(request, 'Apenas administradores podem conectar o Mercado Livre.')
+        return redirect('dashboard')
+
+    state_esperado = request.session.pop('mercadolivre_oauth_state', None)
+    code = request.GET.get('code')
+    if not code or not state_esperado or request.GET.get('state') != state_esperado:
+        messages.error(request, 'Autorização do Mercado Livre inválida ou expirada. Tente novamente.')
+        return redirect('dashboard')
+
+    redirect_uri = request.build_absolute_uri(reverse('mercadolivre_callback'))
+    try:
+        trocar_codigo_por_token(code, redirect_uri)
+    except MercadoLivreAPIError as e:
+        logger.error(f"Falha ao conectar Mercado Livre: {e}")
+        messages.error(request, 'Não foi possível conectar o Mercado Livre. Veja os logs do servidor.')
+        return redirect('dashboard')
+
+    messages.success(request, 'Mercado Livre conectado. A busca de produtos agora usa a API oficial.')
+    return redirect('dashboard')

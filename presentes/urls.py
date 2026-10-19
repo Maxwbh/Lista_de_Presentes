@@ -46,6 +46,10 @@ urlpatterns = [
     # API para extrair informações de produto via URL
     path('api/extrair-info-produto/', views.extrair_info_produto_view, name='extrair_info_produto'),
 
+    # Integracao com a API do Mercado Livre (OAuth)
+    path('integracoes/mercadolivre/conectar/', views.mercadolivre_conectar_view, name='mercadolivre_conectar'),
+    path('integracoes/mercadolivre/callback/', views.mercadolivre_callback_view, name='mercadolivre_callback'),
+
     # Grupos
     path('grupos/', views.grupos_lista_view, name='grupos_lista'),
     path('grupos/criar/', views.criar_grupo_view, name='criar_grupo'),

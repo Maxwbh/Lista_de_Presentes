@@ -1,14 +1,19 @@
+from datetime import timedelta
 from io import StringIO
 from unittest import mock
 
 from django.core.management import call_command
 from django.core.management.base import CommandError
-from django.test import TestCase
+from django.test import TestCase, override_settings
+from django.utils import timezone
 from django.urls import reverse
 
 from .models import (
-    Compra, Grupo, GrupoMembro, Presente, PrecoHistorico, SugestaoCompra, Usuario,
+    Compra, Grupo, GrupoMembro, MercadoLivreToken, Presente, PrecoHistorico, SugestaoCompra,
+    Usuario,
 )
+from .mercadolivre_api import buscar_produto, extrair_ids, obter_access_token
+from .scrapers import ScraperFactory
 from .relevancia import calcular_relevancia, resultado_relevante
 from .services import IAService
 
@@ -692,3 +697,103 @@ class ExtrairInfoProdutoBloqueioAntiRoboTest(TestCase):
         self.assertEqual(dados['error_type'], 'blocked')
         self.assertIn('manualmente', dados['error'])
         criar_issue.assert_not_called()
+
+
+@override_settings(MERCADOLIVRE_CLIENT_ID='app-id', MERCADOLIVRE_CLIENT_SECRET='app-secret')
+class MercadoLivreAPITest(TestCase):
+    URL = ('https://www.mercadolivre.com.br/p/MLB2070594105?pdp_filters=item_id%3AMLB7136159042'
+           '&sid=cart#polycard_client=cart_list&wid=MLB7136159042&sid=cart')
+
+    def _resposta(self, status, dados):
+        resposta = mock.Mock(status_code=status, text=str(dados))
+        resposta.json.return_value = dados
+        return resposta
+
+    def _token(self, expira_em):
+        return MercadoLivreToken.objects.create(
+            access_token='token-atual', refresh_token='refresh-atual', expira_em=expira_em,
+        )
+
+    def test_extrai_ids_de_anuncio_e_produto(self):
+        self.assertEqual(extrair_ids(self.URL), ('MLB7136159042', 'MLB2070594105'))
+        self.assertEqual(
+            extrair_ids('https://produto.mercadolivre.com.br/MLB-123456789-fone-bluetooth-_JM'),
+            ('MLB123456789', None),
+        )
+
+    def test_scraper_usa_api_quando_conectado(self):
+        self._token(timezone.now() + timedelta(hours=1))
+        item = {'title': 'Fone Bluetooth', 'price': 199.9,
+                'pictures': [{'secure_url': 'https://http2.mlstatic.com/fone.jpg'}]}
+
+        # requests.get e o mesmo objeto nos dois modulos: um patch so cobre API e pagina
+        with mock.patch('presentes.mercadolivre_api.requests.get', return_value=self._resposta(200, item)) as get:
+            resultado = ScraperFactory.extract_product_info(self.URL)
+
+        self.assertTrue(resultado['success'])
+        self.assertEqual(resultado['titulo'], 'Fone Bluetooth')
+        self.assertEqual(resultado['preco'], 199.9)
+        self.assertEqual(resultado['imagem_url'], 'https://http2.mlstatic.com/fone.jpg')
+        self.assertIn('/items/MLB7136159042', get.call_args[0][0])
+        self.assertEqual(get.call_count, 1)  # nao acessou a pagina
+        self.assertEqual(get.call_args[1]['headers']['Authorization'], 'Bearer token-atual')
+
+    def test_usa_produto_de_catalogo_se_item_falhar(self):
+        self._token(timezone.now() + timedelta(hours=1))
+        produto = {'name': 'Fone Catalogo', 'buy_box_winner': {'price': 150},
+                   'pictures': [{'url': 'https://http2.mlstatic.com/cat.jpg'}]}
+
+        with mock.patch('presentes.mercadolivre_api.requests.get',
+                        side_effect=[self._resposta(403, {}), self._resposta(200, produto)]):
+            resultado = buscar_produto(self.URL)
+
+        self.assertEqual(resultado, ('Fone Catalogo', 150, 'https://http2.mlstatic.com/cat.jpg'))
+
+    def test_renova_token_vencido_e_guarda_novo_refresh(self):
+        self._token(timezone.now() - timedelta(minutes=1))
+        novo = {'access_token': 'token-novo', 'refresh_token': 'refresh-novo', 'expires_in': 21600}
+
+        with mock.patch('presentes.mercadolivre_api.requests.post', return_value=self._resposta(200, novo)) as post:
+            self.assertEqual(obter_access_token(), 'token-novo')
+
+        self.assertEqual(post.call_args[1]['data']['grant_type'], 'refresh_token')
+        self.assertEqual(post.call_args[1]['data']['refresh_token'], 'refresh-atual')
+        token = MercadoLivreToken.objects.get()
+        self.assertEqual(token.refresh_token, 'refresh-novo')
+
+    def test_sem_conexao_cai_na_pagina(self):
+        with mock.patch('presentes.mercadolivre_api.requests.get') as api:
+            self.assertIsNone(buscar_produto(self.URL))
+        api.assert_not_called()
+
+    def test_callback_rejeita_state_invalido(self):
+        admin = Usuario.objects.create_superuser(
+            email='admin@exemplo.com', username='admin', password='SenhaForte!2026',
+        )
+        self.client.force_login(admin)
+        sessao = self.client.session
+        sessao['mercadolivre_oauth_state'] = 'esperado'
+        sessao.save()
+
+        with mock.patch('presentes.mercadolivre_api.requests.post') as post:
+            self.client.get(reverse('mercadolivre_callback'), {'code': 'abc', 'state': 'outro'})
+
+        post.assert_not_called()
+        self.assertFalse(MercadoLivreToken.objects.exists())
+
+    def test_callback_guarda_token(self):
+        admin = Usuario.objects.create_superuser(
+            email='admin@exemplo.com', username='admin', password='SenhaForte!2026',
+        )
+        self.client.force_login(admin)
+        sessao = self.client.session
+        sessao['mercadolivre_oauth_state'] = 'esperado'
+        sessao.save()
+        dados = {'access_token': 'tok', 'refresh_token': 'ref', 'expires_in': 21600}
+
+        with mock.patch('presentes.mercadolivre_api.requests.post', return_value=self._resposta(200, dados)) as post:
+            self.client.get(reverse('mercadolivre_callback'), {'code': 'abc', 'state': 'esperado'})
+
+        self.assertEqual(post.call_args[1]['data']['grant_type'], 'authorization_code')
+        self.assertEqual(post.call_args[1]['data']['code'], 'abc')
+        self.assertEqual(MercadoLivreToken.objects.get().refresh_token, 'ref')
