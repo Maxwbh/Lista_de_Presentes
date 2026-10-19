@@ -661,3 +661,34 @@ class LimparHistoricoPrecosTest(TestCase):
     def test_fator_invalido_e_recusado(self):
         with self.assertRaises(CommandError):
             self._rodar('--fator', '1')
+
+
+class ExtrairInfoProdutoBloqueioAntiRoboTest(TestCase):
+    """Mercado Livre redireciona para /gz/account-verification quando bloqueia
+    a consulta. Isso não é falha do parser: não deve abrir issue."""
+
+    URL = 'https://www.mercadolivre.com.br/p/MLB2070594105?pdp_filters=item_id%3AMLB7136159042'
+
+    def setUp(self):
+        self.usuario = Usuario.objects.create_user(
+            email='bloqueio@exemplo.com', username='bloqueio', password='SenhaForte!2026',
+        )
+        self.client.force_login(self.usuario)
+
+    def _resposta_bloqueada(self):
+        resposta = mock.Mock()
+        resposta.url = 'https://www.mercadolivre.com.br/gz/account-verification?go=' + self.URL
+        resposta.content = b'<html><head><title>Mercado Libre</title></head><body></body></html>'
+        resposta.raise_for_status.return_value = None
+        return resposta
+
+    def test_bloqueio_retorna_erro_claro_sem_criar_issue(self):
+        with mock.patch('presentes.scrapers.requests.get', return_value=self._resposta_bloqueada()), \
+                mock.patch('presentes.github_helper.criar_issue_falha_scraping') as criar_issue:
+            resposta = self.client.post(reverse('extrair_info_produto'), {'url': self.URL})
+
+        self.assertEqual(resposta.status_code, 400)
+        dados = resposta.json()
+        self.assertEqual(dados['error_type'], 'blocked')
+        self.assertIn('manualmente', dados['error'])
+        criar_issue.assert_not_called()

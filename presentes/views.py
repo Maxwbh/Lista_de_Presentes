@@ -1199,7 +1199,18 @@ def extrair_info_produto_view(request):
             error_type = result.get('error_type')
             error_message = result.get('error_message', 'Erro desconhecido')
 
-            if error_type == 'network':
+            if error_type == 'blocked':
+                # Site exigiu verificacao anti-robo (ex.: Mercado Livre)
+                # Apenas informar ao usuario, NAO criar issue
+                logger.warning(f"Acesso bloqueado pelo site {url}: {error_message}")
+                return JsonResponse({
+                    'success': False,
+                    'error': 'Este site bloqueou a busca automática de informações. '
+                             'Preencha a descrição, o preço e a imagem manualmente.',
+                    'error_type': 'blocked'
+                }, status=400)
+
+            elif error_type == 'network':
                 # Erro de rede/HTTP (404, 500, timeout, etc.)
                 # Apenas informar ao usuário, NÃO criar issue
                 logger.warning(f"Erro de rede ao acessar {url}: {error_message}")
