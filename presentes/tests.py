@@ -723,33 +723,74 @@ class MercadoLivreAPITest(TestCase):
             ('MLB123456789', None),
         )
 
-    def test_scraper_usa_api_quando_conectado(self):
+    def _api_falsa(self, rotas):
+        """requests.get que responde conforme o caminho da URL ({trecho: (status, dados)})"""
+        def get(url, **kwargs):
+            for trecho, (status, dados) in rotas.items():
+                if trecho in url:
+                    return self._resposta(status, dados)
+            return self._resposta(404, {'message': 'not_found'})
+        return mock.patch('presentes.mercadolivre_api.requests.get', side_effect=get)
+
+    # Respostas reais da API para anuncios de terceiros: /items bloqueado, catalogo liberado
+    ROTAS_CATALOGO = {
+        '/items/MLB7136159042/description': (200, {'plain_text': 'Paquímetro Manual 150 mm\n\nDetalhes...'}),
+        '/items/': (403, {'message': 'Access to the requested resource is forbidden', 'error': 'access_denied'}),
+        '/products/MLB2070594105/items': (200, {'results': [
+            {'item_id': 'MLB5378977671', 'price': 31.76},
+            {'item_id': 'MLB7136159042', 'price': 33.47},
+        ]}),
+        '/products/MLB2070594105': (200, {'name': 'Vernier Caliper',
+                                          'pictures': [{'url': 'https://http2.mlstatic.com/cat.jpg'}]}),
+    }
+
+    def test_scraper_usa_catalogo_da_api(self):
         self._token(timezone.now() + timedelta(hours=1))
-        item = {'title': 'Fone Bluetooth', 'price': 199.9,
-                'pictures': [{'secure_url': 'https://http2.mlstatic.com/fone.jpg'}]}
 
         # requests.get e o mesmo objeto nos dois modulos: um patch so cobre API e pagina
-        with mock.patch('presentes.mercadolivre_api.requests.get', return_value=self._resposta(200, item)) as get:
+        with self._api_falsa(self.ROTAS_CATALOGO) as get:
             resultado = ScraperFactory.extract_product_info(self.URL)
 
         self.assertTrue(resultado['success'])
-        self.assertEqual(resultado['titulo'], 'Fone Bluetooth')
-        self.assertEqual(resultado['preco'], 199.9)
-        self.assertEqual(resultado['imagem_url'], 'https://http2.mlstatic.com/fone.jpg')
-        self.assertIn('/items/MLB7136159042', get.call_args[0][0])
-        self.assertEqual(get.call_count, 1)  # nao acessou a pagina
+        self.assertEqual(resultado['titulo'], 'Paquímetro Manual 150 mm')
+        self.assertEqual(resultado['preco'], 33.47)  # preco do anuncio do link, nao o menor
+        self.assertEqual(resultado['imagem_url'], 'https://http2.mlstatic.com/cat.jpg')
+        chamadas = [c.args[0] for c in get.call_args_list]
+        self.assertTrue(all('api.mercadolibre.com' in url for url in chamadas))  # nao acessou a pagina
         self.assertEqual(get.call_args[1]['headers']['Authorization'], 'Bearer token-atual')
 
-    def test_usa_produto_de_catalogo_se_item_falhar(self):
+    def test_link_de_anuncio_acha_produto_pelo_titulo(self):
         self._token(timezone.now() + timedelta(hours=1))
-        produto = {'name': 'Fone Catalogo', 'buy_box_winner': {'price': 150},
-                   'pictures': [{'url': 'https://http2.mlstatic.com/cat.jpg'}]}
+        rotas = {
+            '/products/search': (200, {'results': [{'id': 'MLB999'}, {'id': 'MLB2070594105'}]}),
+            '/products/MLB999/items': (200, {'results': [{'item_id': 'MLB111', 'price': 10}]}),
+            **self.ROTAS_CATALOGO,
+        }
+        url = 'https://produto.mercadolivre.com.br/MLB-7136159042-paquimetro-manual-150-mm-_JM'
 
-        with mock.patch('presentes.mercadolivre_api.requests.get',
-                        side_effect=[self._resposta(403, {}), self._resposta(200, produto)]):
-            resultado = buscar_produto(self.URL)
+        with self._api_falsa(rotas):
+            resultado = buscar_produto(url)
 
-        self.assertEqual(resultado, ('Fone Catalogo', 150, 'https://http2.mlstatic.com/cat.jpg'))
+        # MLB999 nao contem o anuncio: so o produto que contem e usado
+        self.assertEqual(resultado, ('Paquímetro Manual 150 mm', 33.47, 'https://http2.mlstatic.com/cat.jpg'))
+
+    def test_link_de_anuncio_fora_do_catalogo_traz_so_titulo(self):
+        self._token(timezone.now() + timedelta(hours=1))
+        rotas = {'/products/search': (200, {'results': []}), '/items/': (403, {})}
+        url = 'https://produto.mercadolivre.com.br/MLB-123456789-fone-bluetooth-sem-fio-_JM'
+
+        with self._api_falsa(rotas):
+            self.assertEqual(buscar_produto(url), ('Fone bluetooth sem fio', None, None))
+
+    def test_obtem_token_por_client_credentials(self):
+        novo = {'access_token': 'token-app', 'expires_in': 21600, 'scope': 'read'}
+
+        with mock.patch('presentes.mercadolivre_api.requests.post', return_value=self._resposta(200, novo)) as post:
+            self.assertEqual(obter_access_token(), 'token-app')
+
+        self.assertEqual(post.call_args[1]['data']['grant_type'], 'client_credentials')
+        self.assertEqual(post.call_args[1]['data']['client_id'], 'app-id')
+        self.assertEqual(MercadoLivreToken.objects.get().access_token, 'token-app')
 
     def test_renova_token_vencido_e_guarda_novo_refresh(self):
         self._token(timezone.now() - timedelta(minutes=1))
@@ -763,7 +804,8 @@ class MercadoLivreAPITest(TestCase):
         token = MercadoLivreToken.objects.get()
         self.assertEqual(token.refresh_token, 'refresh-novo')
 
-    def test_sem_conexao_cai_na_pagina(self):
+    @override_settings(MERCADOLIVRE_CLIENT_ID='', MERCADOLIVRE_CLIENT_SECRET='')
+    def test_sem_credenciais_cai_na_pagina(self):
         with mock.patch('presentes.mercadolivre_api.requests.get') as api:
             self.assertIsNone(buscar_produto(self.URL))
         api.assert_not_called()

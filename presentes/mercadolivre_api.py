@@ -92,25 +92,33 @@ def trocar_codigo_por_token(code, redirect_uri):
 
 
 def obter_access_token():
-    """Retorna um access token valido, renovando se necessario. None se nao houver."""
+    """
+    Retorna um access token valido. None se as credenciais nao estiverem configuradas.
+
+    O token e obtido com client_credentials (so o ID e a chave secreta do app);
+    um token conectado via OAuth (com refresh token) e renovado pelo refresh.
+    """
     from .models import MercadoLivreToken
 
     if not credenciais_configuradas():
         return None
 
     token = MercadoLivreToken.objects.first()
-    if not token:
-        return None
-
-    if token.expira_em - MARGEM_RENOVACAO > timezone.now():
+    if token and token.expira_em - MARGEM_RENOVACAO > timezone.now():
         return token.access_token
 
-    logger.info("Renovando token do Mercado Livre")
-    token = _pedir_token({
-        'grant_type': 'refresh_token',
-        'refresh_token': token.refresh_token,
-    })
-    return token.access_token
+    if token and token.refresh_token:
+        logger.info("Renovando token do Mercado Livre pelo refresh token")
+        try:
+            return _pedir_token({
+                'grant_type': 'refresh_token',
+                'refresh_token': token.refresh_token,
+            }).access_token
+        except MercadoLivreAPIError:
+            logger.warning("Refresh token do Mercado Livre falhou, usando client_credentials", exc_info=True)
+
+    logger.info("Obtendo token do Mercado Livre por client_credentials")
+    return _pedir_token({'grant_type': 'client_credentials'}).access_token
 
 
 def extrair_ids(url):
@@ -178,12 +186,77 @@ def _primeira_imagem(pictures):
     return None
 
 
+def titulo_do_link(url):
+    """Titulo a partir do slug do link (ex.: /MLB-123-fone-bluetooth-_JM -> 'Fone bluetooth')"""
+    path = unquote(urlparse(url).path)
+    match = re.search(r'ML[A-Z]-?\d{6,}-([^/]+)', path, re.IGNORECASE)
+    if not match:
+        return None
+    slug = re.sub(r'-?_JM$', '', match.group(1), flags=re.IGNORECASE)
+    titulo = ' '.join(slug.split('-')).strip()
+    return titulo[:1].upper() + titulo[1:] if titulo else None
+
+
+def _titulo_da_descricao(item_id, access_token):
+    """
+    Primeira linha da descricao do anuncio, que costuma repetir o titulo.
+
+    /items/{id} e bloqueado para anuncios de outros vendedores, mas a descricao
+    nao; o nome do produto de catalogo as vezes vem em outro idioma.
+    """
+    try:
+        texto = _get(f"/items/{item_id}/description", access_token).get('plain_text') or ''
+    except MercadoLivreAPIError:
+        return None
+    linhas = [linha.strip() for linha in texto.splitlines() if linha.strip()]
+    if linhas and 10 <= len(linhas[0]) <= 150:
+        return linhas[0]
+    return None
+
+
+def _preco_do_anuncio(produto_id, item_id, access_token):
+    """
+    Preco do anuncio dentro do produto de catalogo.
+
+    Retorna (preco, anuncio_encontrado). Sem item_id, usa o menor preco.
+    """
+    dados = _get(f"/products/{produto_id}/items", access_token)
+    anuncios = dados.get('results') or []
+    for anuncio in anuncios:
+        if item_id and anuncio.get('item_id') == item_id:
+            return anuncio.get('price'), True
+    precos = [a['price'] for a in anuncios if a.get('price') is not None]
+    return (min(precos) if precos else None), False
+
+
+def _produto_do_anuncio(titulo, item_id, access_token, limite=5):
+    """Procura no catalogo o produto que contem o anuncio. Retorna (produto_id, preco) ou None."""
+    resultados = _get(
+        f"/products/search?{urlencode({'status': 'active', 'site_id': 'MLB', 'q': titulo})}",
+        access_token,
+    ).get('results') or []
+    for produto in resultados[:limite]:
+        produto_id = produto.get('id')
+        if not produto_id:
+            continue
+        try:
+            preco, encontrado = _preco_do_anuncio(produto_id, item_id, access_token)
+        except MercadoLivreAPIError:
+            continue
+        if encontrado:
+            return produto_id, preco
+    return None
+
+
 def buscar_produto(url):
     """
     Busca titulo, preco e imagem pela API oficial.
 
+    A API nao libera /items de anuncios de outros vendedores (403), mas libera
+    o catalogo: /products/{id} (nome e fotos) e /products/{id}/items (precos).
+
     Retorna (titulo, preco, imagem_url), ou None se a API nao estiver
-    configurada/autorizada ou a URL nao tiver ID reconhecivel.
+    configurada ou a URL nao tiver ID reconhecivel.
     Lanca MercadoLivreAPIError se a API responder com erro.
     """
     item_id, produto_id = extrair_ids(url)
@@ -194,18 +267,27 @@ def buscar_produto(url):
     if not access_token:
         return None
 
-    if item_id:
-        try:
-            item = _get(f"/items/{item_id}", access_token)
-            titulo = item.get('title')
-            if titulo:
-                return titulo, item.get('price'), _primeira_imagem(item.get('pictures'))
-        except MercadoLivreAPIError:
-            # Sem produto de catalogo nao ha alternativa
-            if not produto_id:
-                raise
-            logger.warning(f"Falha ao consultar item {item_id}, tentando produto {produto_id}", exc_info=True)
+    titulo_anuncio = (_titulo_da_descricao(item_id, access_token) if item_id else None) or titulo_do_link(url)
+    preco = None
+
+    if not produto_id:
+        # Link so de anuncio: acha o produto de catalogo pelo titulo
+        if not titulo_anuncio:
+            return None
+        encontrado = _produto_do_anuncio(titulo_anuncio, item_id, access_token)
+        if not encontrado:
+            # Anuncio fora do catalogo: so o titulo
+            return titulo_anuncio, None, None
+        produto_id, preco = encontrado
 
     produto = _get(f"/products/{produto_id}", access_token)
-    preco = (produto.get('buy_box_winner') or {}).get('price')
-    return produto.get('name'), preco, _primeira_imagem(produto.get('pictures'))
+    if preco is None:
+        try:
+            preco, _ = _preco_do_anuncio(produto_id, item_id, access_token)
+        except MercadoLivreAPIError:
+            logger.warning(f"Sem preco para o produto {produto_id}", exc_info=True)
+    if preco is None:
+        preco = (produto.get('buy_box_winner') or {}).get('price')
+
+    titulo = titulo_anuncio or produto.get('name')
+    return titulo, preco, _primeira_imagem(produto.get('pictures'))
