@@ -1,13 +1,15 @@
 # 🔥 Keep Render Alive - Guia Completo
 
-Este documento explica como manter seu app no Render.com ativo 24/7, evitando que ele entre em modo "sleep" após 15 minutos de inatividade.
+Este documento explica como manter seu app no Render.com ativo nos horários de uso, evitando que ele entre em modo "sleep" após 15 minutos de inatividade.
+
+> ⚠️ **Limite do Render Free:** 750 horas de instância por mês, somando todos os serviços da conta. Acordado 24h, este serviço gastaria ~744h. Por isso o ping do GitHub Actions roda só das **08h às 22h (Brasília)**, ~434h/mês. Para ajustar a faixa aos horários reais de uso, consulte `/api/acessos/resumo/` (logado como administrador) e copie o campo `cron_keep_alive_utc` para `.github/workflows/keep-alive.yml`.
 
 ---
 
 ## 📊 Status Atual
 
 ✅ **Endpoint de Health Check**: `/health/` já configurado
-✅ **GitHub Action**: Ping automático a cada 10 minutos
+✅ **GitHub Action**: Ping automático a cada 14 minutos, das 08h às 22h (Brasília)
 ✅ **URL do app**: https://lista-presentes-im4b.onrender.com
 
 ---
@@ -17,7 +19,7 @@ Este documento explica como manter seu app no Render.com ativo 24/7, evitando qu
 ### ✅ Já está configurado!
 
 O arquivo `.github/workflows/keep-alive.yml` já está criado e faz:
-- 🏓 Ping no `/health/` a cada 10 minutos
+- 🏓 Ping no `/health/` a cada 14 minutos, das 08h às 22h (Brasília)
 - 📊 Mede latência do servidor
 - ✅ Verifica se resposta é 200 OK
 - 📈 Logs detalhados de cada execução
