@@ -21,6 +21,7 @@ import logging
 import secrets
 import hashlib
 from datetime import timedelta
+from urllib.parse import urlparse
 from functools import wraps
 
 logger = logging.getLogger(__name__)
@@ -1173,6 +1174,16 @@ def extrair_info_produto_view(request):
     # Validar URL
     if not url.startswith('http'):
         url = 'https://' + url
+
+    # Texto que nao e link (ex.: nome do produto digitado no campo do link)
+    host = urlparse(url).hostname or ''
+    if any(c.isspace() for c in url) or '.' not in host:
+        return JsonResponse({
+            'success': False,
+            'error': 'Isso não parece um link. Cole o endereço completo da página do produto '
+                     '(ex.: https://www.loja.com.br/produto).',
+            'error_type': 'invalid_url'
+        }, status=400)
 
     try:
         from .scrapers import ScraperFactory

@@ -906,3 +906,28 @@ class EnvioPushTest(TestCase):
             alvo, args = thread.call_args[1]['target'], thread.call_args[1]['args']
             alvo(*args)
         enviar.assert_called_once_with(notificacao.usuario, 'Oi')
+
+
+class ExtrairInfoProdutoTextoSemLinkTest(TestCase):
+    """Nome do produto digitado no campo do link nao deve virar requisicao para 'https://sabonete natura'."""
+
+    def setUp(self):
+        self.usuario = Usuario.objects.create_user(
+            email='link@exemplo.com', username='link', password='SenhaForte!2026',
+        )
+        self.client.force_login(self.usuario)
+
+    def test_texto_sem_link_retorna_erro_claro_sem_acessar_rede(self):
+        for texto in ('sabonete natura', 'sabonete'):
+            with mock.patch('presentes.scrapers.requests.get') as get:
+                resposta = self.client.post(reverse('extrair_info_produto'), {'url': texto})
+            self.assertEqual(resposta.status_code, 400)
+            self.assertEqual(resposta.json()['error_type'], 'invalid_url')
+            get.assert_not_called()
+
+    def test_link_sem_protocolo_continua_aceito(self):
+        with mock.patch('presentes.scrapers.ScraperFactory.extract_product_info',
+                        return_value={'success': True, 'titulo': 'Sabonete', 'preco': 10.0, 'imagem_url': ''}) as extrair:
+            resposta = self.client.post(reverse('extrair_info_produto'), {'url': 'www.natura.com.br/p/sabonete'})
+        self.assertEqual(resposta.status_code, 200)
+        extrair.assert_called_once_with('https://www.natura.com.br/p/sabonete')
