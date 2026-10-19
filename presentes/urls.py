@@ -18,6 +18,7 @@ urlpatterns = [
     # Meus presentes
     path('meus-presentes/', views.meus_presentes_view, name='meus_presentes'),
     path('adicionar-presente/', views.adicionar_presente_view, name='adicionar_presente'),
+    path('compartilhar/', views.compartilhar_view, name='compartilhar'),
     path('editar-presente/<int:pk>/', views.editar_presente_view, name='editar_presente'),
     path('deletar-presente/<int:pk>/', views.deletar_presente_view, name='deletar_presente'),
     path('presente/<int:pk>/imagem/', views.servir_imagem_view, name='servir_imagem'),

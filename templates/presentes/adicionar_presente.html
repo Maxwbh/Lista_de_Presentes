@@ -372,7 +372,8 @@
             }
 
             // Preencher campos
-            if (data.titulo && !descricaoInput.value) {
+            // No compartilhamento a descricao veio do texto compartilhado: o titulo da loja e melhor
+            if (data.titulo && (!descricaoInput.value || {{ buscar_automaticamente|yesno:"true,false" }})) {
                 descricaoInput.value = data.titulo;
                 charCount.textContent = data.titulo.length;
             }
@@ -412,5 +413,10 @@
             btnBuscarInfo.innerHTML = '<i class="bi bi-search"></i> Buscar Informações';
         }
     });
+
+    {% if buscar_automaticamente %}
+    // Link recebido pelo compartilhamento do celular: busca as informacoes direto
+    btnBuscarInfo.click();
+    {% endif %}
 </script>
 {% endblock %}

@@ -973,3 +973,73 @@ class ExtrairInfoProdutoTextoSemLinkTest(TestCase):
             resposta = self.client.post(reverse('extrair_info_produto'), {'url': 'www.natura.com.br/p/sabonete'})
         self.assertEqual(resposta.status_code, 200)
         extrair.assert_called_once_with('https://www.natura.com.br/p/sabonete')
+
+
+class CompartilharPeloCelularTest(TestCase):
+    """Destino do share_target do manifest.json (compartilhar pelo Android)."""
+
+    def setUp(self):
+        self.grupo = Grupo.objects.create(nome='Familia')
+        self.usuario = Usuario.objects.create_user(
+            email='celular@exemplo.com', username='celular', password='SenhaForte!2026',
+        )
+        GrupoMembro.objects.create(grupo=self.grupo, usuario=self.usuario)
+        self.usuario.grupo_ativo = self.grupo
+        self.usuario.save()
+        self.client.force_login(self.usuario)
+
+    def _destino(self, resposta):
+        from urllib.parse import parse_qs, urlparse
+        self.assertEqual(resposta.status_code, 302)
+        destino = urlparse(resposta['Location'])
+        self.assertEqual(destino.path, reverse('adicionar_presente'))
+        return {k: v[0] for k, v in parse_qs(destino.query).items()}
+
+    def test_link_no_texto_como_o_app_do_mercado_livre(self):
+        texto = 'Paquímetro Manual 150 mm https://produto.mercadolivre.com.br/MLB-7136159042-paquimetro-_JM'
+        params = self._destino(self.client.get(reverse('compartilhar'), {'text': texto}))
+        self.assertEqual(params['url'], 'https://produto.mercadolivre.com.br/MLB-7136159042-paquimetro-_JM')
+        self.assertEqual(params['descricao'], 'Paquímetro Manual 150 mm')
+
+    def test_campos_title_e_url(self):
+        params = self._destino(self.client.get(reverse('compartilhar'), {
+            'title': 'Fone Bluetooth', 'url': 'https://www.amazon.com.br/dp/B0TESTE',
+        }))
+        self.assertEqual(params, {'url': 'https://www.amazon.com.br/dp/B0TESTE', 'descricao': 'Fone Bluetooth'})
+
+    def test_expande_link_curto(self):
+        original = 'https://www.mercadolivre.com.br/p/MLB2070594105?pdp_filters=item_id%3AMLB7136159042'
+        bloqueio = mock.Mock(url='https://www.mercadolivre.com.br/gz/account-verification?go='
+                                 + 'https%3A%2F%2Fwww.mercadolivre.com.br%2Fp%2FMLB2070594105%3Fpdp_filters%3Ditem_id%253AMLB7136159042',
+                             history=[])
+        with mock.patch('presentes.mercadolivre_api.requests.get', return_value=bloqueio):
+            params = self._destino(self.client.get(reverse('compartilhar'), {
+                'text': 'Olha isso https://mercadolivre.com/sec/2abcXYZ',
+            }))
+        self.assertEqual(params['url'], original)
+
+    def test_sem_link_preenche_so_a_descricao(self):
+        params = self._destino(self.client.get(reverse('compartilhar'), {'text': 'Sabonete Natura'}))
+        self.assertEqual(params, {'descricao': 'Sabonete Natura'})
+
+    def test_tela_de_adicionar_ja_vem_preenchida_e_busca_sozinha(self):
+        resposta = self.client.get(reverse('adicionar_presente'), {
+            'url': 'https://www.amazon.com.br/dp/B0TESTE', 'descricao': 'Fone Bluetooth',
+        })
+        self.assertContains(resposta, 'value="https://www.amazon.com.br/dp/B0TESTE"')
+        self.assertContains(resposta, 'Fone Bluetooth')
+        self.assertContains(resposta, 'btnBuscarInfo.click();')
+
+    def test_tela_de_adicionar_ignora_url_que_nao_e_http(self):
+        resposta = self.client.get(reverse('adicionar_presente'), {'url': 'javascript:alert(1)'})
+        self.assertNotContains(resposta, 'javascript:alert(1)')
+        self.assertNotContains(resposta, 'btnBuscarInfo.click();')
+
+    def test_manifest_declara_share_target(self):
+        import json
+        from pathlib import Path
+
+        from django.conf import settings
+        manifest = json.loads((Path(settings.BASE_DIR) / 'static' / 'manifest.json').read_text())
+        self.assertEqual(manifest['share_target']['action'], reverse('compartilhar'))
+        self.assertEqual(manifest['share_target']['params'], {'title': 'title', 'text': 'text', 'url': 'url'})
