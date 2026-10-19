@@ -46,6 +46,11 @@ urlpatterns = [
     # API para extrair informações de produto via URL
     path('api/extrair-info-produto/', views.extrair_info_produto_view, name='extrair_info_produto'),
 
+    # Push notifications (Web Push)
+    path('api/push/vapid-key/', views.vapid_public_key_view, name='push_vapid_key'),
+    path('api/push/subscribe/', views.push_subscription_save, name='push_subscribe'),
+    path('api/push/unsubscribe/', views.push_subscription_delete, name='push_unsubscribe'),
+
     # Integracao com a API do Mercado Livre (OAuth)
     path('integracoes/mercadolivre/conectar/', views.mercadolivre_conectar_view, name='mercadolivre_conectar'),
     path('integracoes/mercadolivre/callback/', views.mercadolivre_callback_view, name='mercadolivre_callback'),

@@ -107,6 +107,18 @@ services:
       - key: MERCADOLIVRE_CLIENT_SECRET
         sync: false
 
+      # ==============================================================================
+      # Web Push - chaves VAPID (opcional; sem elas o push fica desligado)
+      # ==============================================================================
+      - key: VAPID_PUBLIC_KEY
+        sync: false
+
+      - key: VAPID_PRIVATE_KEY
+        sync: false
+
+      - key: VAPID_ADMIN_EMAIL
+        sync: false
+
       - key: SITE_URL
         value: https://lista-presentes-im4b.onrender.com
 
