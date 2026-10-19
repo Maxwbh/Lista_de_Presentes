@@ -482,7 +482,7 @@ class ScraperFactory:
         if 'amazon.com' in domain:
             logger.info(f"🛍️  Usando AmazonScraper para {domain}")
             return AmazonScraper(), False
-        elif 'mercadolivre.com' in domain or 'mercadolibre.com' in domain:
+        elif 'mercadolivre.com' in domain or 'mercadolibre.com' in domain or domain.endswith('meli.la'):
             logger.info(f"🛒 Usando MercadoLivreScraper para {domain}")
             return MercadoLivreScraper(), False
         elif 'kabum.com' in domain:

@@ -17,6 +17,7 @@ from .forms import UsuarioRegistroForm, PresenteForm, LoginForm, GrupoForm, Edit
 from .services import IAService
 from .github_helper import criar_issue_falha_imagem
 import base64
+import re
 import logging
 import secrets
 import hashlib
@@ -500,7 +501,19 @@ def adicionar_presente_view(request):
 
             return redirect('meus_presentes')
     else:
-        form = PresenteForm()
+        # Vindo do compartilhamento pelo celular (/compartilhar/): ja preenche e busca
+        inicial = {}
+        url_compartilhada = request.GET.get('url', '').strip()[:500]
+        if url_compartilhada.startswith(('http://', 'https://')):
+            inicial['url'] = url_compartilhada
+        descricao = request.GET.get('descricao', '').strip()[:200]
+        if descricao:
+            inicial['descricao'] = descricao
+        form = PresenteForm(initial=inicial)
+        return render(request, 'presentes/adicionar_presente.html', {
+            'form': form,
+            'buscar_automaticamente': 'url' in inicial,
+        })
     return render(request, 'presentes/adicionar_presente.html', {'form': form})
 
 @requer_grupo_ativo
@@ -2008,3 +2021,49 @@ def mercadolivre_callback_view(request):
 
     messages.success(request, 'Mercado Livre conectado. A busca de produtos agora usa a API oficial.')
     return redirect('dashboard')
+
+
+URL_NO_TEXTO_RE = re.compile(r'https?://\S+')
+
+
+@login_required
+def compartilhar_view(request):
+    """
+    Destino do compartilhamento do Android (share_target do manifest.json).
+
+    O app que compartilha manda title, text e url; o app do Mercado Livre
+    costuma mandar "Nome do produto https://mercadolivre.com/sec/abc" no text.
+    Redireciona para a tela de adicionar presente ja preenchida.
+    """
+    from urllib.parse import urlencode
+    from .mercadolivre_api import eh_link_curto, expandir_link_curto
+
+    titulo = request.GET.get('title', '').strip()
+    texto = request.GET.get('text', '').strip()
+    url = request.GET.get('url', '').strip()
+
+    if not url:
+        for origem in (texto, titulo):
+            encontrado = URL_NO_TEXTO_RE.search(origem)
+            if encontrado:
+                url = encontrado.group(0).rstrip('.,;)')
+                break
+
+    # Descricao: o titulo, ou o texto sem o link
+    descricao = titulo or URL_NO_TEXTO_RE.sub('', texto)
+    descricao = ' '.join(descricao.split())
+
+    if url and eh_link_curto(url):
+        url = expandir_link_curto(url)
+
+    params = {}
+    if url:
+        params['url'] = url
+    else:
+        messages.info(request, 'Não encontramos um link no conteúdo compartilhado. Preencha os dados manualmente.')
+    if descricao:
+        params['descricao'] = descricao
+
+    logger.info(f"Compartilhamento recebido de {request.user.email}: url={bool(url)} descricao={bool(descricao)}")
+    destino = reverse('adicionar_presente')
+    return redirect(f"{destino}?{urlencode(params)}" if params else destino)

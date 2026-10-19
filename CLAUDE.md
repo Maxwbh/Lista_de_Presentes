@@ -5,7 +5,7 @@
 - Autor de todos os commits: `Maxwell Oliveira <maxwbh@gmail.com>`.
   Antes de commitar, configure:
   `git config user.name "Maxwell Oliveira" && git config user.email "maxwbh@gmail.com"`
-- Não adicionar `Co-Authored-By`, `Claude-Session` nem qualquer outra linha
-  de atribuição ao Claude em mensagens de commit.
-- Não adicionar rodapé "Generated with Claude Code" ou link de sessão na
-  descrição dos PRs.
+- Não fazer nenhuma referência a IA, Claude, Anthropic ou qualquer outro
+  assistente/ferramenta de IA em mensagens de commit, títulos e descrições
+  de PR e comentários no GitHub. Isso inclui linhas `Co-Authored-By`,
+  `Claude-Session`, rodapés "Generated with ..." e links de sessão.

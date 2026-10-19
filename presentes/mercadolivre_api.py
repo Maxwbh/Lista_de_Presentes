@@ -121,6 +121,38 @@ def obter_access_token():
     return _pedir_token({'grant_type': 'client_credentials'}).access_token
 
 
+def expandir_link_curto(url, timeout=10):
+    """
+    Resolve links curtos compartilhados pelo app (ex.: mercadolivre.com/sec/abc, meli.la/abc).
+
+    Segue os redirecionamentos e procura o link do produto nos enderecos
+    percorridos; quando o site bloqueia com /gz/account-verification, o link
+    original vem no parametro "go". Retorna a URL original se nao achar nada.
+    """
+    try:
+        response = requests.get(url, timeout=timeout, allow_redirects=True,
+                                headers={'Accept-Language': 'pt-BR,pt;q=0.9'})
+    except requests.exceptions.RequestException as e:
+        logger.warning(f"Nao foi possivel expandir o link {url}: {e}")
+        return url
+
+    enderecos = [r.headers.get('Location', '') for r in response.history] + [response.url]
+    for endereco in enderecos:
+        go = parse_qs(urlparse(endereco).query).get('go')
+        for candidato in (go or []) + [endereco]:
+            if any(extrair_ids(candidato)):
+                return candidato
+    return url
+
+
+def eh_link_curto(url):
+    parsed = urlparse(url)
+    host = (parsed.hostname or '').lower()
+    return host in ('meli.la', 'www.meli.la') or (
+        host in ('mercadolivre.com', 'www.mercadolivre.com') and parsed.path.startswith('/sec/')
+    )
+
+
 def extrair_ids(url):
     """
     Extrai da URL o ID do anuncio (item) e o ID do produto de catalogo.
@@ -260,6 +292,9 @@ def buscar_produto(url):
     Lanca MercadoLivreAPIError se a API responder com erro.
     """
     item_id, produto_id = extrair_ids(url)
+    if not item_id and not produto_id and eh_link_curto(url):
+        url = expandir_link_curto(url)
+        item_id, produto_id = extrair_ids(url)
     if not item_id and not produto_id:
         return None
 
