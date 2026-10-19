@@ -98,6 +98,15 @@ services:
       - key: GITHUB_AUTO_CREATE_ISSUES
         value: True
 
+      # ==============================================================================
+      # Mercado Livre - API oficial (busca de dados de produtos)
+      # ==============================================================================
+      - key: MERCADOLIVRE_CLIENT_ID
+        sync: false
+
+      - key: MERCADOLIVRE_CLIENT_SECRET
+        sync: false
+
       - key: SITE_URL
         value: https://lista-presentes-im4b.onrender.com
 

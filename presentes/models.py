@@ -397,3 +397,22 @@ class PushSubscription(models.Model):
 
     def __str__(self):
         return f"Push de {self.usuario} ({self.endpoint[:40]}...)"
+
+
+class MercadoLivreToken(models.Model):
+    """Token OAuth da API do Mercado Livre (registro unico).
+
+    O refresh token do Mercado Livre e de uso unico: cada renovacao devolve
+    um novo, por isso ele fica no banco e nao em variavel de ambiente.
+    """
+    access_token = models.CharField(max_length=500)
+    refresh_token = models.CharField(max_length=500)
+    expira_em = models.DateTimeField()
+    atualizado_em = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Token do Mercado Livre'
+        verbose_name_plural = 'Token do Mercado Livre'
+
+    def __str__(self):
+        return f"Token Mercado Livre (expira em {self.expira_em:%d/%m/%Y %H:%M})"
