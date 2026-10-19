@@ -21,6 +21,20 @@ class NetworkError(ScrapingError):
     pass
 
 
+class BlockedError(NetworkError):
+    """Site respondeu com pagina de verificacao/anti-robo em vez do produto - NAO gera issue"""
+    pass
+
+
+# Trechos de URL de paginas de verificacao anti-robo (ex.: Mercado Livre
+# redireciona para /gz/account-verification quando bloqueia a requisicao)
+BLOCKED_URL_MARKERS = (
+    '/gz/account-verification',
+    '/captcha',
+    '/challenge',
+)
+
+
 class ParsingError(ScrapingError):
     """Erro de parsing/extracao de dados (site acessivel mas dados nao extraidos) - GERA issue"""
     pass
@@ -41,12 +55,12 @@ class BaseScraper:
         Obtém BeautifulSoup de uma URL.
 
         Lanca NetworkError para erros HTTP/rede (404, 500, timeout, etc.)
+        Lanca BlockedError se o site redirecionar para pagina anti-robo.
         Retorna BeautifulSoup se sucesso.
         """
         try:
             response = requests.get(url, headers=self.headers, timeout=timeout)
             response.raise_for_status()
-            return BeautifulSoup(response.content, 'html.parser')
         except requests.exceptions.Timeout as e:
             logger.error(f"Timeout ao acessar {url}: {str(e)}")
             raise NetworkError(f"Timeout ao acessar URL: {str(e)}")
@@ -65,6 +79,15 @@ class BaseScraper:
             # Erros inesperados (parsing HTML, etc.)
             logger.error(f"Erro inesperado ao obter página {url}: {str(e)}")
             raise NetworkError(f"Erro inesperado: {str(e)}")
+
+        # Alguns sites (ex.: Mercado Livre) respondem 200 mas redirecionam
+        # para uma pagina de verificacao anti-robo em vez do produto
+        final_url = (response.url or '').lower()
+        if any(marker in final_url for marker in BLOCKED_URL_MARKERS):
+            logger.warning(f"Acesso bloqueado por verificacao anti-robo em {url} (redirecionado para {response.url})")
+            raise BlockedError("O site bloqueou a consulta automática (verificação anti-robô)")
+
+        return BeautifulSoup(response.content, 'html.parser')
 
     def clean_price(self, price_str):
         """Limpa e converte string de preço para float"""
@@ -590,6 +613,16 @@ class {domain.split('.')[0].title()}Scraper(BaseScraper):
                 'preco': preco,
                 'imagem_url': imagem_url,
                 'used_generic_scraper': is_generic
+            }
+
+        except BlockedError as e:
+            # Site bloqueou a consulta (pagina anti-robo)
+            # NAO deve gerar issue no GitHub: nao ha o que corrigir no parser
+            logger.warning(f"Acesso bloqueado ao extrair {url}: {str(e)}")
+            return {
+                'success': False,
+                'error_type': 'blocked',
+                'error_message': str(e)
             }
 
         except NetworkError as e:
