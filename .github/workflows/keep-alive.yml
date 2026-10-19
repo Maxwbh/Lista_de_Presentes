@@ -1,14 +1,33 @@
 # GitHub Actions: Keep Render Free Tier Alive
-# Evita que o serviço desligue por inatividade (15 min)
-# Faz ping a cada 14 minutos
+# Evita que o serviço desligue por inatividade (15 min) nos horários de uso.
+#
+# O Render Free tem limite de 750 horas de instância por mês; acordado 24h
+# o serviço gastaria ~744h. Por isso o ping roda só nos horários de uso
+# (Brasília, UTC-3), ~310h/mês:
+#   - segunda a sexta: 07h-10h e 18h-23h
+#   - sábado e domingo: 07h-22h
+# Fora dessas faixas o servidor dorme e o primeiro acesso o acorda (~50s).
+#
+# Para ajustar as faixas aos horários reais de uso, veja o resumo em
+# /api/acessos/resumo/ (campos acessos_por_dia_semana e cron_keep_alive_utc).
 
 name: Keep Render Alive
 
 on:
   schedule:
-    # Executa a cada 14 minutos
-    # Formato: minuto hora dia mês dia-da-semana
-    - cron: '*/14 * * * *'
+    # A cada 14 minutos. GitHub Actions usa UTC (Brasília + 3h), então parte
+    # da noite de Brasília cai no dia seguinte em UTC.
+    # Formato: minuto hora dia mês dia-da-semana (0 = domingo)
+    # Seg-sex 07h-09h59 Brasília = 10h-12h UTC
+    - cron: '*/14 10-12 * * 1-5'
+    # Seg-sex 18h-20h59 Brasília = 21h-23h UTC
+    - cron: '*/14 21-23 * * 1-5'
+    # Seg-sex 21h-22h59 Brasília = 00h-01h UTC de ter-sáb
+    - cron: '*/14 0-1 * * 2-6'
+    # Sáb e dom 07h-20h59 Brasília = 10h-23h UTC
+    - cron: '*/14 10-23 * * 0,6'
+    # Sáb e dom 21h-21h59 Brasília = 00h UTC de dom e seg
+    - cron: '*/14 0 * * 0,1'
 
   # Permite executar manualmente
   workflow_dispatch:

@@ -1,6 +1,7 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 from .models import Usuario, Presente, Compra, SugestaoCompra, Notificacao, Grupo, GrupoMembro, PrecoHistorico, PesquisaPrecoLog
+from .models import AcessoHora, DespertarServidor
 
 
 @admin.register(Usuario)
@@ -248,3 +249,16 @@ class PesquisaPrecoLogAdmin(admin.ModelAdmin):
 admin.site.site_header = '🎁 Lista de Presentes - Administração'
 admin.site.site_title = 'Admin Lista de Presentes'
 admin.site.index_title = 'Painel de Controle'
+
+
+@admin.register(DespertarServidor)
+class DespertarServidorAdmin(admin.ModelAdmin):
+    list_display = ['iniciado_em', 'primeiro_acesso_em', 'origem', 'caminho']
+    list_filter = ['origem']
+    date_hierarchy = 'iniciado_em'
+
+
+@admin.register(AcessoHora)
+class AcessoHoraAdmin(admin.ModelAdmin):
+    list_display = ['data', 'hora', 'acessos']
+    date_hierarchy = 'data'

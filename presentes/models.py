@@ -416,3 +416,42 @@ class MercadoLivreToken(models.Model):
 
     def __str__(self):
         return f"Token Mercado Livre (expira em {self.expira_em:%d/%m/%Y %H:%M})"
+
+
+class DespertarServidor(models.Model):
+    """Cada vez que o servidor sobe (no Render Free, ao acordar depois de dormir)."""
+    ORIGEM_CHOICES = [
+        ('USUARIO', 'Usuário'),
+        ('MONITOR', 'Ping de monitoramento'),
+    ]
+    iniciado_em = models.DateTimeField(unique=True, help_text='Quando o processo do servidor subiu')
+    primeiro_acesso_em = models.DateTimeField(help_text='Primeira requisição depois de subir')
+    caminho = models.CharField(max_length=300)
+    origem = models.CharField(max_length=10, choices=ORIGEM_CHOICES)
+    user_agent = models.CharField(max_length=200, blank=True)
+
+    class Meta:
+        verbose_name = 'Despertar do servidor'
+        verbose_name_plural = 'Despertares do servidor'
+        ordering = ['-iniciado_em']
+
+    def __str__(self):
+        return f"Despertar em {self.iniciado_em:%d/%m/%Y %H:%M} ({self.get_origem_display()})"
+
+
+class AcessoHora(models.Model):
+    """Quantidade de acessos de usuários por dia e hora (horário local)."""
+    data = models.DateField()
+    hora = models.PositiveSmallIntegerField()
+    acessos = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        verbose_name = 'Acessos por hora'
+        verbose_name_plural = 'Acessos por hora'
+        ordering = ['-data', '-hora']
+        constraints = [
+            models.UniqueConstraint(fields=['data', 'hora'], name='acesso_hora_unico'),
+        ]
+
+    def __str__(self):
+        return f"{self.data:%d/%m/%Y} {self.hora:02d}h: {self.acessos} acesso(s)"

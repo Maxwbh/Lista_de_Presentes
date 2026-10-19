@@ -1043,3 +1043,72 @@ class CompartilharPeloCelularTest(TestCase):
         manifest = json.loads((Path(settings.BASE_DIR) / 'static' / 'manifest.json').read_text())
         self.assertEqual(manifest['share_target']['action'], reverse('compartilhar'))
         self.assertEqual(manifest['share_target']['params'], {'title': 'title', 'text': 'text', 'url': 'url'})
+
+
+class RegistroAcessosTest(TestCase):
+    """Despertares do servidor e acessos por hora para ajustar o keep-alive."""
+
+    NAVEGADOR = 'Mozilla/5.0 (Linux; Android 14) Chrome/141.0 Mobile Safari/537.36'
+
+    def setUp(self):
+        from .acessos import RegistroAcessoMiddleware
+        RegistroAcessoMiddleware._despertar_registrado = False
+
+    def test_primeiro_acesso_registra_despertar_ignorando_health_do_render(self):
+        from .models import DespertarServidor
+
+        self.client.get('/health/', HTTP_USER_AGENT='Render/1.0')
+        self.assertFalse(DespertarServidor.objects.exists())
+
+        self.client.get(reverse('login'), HTTP_USER_AGENT=self.NAVEGADOR)
+        self.client.get(reverse('login'), HTTP_USER_AGENT=self.NAVEGADOR)
+
+        despertar = DespertarServidor.objects.get()
+        self.assertEqual(despertar.origem, 'USUARIO')
+        self.assertEqual(despertar.caminho, reverse('login'))
+
+    def test_despertar_pelo_keep_alive_e_marcado_como_monitor(self):
+        from .models import DespertarServidor
+
+        self.client.get('/health/', HTTP_USER_AGENT='curl/8.5.0')
+        self.assertEqual(DespertarServidor.objects.get().origem, 'MONITOR')
+
+    def test_conta_so_acessos_de_pessoas(self):
+        from .models import AcessoHora
+
+        self.client.get(reverse('login'), HTTP_USER_AGENT=self.NAVEGADOR)
+        self.client.get(reverse('login'), HTTP_USER_AGENT=self.NAVEGADOR)
+        self.client.get('/health/', HTTP_USER_AGENT=self.NAVEGADOR)  # caminho ignorado
+        self.client.get(reverse('login'), HTTP_USER_AGENT='curl/8.5.0')  # monitor
+
+        registro = AcessoHora.objects.get()
+        self.assertEqual(registro.acessos, 2)
+        self.assertEqual(registro.hora, timezone.localtime().hour)
+
+    def test_resumo_sugere_cron_utc_para_horas_de_pico(self):
+        from .acessos import resumo_acessos
+        from .models import AcessoHora
+
+        hoje = timezone.localdate()
+        AcessoHora.objects.create(data=hoje, hora=20, acessos=80)  # pico a noite
+        AcessoHora.objects.create(data=hoje, hora=21, acessos=15)
+        AcessoHora.objects.create(data=hoje, hora=3, acessos=5)
+
+        resumo = resumo_acessos(dias=7, limite_percentual=10)
+
+        self.assertEqual(resumo['total_acessos'], 100)
+        self.assertEqual(resumo['horas_pico'], [20, 21])
+        # Uma hora antes do pico: 19h-21h em Sao Paulo (UTC-3) = 22h-00h UTC
+        self.assertEqual(resumo['faixas_sugeridas_local'], ['19:00-21:59'])
+        self.assertEqual(resumo['cron_keep_alive_utc'], ['*/14 0 * * *', '*/14 22-23 * * *'])
+
+    def test_resumo_so_para_superusuario(self):
+        usuario = Usuario.objects.create_user(email='comum@exemplo.com', username='comum', password='SenhaForte!2026')
+        self.client.force_login(usuario)
+        self.assertEqual(self.client.get(reverse('acessos_resumo')).status_code, 403)
+
+        admin = Usuario.objects.create_superuser(email='adm@exemplo.com', username='adm', password='SenhaForte!2026')
+        self.client.force_login(admin)
+        resposta = self.client.get(reverse('acessos_resumo'), {'dias': 7})
+        self.assertEqual(resposta.status_code, 200)
+        self.assertIn('cron_keep_alive_utc', resposta.json())
