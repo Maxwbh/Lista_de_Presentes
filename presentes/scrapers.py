@@ -547,8 +547,10 @@ class ScraperFactory:
             scraper, is_generic = ScraperFactory.get_scraper(url)
             titulo, preco, imagem_url = scraper.extract(url)
 
-            # Se usou scraper genérico e teve sucesso, criar issue sugerindo suporte específico
-            if is_generic:
+            # Scraper genérico com leitura incompleta (sem preço ou sem imagem):
+            # criar issue sugerindo suporte específico. Leitura completa não
+            # gera issue, porque não há o que melhorar.
+            if is_generic and not (preco and imagem_url):
                 try:
                     from .github_helper import criar_issue_erro_geral
                     from urllib.parse import urlparse
@@ -557,7 +559,7 @@ class ScraperFactory:
                     titulo_issue = f"[AUTO] Site não mapeado: {domain}"
                     descricao_issue = f"""## Site Não Mapeado Detectado
 
-O sistema conseguiu extrair dados usando o **scraper genérico**, mas este site não tem suporte específico implementado.
+O **scraper genérico** extraiu os dados deste site de forma **incompleta** (sem preço ou sem imagem), e o site não tem suporte específico implementado.
 
 ### Domínio
 `{domain}`
@@ -629,7 +631,7 @@ class {domain.split('.')[0].title()}Scraper(BaseScraper):
                             'Domínio': domain,
                             'URL': url,
                             'Scraper usado': 'GenericScraper',
-                            'Status': 'Sucesso com scraper genérico'
+                            'Status': 'Leitura incompleta com scraper genérico'
                         },
                         labels=['auto-generated', 'enhancement', 'new-site-support', 'low-priority']
                     )

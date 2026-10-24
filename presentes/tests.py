@@ -1316,3 +1316,33 @@ class EmailsTest(TestCase):
         with self.captureOnCommitCallbacks(execute=False) as callbacks:
             agendar_boas_vindas(usuario)
         self.assertEqual(callbacks, [])
+
+
+class IssueSiteNaoMapeadoTest(TestCase):
+    """Issue de site nao mapeado so quando o scraper generico le os dados de forma incompleta."""
+
+    def _extrair(self, html):
+        resposta = mock.Mock(url='https://loja-nova.com.br/produto/1', content=html)
+        resposta.raise_for_status.return_value = None
+        with mock.patch('presentes.scrapers.requests.get', return_value=resposta), \
+                mock.patch('presentes.github_helper.criar_issue_erro_geral') as criar_issue:
+            resultado = ScraperFactory.extract_product_info('https://loja-nova.com.br/produto/1')
+        return resultado, criar_issue
+
+    def test_leitura_completa_nao_abre_issue(self):
+        html = (b'<html><head><title>Loja</title>'
+                b'<meta property="og:title" content="Shampoo 1L">'
+                b'<meta property="og:image" content="https://loja-nova.com.br/foto.jpg">'
+                b'<meta property="product:price:amount" content="309.90"></head></html>')
+        resultado, criar_issue = self._extrair(html)
+        self.assertTrue(resultado['success'])
+        criar_issue.assert_not_called()
+
+    def test_leitura_sem_preco_abre_issue(self):
+        html = (b'<html><head><title>Loja</title>'
+                b'<meta property="og:title" content="Shampoo 1L">'
+                b'<meta property="og:image" content="https://loja-nova.com.br/foto.jpg"></head></html>')
+        resultado, criar_issue = self._extrair(html)
+        self.assertTrue(resultado['success'])
+        criar_issue.assert_called_once()
+        self.assertEqual(criar_issue.call_args[1]['titulo'], '[AUTO] Site não mapeado: loja-nova.com.br')
