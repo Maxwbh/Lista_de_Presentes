@@ -1,3 +1,5 @@
+import contextlib
+import re
 from datetime import timedelta
 from io import StringIO
 from unittest import mock
@@ -1112,3 +1114,205 @@ class RegistroAcessosTest(TestCase):
         resposta = self.client.get(reverse('acessos_resumo'), {'dias': 7})
         self.assertEqual(resposta.status_code, 200)
         self.assertIn('cron_keep_alive_utc', resposta.json())
+
+
+class SenhaSimplesTest(TestCase):
+    """Senha simples de 4 digitos permitida no cadastro e na redefinicao."""
+
+    def test_validador_aceita_quatro_digitos_e_recusa_menos(self):
+        from django.contrib.auth.password_validation import validate_password
+        from django.core.exceptions import ValidationError
+
+        validate_password('1234')
+        with self.assertRaises(ValidationError):
+            validate_password('123')
+
+
+class RedefinicaoSenhaTest(TestCase):
+    """Token sem estado (vale depois de o servidor reiniciar) e e-mail opcional."""
+
+    def setUp(self):
+        self.usuario = Usuario.objects.create_user(
+            email='ana@exemplo.com', username='ana', password='SenhaAntiga!2026', first_name='Ana',
+        )
+
+    def test_link_redefine_senha_uma_unica_vez(self):
+        from .senha import token_redefinicao
+
+        url = reverse('redefinir_senha', args=[token_redefinicao(self.usuario)])
+        self.assertContains(self.client.get(url), 'name="nova_senha"')
+
+        resposta = self.client.post(url, {'nova_senha': '1234', 'confirmar_senha': '1234'})
+        self.assertRedirects(resposta, reverse('login'), fetch_redirect_response=False)
+        self.usuario.refresh_from_db()
+        self.assertTrue(self.usuario.check_password('1234'))
+
+        # Trocar a senha invalida o link
+        self.assertNotContains(self.client.get(url), 'name="nova_senha"')
+
+    def test_token_invalido(self):
+        resposta = self.client.get(reverse('redefinir_senha', args=['abc.def']))
+        self.assertNotContains(resposta, 'name="nova_senha"')
+
+    @override_settings(EMAIL_BACKEND='django.core.mail.backends.console.EmailBackend')
+    def test_sem_email_configurado_orienta_procurar_administrador(self):
+        with mock.patch('presentes.emails.EmailMultiAlternatives.send') as enviar:
+            resposta = self.client.post(reverse('esqueceu_senha'), {'email': 'ana@exemplo.com'})
+        self.assertContains(resposta, 'Peça ao administrador')
+        enviar.assert_not_called()
+
+    @override_settings(EMAIL_BACKEND='presentes.email_backend.BrevoEmailBackend', BREVO_API_KEY='chave-teste',
+                       DEFAULT_FROM_EMAIL='Lista de Presentes <maxwbh@gmail.com>')
+    def test_envia_email_pela_api_da_brevo(self):
+        from .senha import usuario_do_token
+
+        with mock.patch('presentes.email_backend.requests.post',
+                        return_value=mock.Mock(status_code=201)) as post:
+            resposta = self.client.post(reverse('esqueceu_senha'), {'email': 'ana@exemplo.com'})
+
+        self.assertContains(resposta, 'você receberá as instruções')
+        args, kwargs = post.call_args
+        self.assertEqual(args[0], 'https://api.brevo.com/v3/smtp/email')
+        self.assertEqual(kwargs['headers']['api-key'], 'chave-teste')
+        self.assertEqual(kwargs['json']['sender'], {'email': 'maxwbh@gmail.com', 'name': 'Lista de Presentes'})
+        self.assertEqual(kwargs['json']['to'], [{'email': 'ana@exemplo.com'}])
+        # O link enviado funciona
+        token = re.search(r'/redefinir-senha/([^/]+)/', kwargs['json']['textContent']).group(1)
+        self.assertEqual(usuario_do_token(token), self.usuario)
+
+    def test_acao_do_admin_gera_link(self):
+        admin_user = Usuario.objects.create_superuser(email='adm@exemplo.com', username='adm', password='SenhaForte!2026')
+        self.client.force_login(admin_user)
+        resposta = self.client.post(reverse('admin:presentes_usuario_changelist'), {
+            'action': 'gerar_link_redefinicao_senha', '_selected_action': [self.usuario.pk],
+        }, follow=True)
+        self.assertContains(resposta, '/redefinir-senha/')
+
+
+class ScraperBloqueioCaptchaTest(TestCase):
+    """Issue #7: pagina de captcha (Radware) tratada como produto."""
+
+    def test_pagina_de_captcha_vira_bloqueio(self):
+        html = b'<html><head><title>Radware Bot Manager Captcha</title></head><body></body></html>'
+        resposta = mock.Mock(url='https://www.lojadomecanico.com.br/produto/604405', content=html)
+        resposta.raise_for_status.return_value = None
+        with mock.patch('presentes.scrapers.requests.get', return_value=resposta), \
+                mock.patch('presentes.github_helper.criar_issue_erro_geral') as criar_issue:
+            resultado = ScraperFactory.extract_product_info('https://www.lojadomecanico.com.br/produto/604405')
+        self.assertEqual(resultado['error_type'], 'blocked')
+        criar_issue.assert_not_called()
+
+
+@override_settings(GITHUB_AUTO_CREATE_ISSUES=True, GITHUB_TOKEN='token-teste')
+class IssueDuplicadaTest(TestCase):
+    """Issues #12, #13 e #14: a mesma issue criada varias vezes."""
+
+    def test_reaproveita_issue_aberta_com_mesmo_titulo(self):
+        from .github_helper import criar_issue_erro_geral
+
+        abertas = [{'number': 12, 'title': '[AUTO] Site não mapeado: www.comprasparaguai.com.br',
+                    'html_url': 'https://github.com/Maxwbh/Lista_de_Presentes/issues/12'}]
+        with mock.patch('presentes.github_helper.requests.get',
+                        return_value=mock.Mock(status_code=200, json=mock.Mock(return_value=abertas))), \
+                mock.patch('presentes.github_helper.requests.post') as post:
+            resultado = criar_issue_erro_geral('[AUTO] Site não mapeado: www.comprasparaguai.com.br', 'x')
+
+        post.assert_not_called()
+        self.assertEqual(resultado['issue_number'], 12)
+
+    def test_cria_quando_nao_existe(self):
+        from .github_helper import criar_issue_erro_geral
+
+        criada = mock.Mock(status_code=201, json=mock.Mock(return_value={'number': 20, 'html_url': 'u'}))
+        with mock.patch('presentes.github_helper.requests.get',
+                        return_value=mock.Mock(status_code=200, json=mock.Mock(return_value=[]))), \
+                mock.patch('presentes.github_helper.requests.post', return_value=criada) as post:
+            resultado = criar_issue_erro_geral('[AUTO] Site novo', 'x')
+
+        post.assert_called_once()
+        self.assertEqual(resultado['issue_number'], 20)
+
+
+@override_settings(EMAIL_BACKEND='django.core.mail.backends.locmem.EmailBackend',
+                   DEFAULT_FROM_EMAIL='ListadePresentes <no-reply@exemplo.com>',
+                   SITE_URL='https://lista.exemplo.com')
+class EmailsTest(TestCase):
+    """Redefinicao de senha, boas-vindas e presente comprado."""
+
+    @contextlib.contextmanager
+    def _enviar_apos_commit(self):
+        """
+        Roda os envios agendados para depois do commit, de forma sincrona.
+
+        O connection.close() da thread fica simulado durante todo o bloco,
+        inclusive quando os callbacks rodam na saida do
+        captureOnCommitCallbacks: senao fecharia a conexao do proprio teste
+        (no PostgreSQL do CI isso quebra os testes seguintes).
+        """
+        def iniciar(thread):
+            thread._target(*thread._args, **thread._kwargs)
+        with mock.patch('presentes.emails.connection.close'), \
+                mock.patch('presentes.emails.threading.Thread.start', iniciar), \
+                self.captureOnCommitCallbacks(execute=True):
+            yield
+
+    def test_boas_vindas_no_cadastro(self):
+        from django.core import mail
+
+        with self._enviar_apos_commit():
+            self.client.post(reverse('registro'), {
+                'email': 'novo@exemplo.com', 'first_name': 'Bia', 'last_name': 'Souza', 'username': 'bia',
+                'password1': '1234', 'password2': '1234', 'avatar': 'avatar1',
+            })
+
+        self.assertEqual(len(mail.outbox), 1)
+        email = mail.outbox[0]
+        self.assertEqual(email.to, ['novo@exemplo.com'])
+        self.assertIn('Bem-vindo', email.subject)
+        self.assertIn('Bia', email.body)
+        self.assertIn('https://lista.exemplo.com/adicionar-presente/', email.body)
+        self.assertIn('Adicionar meu primeiro presente', email.alternatives[0][0])
+
+    def test_presente_comprado_avisa_dono_sem_dizer_quem_comprou(self):
+        from django.core import mail
+
+        grupo = Grupo.objects.create(nome='Familia')
+        dono = Usuario.objects.create_user(email='dono@exemplo.com', username='dono', password='1234', first_name='Ana')
+        comprador = Usuario.objects.create_user(email='comprador@exemplo.com', username='comp', password='1234',
+                                                first_name='Carlos')
+        for usuario in (dono, comprador):
+            GrupoMembro.objects.create(grupo=grupo, usuario=usuario)
+            usuario.grupo_ativo = grupo
+            usuario.save()
+        presente = Presente.objects.create(grupo=grupo, usuario=dono, descricao='Fone & Capa', preco='99.90')
+
+        self.client.force_login(comprador)
+        with self._enviar_apos_commit():
+            self.client.post(reverse('marcar_comprado', args=[presente.pk]))
+
+        self.assertEqual(len(mail.outbox), 1)
+        email = mail.outbox[0]
+        self.assertEqual(email.to, ['dono@exemplo.com'])
+        self.assertIn('Fone & Capa', email.body)  # texto sem escapar HTML
+        self.assertNotIn('Carlos', email.body)
+        self.assertNotIn('Carlos', email.alternatives[0][0])
+
+    def test_redefinicao_envia_texto_e_html_com_o_link(self):
+        from django.core import mail
+
+        Usuario.objects.create_user(email='ana@exemplo.com', username='ana', password='1234', first_name='Ana')
+        self.client.post(reverse('esqueceu_senha'), {'email': 'ana@exemplo.com'})
+
+        email = mail.outbox[0]
+        link = re.search(r'https?://\S+/redefinir-senha/\S+/', email.body).group(0)
+        self.assertIn(link, email.alternatives[0][0])
+        self.assertIn('24 horas', email.body)
+
+    @override_settings(EMAIL_BACKEND='django.core.mail.backends.console.EmailBackend')
+    def test_sem_email_configurado_nao_agenda_nada(self):
+        from .emails import agendar_boas_vindas
+
+        usuario = Usuario.objects.create_user(email='x@exemplo.com', username='x', password='1234')
+        with self.captureOnCommitCallbacks(execute=False) as callbacks:
+            agendar_boas_vindas(usuario)
+        self.assertEqual(callbacks, [])

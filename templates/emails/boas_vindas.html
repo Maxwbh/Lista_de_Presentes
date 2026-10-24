@@ -1,0 +1,11 @@
+{% extends "emails/_base.html" %}
+{% block conteudo %}
+<p>Olá{% if usuario.first_name %}, {{ usuario.first_name }}{% endif %}! 🎉</p>
+<p>Que bom ter você na <strong>Lista de Presentes</strong>. Agora é só montar a sua lista para a família e os amigos saberem o que você quer ganhar.</p>
+<ul style="padding-left:20px;">
+  <li>Adicione presentes colando o link da loja: título, preço e foto vêm sozinhos.</li>
+  <li>Veja as listas do seu grupo e marque o que você vai comprar.</li>
+  <li>Quem tem a lista não vê quem comprou: a surpresa continua.</li>
+</ul>
+{% include "emails/_botao.html" with link=link_adicionar texto="Adicionar meu primeiro presente" %}
+{% endblock %}

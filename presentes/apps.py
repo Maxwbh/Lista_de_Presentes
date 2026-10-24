@@ -33,3 +33,10 @@ class PresentesConfig(AppConfig):
         from .models import Notificacao
         from .push import notificacao_criada
         post_save.connect(notificacao_criada, sender=Notificacao, dispatch_uid='push_notificacao_criada')
+
+        # Boas-vindas para quem se cadastra pelo login social (Google etc.);
+        # o cadastro pelo formulario do site chama agendar_boas_vindas direto
+        from allauth.account.signals import user_signed_up
+        from .emails import agendar_boas_vindas
+        user_signed_up.connect(lambda request, user, **kwargs: agendar_boas_vindas(user),
+                               weak=False, dispatch_uid='email_boas_vindas_social')

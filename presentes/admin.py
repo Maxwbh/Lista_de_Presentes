@@ -19,6 +19,21 @@ class UsuarioAdmin(UserAdmin):
     )
 
     readonly_fields = ['data_cadastro', 'last_login', 'date_joined']
+    actions = ['gerar_link_redefinicao_senha']
+
+    @admin.action(description='Gerar link de redefinição de senha')
+    def gerar_link_redefinicao_senha(self, request, queryset):
+        """Link para o usuário criar uma senha nova, para enviar por WhatsApp (sem precisar de e-mail)"""
+        from django.contrib import messages
+        from .senha import link_redefinicao
+
+        for usuario in queryset:
+            link = link_redefinicao(usuario, base_url=request.build_absolute_uri('/'))
+            self.message_user(
+                request,
+                f'{usuario.get_full_name() or usuario.email}: {link} (vale 24 horas e uma única vez)',
+                messages.INFO,
+            )
 
     def get_queryset(self, request):
         queryset = super().get_queryset(request)

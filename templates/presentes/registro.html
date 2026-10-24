@@ -145,7 +145,7 @@
                             <div class="h-full w-0 transition-all duration-300 rounded-full" id="strength-bar"></div>
                         </div>
                         <label class="label pt-0.5">
-                            <span class="label-text-alt text-base-content/40 text-xs">Mínimo 8 caracteres, com letras e números</span>
+                            <span class="label-text-alt text-base-content/40 text-xs">Mínimo 4 caracteres (pode ser só números)</span>
                         </label>
                         {% if form.password1.errors %}<p class="text-error text-xs mt-1">{{ form.password1.errors.0 }}</p>{% endif %}
                     </div>
@@ -260,7 +260,7 @@
         password1.addEventListener('input', function() {
             const value = this.value;
             let strength = 0;
-            if (value.length >= 8) strength += 33;
+            if (value.length >= 4) strength += 33;
             if (value.match(/[a-z]/) && value.match(/[A-Z]/)) strength += 33;
             if (value.match(/[0-9]/)) strength += 34;
 

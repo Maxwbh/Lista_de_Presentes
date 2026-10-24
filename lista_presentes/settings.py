@@ -184,18 +184,11 @@ else:
     }
 
 # Password validation
+# Senha simples permitida (ex.: 4 digitos): so o tamanho minimo e validado
 AUTH_PASSWORD_VALIDATORS = [
     {
-        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
-    },
-    {
         'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
+        'OPTIONS': {'min_length': 4},
     },
 ]
 
@@ -385,6 +378,30 @@ MERCADOLIVRE_CLIENT_SECRET = os.getenv('MERCADOLIVRE_CLIENT_SECRET', '')
 VAPID_PUBLIC_KEY = os.getenv('VAPID_PUBLIC_KEY', '')
 VAPID_PRIVATE_KEY = os.getenv('VAPID_PRIVATE_KEY', '')
 VAPID_ADMIN_EMAIL = os.getenv('VAPID_ADMIN_EMAIL', '')
+
+# ==============================================================================
+# E-mail (redefinicao de senha)
+# ==============================================================================
+# O Render Free bloqueia SMTP (portas 25/465/587): o envio e pela API HTTPS da
+# Brevo (BREVO_API_KEY). Em plano pago, EMAIL_HOST ativa o SMTP comum.
+# Sem nenhum dos dois, os e-mails so vao para o log e a redefinicao de senha
+# e feita por link gerado pelo administrador (admin > Usuarios).
+BREVO_API_KEY = os.getenv('BREVO_API_KEY', '')
+DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'Lista de Presentes <noreply@listadepresentes.com>')
+EMAIL_HOST = os.getenv('EMAIL_HOST', '')
+if BREVO_API_KEY:
+    EMAIL_BACKEND = 'presentes.email_backend.BrevoEmailBackend'
+elif EMAIL_HOST:
+    EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+    EMAIL_PORT = int(os.getenv('EMAIL_PORT', 587))
+    EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', '')
+    EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', '')
+    EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS', 'True') == 'True'
+else:
+    EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+
+# Validade dos links de redefinicao de senha
+PASSWORD_RESET_TIMEOUT = 60 * 60 * 24  # 24 horas
 
 # Token do endpoint de cron (pesquisa semanal de precos via agendador externo)
 CRON_TOKEN = os.getenv('CRON_TOKEN', '')

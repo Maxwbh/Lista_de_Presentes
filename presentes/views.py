@@ -8,10 +8,10 @@ from django.db import transaction
 from django.http import JsonResponse, HttpResponse
 from django.urls import reverse
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
-from django.core.mail import send_mail
 from django.conf import settings
 from django.utils import timezone
-from django.contrib.auth.hashers import make_password
+from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import ValidationError
 from .models import Usuario, Presente, Compra, Notificacao, SugestaoCompra, Grupo, GrupoMembro, PrecoHistorico, PesquisaPrecoLog, PushSubscription
 from .forms import UsuarioRegistroForm, PresenteForm, LoginForm, GrupoForm, EditarPerfilForm
 from .services import IAService
@@ -20,15 +20,11 @@ import base64
 import re
 import logging
 import secrets
-import hashlib
 from datetime import timedelta
 from urllib.parse import urlparse
 from functools import wraps
 
 logger = logging.getLogger(__name__)
-
-# Dicionário para armazenar tokens de recuperação de senha (em produção, usar banco de dados)
-password_reset_tokens = {}
 
 def requer_grupo_ativo(view_func):
     """
@@ -142,6 +138,8 @@ def registro_view(request):
             # entao o backend precisa ser explicito: sem ele o login() levanta
             # ValueError e o cadastro morre em erro 500.
             login(request, usuario, backend='django.contrib.auth.backends.ModelBackend')
+            from .emails import agendar_boas_vindas
+            agendar_boas_vindas(usuario)
             messages.success(request, 'Cadastro realizado com sucesso!')
             # Respeitar ?next= (ex.: convite de grupo aberto por quem ainda nao tem conta)
             from django.utils.http import url_has_allowed_host_and_scheme
@@ -207,6 +205,13 @@ def logout_view(request):
 
 def esqueceu_senha_view(request):
     """View para solicitar recuperação de senha"""
+    from .emails import email_redefinicao_senha
+    from .senha import email_configurado, link_redefinicao
+
+    if not email_configurado():
+        # Sem e-mail configurado o link nunca chegaria: orienta a pedir ao administrador
+        return render(request, 'presentes/esqueceu_senha.html', {'email_indisponivel': True})
+
     if request.method == 'POST':
         email = request.POST.get('email', '').strip().lower()
 
@@ -215,79 +220,28 @@ def esqueceu_senha_view(request):
                 'erro': 'Por favor, informe seu email.'
             })
 
-        try:
-            usuario = Usuario.objects.get(email=email)
-
-            # Gerar token único
-            token = secrets.token_urlsafe(32)
-            token_hash = hashlib.sha256(token.encode()).hexdigest()
-
-            # Armazenar token com expiração de 1 hora
-            password_reset_tokens[token_hash] = {
-                'user_id': usuario.id,
-                'expires': timezone.now() + timedelta(hours=1)
-            }
-
-            # Construir URL de redefinição
-            reset_url = request.build_absolute_uri(f'/redefinir-senha/{token}/')
-
-            # Tentar enviar email
-            try:
-                send_mail(
-                    subject='Redefinição de Senha - Lista de Presentes de Natal',
-                    message=f'''Olá {usuario.first_name},
-
-Você solicitou a redefinição de sua senha na Lista de Presentes de Natal.
-
-Clique no link abaixo para criar uma nova senha:
-{reset_url}
-
-Este link expira em 1 hora.
-
-Se você não solicitou esta redefinição, ignore este email.
-
-Atenciosamente,
-Equipe Lista de Presentes de Natal
-''',
-                    from_email=settings.DEFAULT_FROM_EMAIL if hasattr(settings, 'DEFAULT_FROM_EMAIL') else 'noreply@listadepresentes.com',
-                    recipient_list=[email],
-                    fail_silently=False,
-                )
-                logger.info(f"Email de recuperação enviado para {email}")
-            except Exception as e:
-                logger.warning(f"Não foi possível enviar email para {email}: {str(e)}")
-                # Mesmo sem enviar email, mostrar mensagem genérica para não revelar se o email existe
-
-            return render(request, 'presentes/esqueceu_senha.html', {
-                'mensagem_sucesso': f'Se o email {email} estiver cadastrado, você receberá as instruções de recuperação em breve. Verifique também sua caixa de spam.'
-            })
-
-        except Usuario.DoesNotExist:
+        mensagem_sucesso = (f'Se o email {email} estiver cadastrado, você receberá as instruções de '
+                            f'recuperação em breve. Verifique também sua caixa de spam.')
+        usuario = Usuario.objects.filter(email=email).first()
+        if not usuario:
             # Não revelar se o email existe ou não (segurança)
             logger.info(f"Tentativa de recuperação para email não cadastrado: {email}")
-            return render(request, 'presentes/esqueceu_senha.html', {
-                'mensagem_sucesso': f'Se o email {email} estiver cadastrado, você receberá as instruções de recuperação em breve. Verifique também sua caixa de spam.'
-            })
+            return render(request, 'presentes/esqueceu_senha.html', {'mensagem_sucesso': mensagem_sucesso})
+
+        reset_url = link_redefinicao(usuario, base_url=request.build_absolute_uri('/'))
+        # Mesmo se o envio falhar, a mensagem e generica para nao revelar se o email existe
+        email_redefinicao_senha(usuario, reset_url)
+
+        return render(request, 'presentes/esqueceu_senha.html', {'mensagem_sucesso': mensagem_sucesso})
 
     return render(request, 'presentes/esqueceu_senha.html')
 
 def redefinir_senha_view(request, token):
-    """View para redefinir senha com token"""
-    # Calcular hash do token
-    token_hash = hashlib.sha256(token.encode()).hexdigest()
+    """View para redefinir senha com token (link do e-mail ou gerado pelo administrador)"""
+    from .senha import usuario_do_token
 
-    # Verificar se token existe e não expirou
-    token_data = password_reset_tokens.get(token_hash)
-
-    if not token_data:
-        return render(request, 'presentes/redefinir_senha.html', {
-            'token_valido': False
-        })
-
-    # Verificar expiração
-    if timezone.now() > token_data['expires']:
-        # Remover token expirado
-        del password_reset_tokens[token_hash]
+    usuario = usuario_do_token(token)
+    if not usuario:
         return render(request, 'presentes/redefinir_senha.html', {
             'token_valido': False
         })
@@ -309,28 +263,21 @@ def redefinir_senha_view(request, token):
                 'erro': 'As senhas não conferem.'
             })
 
-        if len(nova_senha) < 8:
+        try:
+            validate_password(nova_senha, user=usuario)
+        except ValidationError as e:
             return render(request, 'presentes/redefinir_senha.html', {
                 'token_valido': True,
-                'erro': 'A senha deve ter pelo menos 8 caracteres.'
+                'erro': ' '.join(e.messages)
             })
 
-        try:
-            usuario = Usuario.objects.get(id=token_data['user_id'])
-            usuario.password = make_password(nova_senha)
-            usuario.save()
+        # Trocar a senha invalida o token: o link não pode ser usado de novo
+        usuario.set_password(nova_senha)
+        usuario.save()
 
-            # Remover token usado
-            del password_reset_tokens[token_hash]
-
-            messages.success(request, 'Senha redefinida com sucesso! Faça login com sua nova senha.')
-            logger.info(f"Senha redefinida para usuário {usuario.email}")
-            return redirect('login')
-
-        except Usuario.DoesNotExist:
-            return render(request, 'presentes/redefinir_senha.html', {
-                'token_valido': False
-            })
+        messages.success(request, 'Senha redefinida com sucesso! Faça login com sua nova senha.')
+        logger.info(f"Senha redefinida para usuário {usuario.email}")
+        return redirect('login')
 
     return render(request, 'presentes/redefinir_senha.html', {
         'token_valido': True
@@ -1025,6 +972,8 @@ def marcar_comprado_view(request, pk):
         usuario=presente.usuario,
         mensagem=f'🎁 Um dos seus presentes foi comprado: {presente.descricao[:50]}!'
     )
+    from .emails import agendar_presente_comprado
+    agendar_presente_comprado(presente)
 
     messages.success(request, 'Presente marcado como comprado!')
 

@@ -1,0 +1,11 @@
+{% autoescape off %}
+Olá{% if usuario.first_name %}, {{ usuario.first_name }}{% endif %}!
+
+Que bom ter você na Lista de Presentes. Agora é só montar a sua lista para a família e os amigos saberem o que você quer ganhar.
+
+- Adicione presentes colando o link da loja: título, preço e foto vêm sozinhos.
+- Veja as listas do seu grupo e marque o que você vai comprar.
+- Quem tem a lista não vê quem comprou: a surpresa continua.
+
+Adicione seu primeiro presente: {{ link_adicionar }}
+{% endautoescape %}
