@@ -1316,3 +1316,78 @@ class EmailsTest(TestCase):
         with self.captureOnCommitCallbacks(execute=False) as callbacks:
             agendar_boas_vindas(usuario)
         self.assertEqual(callbacks, [])
+
+
+class IssueSiteNaoMapeadoTest(TestCase):
+    """Issue de site nao mapeado so quando o scraper generico le os dados de forma incompleta."""
+
+    def _extrair(self, html):
+        resposta = mock.Mock(url='https://loja-nova.com.br/produto/1', content=html)
+        resposta.raise_for_status.return_value = None
+        with mock.patch('presentes.scrapers.requests.get', return_value=resposta), \
+                mock.patch('presentes.github_helper.criar_issue_erro_geral') as criar_issue:
+            resultado = ScraperFactory.extract_product_info('https://loja-nova.com.br/produto/1')
+        return resultado, criar_issue
+
+    def test_leitura_completa_nao_abre_issue(self):
+        html = (b'<html><head><title>Loja</title>'
+                b'<meta property="og:title" content="Shampoo 1L">'
+                b'<meta property="og:image" content="https://loja-nova.com.br/foto.jpg">'
+                b'<meta property="product:price:amount" content="309.90"></head></html>')
+        resultado, criar_issue = self._extrair(html)
+        self.assertTrue(resultado['success'])
+        criar_issue.assert_not_called()
+
+    def test_leitura_sem_preco_abre_issue(self):
+        html = (b'<html><head><title>Loja</title>'
+                b'<meta property="og:title" content="Shampoo 1L">'
+                b'<meta property="og:image" content="https://loja-nova.com.br/foto.jpg"></head></html>')
+        resultado, criar_issue = self._extrair(html)
+        self.assertTrue(resultado['success'])
+        criar_issue.assert_called_once()
+        self.assertEqual(criar_issue.call_args[1]['titulo'], '[AUTO] Site não mapeado: loja-nova.com.br')
+
+    def test_leitura_sem_imagem_abre_issue_dizendo_o_que_faltou(self):
+        html = (b'<html><head><title>Loja</title>'
+                b'<meta property="og:title" content="Shampoo 1L">'
+                b'<meta property="product:price:amount" content="309.90"></head></html>')
+        resultado, criar_issue = self._extrair(html)
+        self.assertTrue(resultado['success'])
+        criar_issue.assert_called_once()
+        self.assertIn('faltou: imagem', criar_issue.call_args[1]['descricao'])
+        self.assertEqual(criar_issue.call_args[1]['contexto']['Dados faltando'], 'imagem')
+
+    def test_leitura_sem_titulo_abre_issue_de_falha_de_extracao(self):
+        html = (b'<html><head>'
+                b'<meta property="og:image" content="https://loja-nova.com.br/foto.jpg">'
+                b'<meta property="product:price:amount" content="309.90"></head></html>')
+        resposta = mock.Mock(url='https://loja-nova.com.br/produto/1', content=html)
+        resposta.raise_for_status.return_value = None
+        with mock.patch('presentes.scrapers.requests.get', return_value=resposta), \
+                mock.patch('presentes.github_helper.criar_issue_falha_scraping') as falha_scraping:
+            resultado = ScraperFactory.extract_product_info('https://loja-nova.com.br/produto/1')
+        self.assertEqual(resultado['error_type'], 'parsing')
+        falha_scraping.assert_called_once()
+
+    def _extrair_site_mapeado(self, dados):
+        url = 'https://www.kabum.com.br/produto/1'
+        with mock.patch('presentes.scrapers.KabumScraper.extract', return_value=dados), \
+                mock.patch('presentes.github_helper.criar_issue_erro_geral') as criar_issue:
+            resultado = ScraperFactory.extract_product_info(url)
+        return resultado, criar_issue
+
+    def test_site_mapeado_com_leitura_completa_nao_abre_issue(self):
+        resultado, criar_issue = self._extrair_site_mapeado(
+            ('Mouse', 99.9, 'https://www.kabum.com.br/foto.jpg'))
+        self.assertTrue(resultado['success'])
+        criar_issue.assert_not_called()
+
+    def test_site_mapeado_sem_preco_abre_issue_de_ajuste(self):
+        resultado, criar_issue = self._extrair_site_mapeado(
+            ('Mouse', None, 'https://www.kabum.com.br/foto.jpg'))
+        self.assertTrue(resultado['success'])
+        criar_issue.assert_called_once()
+        kwargs = criar_issue.call_args[1]
+        self.assertEqual(kwargs['titulo'], '[AUTO] Leitura incompleta em site mapeado: www.kabum.com.br')
+        self.assertEqual(kwargs['contexto']['Scraper usado'], 'KabumScraper')
+        self.assertEqual(kwargs['contexto']['Dados faltando'], 'preço')
