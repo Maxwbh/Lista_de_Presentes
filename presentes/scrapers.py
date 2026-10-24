@@ -547,10 +547,15 @@ class ScraperFactory:
             scraper, is_generic = ScraperFactory.get_scraper(url)
             titulo, preco, imagem_url = scraper.extract(url)
 
-            # Scraper genérico com leitura incompleta (sem preço ou sem imagem):
-            # criar issue sugerindo suporte específico. Leitura completa não
-            # gera issue, porque não há o que melhorar.
-            if is_generic and not (preco and imagem_url):
+            # Leitura incompleta (faltou título, preço ou imagem) abre issue:
+            # com o scraper genérico, sugerindo suporte específico; com um
+            # scraper específico, pedindo ajuste dos seletores. Leitura
+            # completa não gera issue, porque não há o que melhorar.
+            # (Sem título o scraper já lança ParsingError, que abre a issue de
+            # falha de extração.)
+            dados_faltando = [nome for nome, valor in
+                              (('título', titulo), ('preço', preco), ('imagem', imagem_url)) if not valor]
+            if is_generic and dados_faltando:
                 try:
                     from .github_helper import criar_issue_erro_geral
                     from urllib.parse import urlparse
@@ -559,7 +564,7 @@ class ScraperFactory:
                     titulo_issue = f"[AUTO] Site não mapeado: {domain}"
                     descricao_issue = f"""## Site Não Mapeado Detectado
 
-O **scraper genérico** extraiu os dados deste site de forma **incompleta** (sem preço ou sem imagem), e o site não tem suporte específico implementado.
+O **scraper genérico** extraiu os dados deste site de forma **incompleta** (faltou: {', '.join(dados_faltando)}), e o site não tem suporte específico implementado.
 
 ### Domínio
 `{domain}`
@@ -631,7 +636,8 @@ class {domain.split('.')[0].title()}Scraper(BaseScraper):
                             'Domínio': domain,
                             'URL': url,
                             'Scraper usado': 'GenericScraper',
-                            'Status': 'Leitura incompleta com scraper genérico'
+                            'Status': 'Leitura incompleta com scraper genérico',
+                            'Dados faltando': ', '.join(dados_faltando),
                         },
                         labels=['auto-generated', 'enhancement', 'new-site-support', 'low-priority']
                     )
@@ -640,6 +646,49 @@ class {domain.split('.')[0].title()}Scraper(BaseScraper):
 
                 except Exception as e:
                     logger.debug(f"Erro ao criar issue para site não mapeado: {str(e)}")
+
+            elif dados_faltando:
+                # Site mapeado com leitura incompleta: o site provavelmente mudou
+                # o layout e o scraper específico precisa de ajuste
+                try:
+                    from .github_helper import criar_issue_erro_geral
+                    from urllib.parse import urlparse
+
+                    domain = urlparse(url).netloc
+                    nome_scraper = type(scraper).__name__
+                    criar_issue_erro_geral(
+                        titulo=f"[AUTO] Leitura incompleta em site mapeado: {domain}",
+                        descricao=f"""## Leitura Incompleta em Site Mapeado
+
+O **{nome_scraper}** não conseguiu ler todos os dados do produto (faltou: {', '.join(dados_faltando)}). Provavelmente o site mudou o layout e o scraper precisa de ajuste.
+
+### URL de Exemplo
+```
+{url}
+```
+
+### Dados Extraídos
+- **Título**: {titulo[:100] if titulo else 'N/A'}
+- **Preço**: R$ {preco if preco else 'N/A'}
+- **Imagem**: {'Sim' if imagem_url else 'Não'}
+
+### Ações Sugeridas
+- [ ] Abrir a URL e conferir se o produto mostra {', '.join(dados_faltando)}
+- [ ] Atualizar os seletores do `{nome_scraper}` em `scrapers.py`
+- [ ] Testar com múltiplas URLs do site
+""",
+                        contexto={
+                            'Domínio': domain,
+                            'URL': url,
+                            'Scraper usado': nome_scraper,
+                            'Status': 'Leitura incompleta com scraper específico',
+                            'Dados faltando': ', '.join(dados_faltando),
+                        },
+                        labels=['auto-generated', 'bug', 'scraping']
+                    )
+                    logger.info(f"🐛 Issue criada: leitura incompleta com {nome_scraper} em {domain}")
+                except Exception as e:
+                    logger.debug(f"Erro ao criar issue de leitura incompleta: {str(e)}")
 
             return {
                 'success': True,
