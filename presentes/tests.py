@@ -1155,7 +1155,7 @@ class RedefinicaoSenhaTest(TestCase):
 
     @override_settings(EMAIL_BACKEND='django.core.mail.backends.console.EmailBackend')
     def test_sem_email_configurado_orienta_procurar_administrador(self):
-        with mock.patch('presentes.views.send_mail') as enviar:
+        with mock.patch('presentes.emails.EmailMultiAlternatives.send') as enviar:
             resposta = self.client.post(reverse('esqueceu_senha'), {'email': 'ana@exemplo.com'})
         self.assertContains(resposta, 'Peça ao administrador')
         enviar.assert_not_called()
@@ -1230,3 +1230,79 @@ class IssueDuplicadaTest(TestCase):
 
         post.assert_called_once()
         self.assertEqual(resultado['issue_number'], 20)
+
+
+@override_settings(EMAIL_BACKEND='django.core.mail.backends.locmem.EmailBackend',
+                   DEFAULT_FROM_EMAIL='ListadePresentes <no-reply@exemplo.com>',
+                   SITE_URL='https://lista.exemplo.com')
+class EmailsTest(TestCase):
+    """Redefinicao de senha, boas-vindas e presente comprado."""
+
+    def _executar_em_segundo_plano(self):
+        """As threads dos e-mails rodam de forma sincrona no teste"""
+        def iniciar(thread):
+            thread._target(*thread._args, **thread._kwargs)
+        return mock.patch('presentes.emails.threading.Thread.start', iniciar)
+
+    def test_boas_vindas_no_cadastro(self):
+        from django.core import mail
+
+        with self._executar_em_segundo_plano(), self.captureOnCommitCallbacks(execute=True), \
+                mock.patch('presentes.emails.connection.close'):
+            self.client.post(reverse('registro'), {
+                'email': 'novo@exemplo.com', 'first_name': 'Bia', 'last_name': 'Souza', 'username': 'bia',
+                'password1': '1234', 'password2': '1234', 'avatar': 'avatar1',
+            })
+
+        self.assertEqual(len(mail.outbox), 1)
+        email = mail.outbox[0]
+        self.assertEqual(email.to, ['novo@exemplo.com'])
+        self.assertIn('Bem-vindo', email.subject)
+        self.assertIn('Bia', email.body)
+        self.assertIn('https://lista.exemplo.com/adicionar-presente/', email.body)
+        self.assertIn('Adicionar meu primeiro presente', email.alternatives[0][0])
+
+    def test_presente_comprado_avisa_dono_sem_dizer_quem_comprou(self):
+        from django.core import mail
+
+        grupo = Grupo.objects.create(nome='Familia')
+        dono = Usuario.objects.create_user(email='dono@exemplo.com', username='dono', password='1234', first_name='Ana')
+        comprador = Usuario.objects.create_user(email='comprador@exemplo.com', username='comp', password='1234',
+                                                first_name='Carlos')
+        for usuario in (dono, comprador):
+            GrupoMembro.objects.create(grupo=grupo, usuario=usuario)
+            usuario.grupo_ativo = grupo
+            usuario.save()
+        presente = Presente.objects.create(grupo=grupo, usuario=dono, descricao='Fone & Capa', preco='99.90')
+
+        self.client.force_login(comprador)
+        with self._executar_em_segundo_plano(), self.captureOnCommitCallbacks(execute=True), \
+                mock.patch('presentes.emails.connection.close'):
+            self.client.post(reverse('marcar_comprado', args=[presente.pk]))
+
+        self.assertEqual(len(mail.outbox), 1)
+        email = mail.outbox[0]
+        self.assertEqual(email.to, ['dono@exemplo.com'])
+        self.assertIn('Fone & Capa', email.body)  # texto sem escapar HTML
+        self.assertNotIn('Carlos', email.body)
+        self.assertNotIn('Carlos', email.alternatives[0][0])
+
+    def test_redefinicao_envia_texto_e_html_com_o_link(self):
+        from django.core import mail
+
+        Usuario.objects.create_user(email='ana@exemplo.com', username='ana', password='1234', first_name='Ana')
+        self.client.post(reverse('esqueceu_senha'), {'email': 'ana@exemplo.com'})
+
+        email = mail.outbox[0]
+        link = re.search(r'https?://\S+/redefinir-senha/\S+/', email.body).group(0)
+        self.assertIn(link, email.alternatives[0][0])
+        self.assertIn('24 horas', email.body)
+
+    @override_settings(EMAIL_BACKEND='django.core.mail.backends.console.EmailBackend')
+    def test_sem_email_configurado_nao_agenda_nada(self):
+        from .emails import agendar_boas_vindas
+
+        usuario = Usuario.objects.create_user(email='x@exemplo.com', username='x', password='1234')
+        with self.captureOnCommitCallbacks(execute=False) as callbacks:
+            agendar_boas_vindas(usuario)
+        self.assertEqual(callbacks, [])

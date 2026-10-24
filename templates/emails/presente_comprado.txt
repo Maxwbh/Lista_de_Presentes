@@ -1,0 +1,11 @@
+{% autoescape off %}
+Olá{% if usuario.first_name %}, {{ usuario.first_name }}{% endif %}!
+
+Alguém do seu grupo comprou um presente da sua lista:
+
+  {{ presente.descricao }}
+
+Quem comprou continua em segredo, para não estragar a surpresa.
+
+Ver minha lista: {{ link_lista }}
+{% endautoescape %}

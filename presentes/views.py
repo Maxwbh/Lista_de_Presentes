@@ -8,7 +8,6 @@ from django.db import transaction
 from django.http import JsonResponse, HttpResponse
 from django.urls import reverse
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
-from django.core.mail import send_mail
 from django.conf import settings
 from django.utils import timezone
 from django.contrib.auth.password_validation import validate_password
@@ -139,6 +138,8 @@ def registro_view(request):
             # entao o backend precisa ser explicito: sem ele o login() levanta
             # ValueError e o cadastro morre em erro 500.
             login(request, usuario, backend='django.contrib.auth.backends.ModelBackend')
+            from .emails import agendar_boas_vindas
+            agendar_boas_vindas(usuario)
             messages.success(request, 'Cadastro realizado com sucesso!')
             # Respeitar ?next= (ex.: convite de grupo aberto por quem ainda nao tem conta)
             from django.utils.http import url_has_allowed_host_and_scheme
@@ -204,6 +205,7 @@ def logout_view(request):
 
 def esqueceu_senha_view(request):
     """View para solicitar recuperação de senha"""
+    from .emails import email_redefinicao_senha
     from .senha import email_configurado, link_redefinicao
 
     if not email_configurado():
@@ -227,31 +229,8 @@ def esqueceu_senha_view(request):
             return render(request, 'presentes/esqueceu_senha.html', {'mensagem_sucesso': mensagem_sucesso})
 
         reset_url = link_redefinicao(usuario, base_url=request.build_absolute_uri('/'))
-        try:
-            send_mail(
-                subject='Redefinição de Senha - Lista de Presentes de Natal',
-                message=f'''Olá {usuario.first_name},
-
-Você solicitou a redefinição de sua senha na Lista de Presentes de Natal.
-
-Clique no link abaixo para criar uma nova senha:
-{reset_url}
-
-Este link expira em 24 horas e só pode ser usado uma vez.
-
-Se você não solicitou esta redefinição, ignore este email.
-
-Atenciosamente,
-Equipe Lista de Presentes de Natal
-''',
-                from_email=settings.DEFAULT_FROM_EMAIL,
-                recipient_list=[email],
-                fail_silently=False,
-            )
-            logger.info(f"Email de recuperação enviado para {email}")
-        except Exception as e:
-            # Mesmo sem enviar email, mostrar mensagem genérica para não revelar se o email existe
-            logger.warning(f"Não foi possível enviar email para {email}: {str(e)}")
+        # Mesmo se o envio falhar, a mensagem e generica para nao revelar se o email existe
+        email_redefinicao_senha(usuario, reset_url)
 
         return render(request, 'presentes/esqueceu_senha.html', {'mensagem_sucesso': mensagem_sucesso})
 
@@ -993,6 +972,8 @@ def marcar_comprado_view(request, pk):
         usuario=presente.usuario,
         mensagem=f'🎁 Um dos seus presentes foi comprado: {presente.descricao[:50]}!'
     )
+    from .emails import agendar_presente_comprado
+    agendar_presente_comprado(presente)
 
     messages.success(request, 'Presente marcado como comprado!')
 
