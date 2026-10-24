@@ -35,6 +35,19 @@ BLOCKED_URL_MARKERS = (
 )
 
 
+# Titulos de paginas de verificacao anti-robo (ex.: "Radware Bot Manager Captcha")
+BLOCKED_TITLE_MARKERS = (
+    'captcha',
+    'bot manager',
+    'attention required',
+    'just a moment',
+    'access denied',
+    'acesso negado',
+    'are you a robot',
+    'are you human',
+)
+
+
 class ParsingError(ScrapingError):
     """Erro de parsing/extracao de dados (site acessivel mas dados nao extraidos) - GERA issue"""
     pass
@@ -87,7 +100,15 @@ class BaseScraper:
             logger.warning(f"Acesso bloqueado por verificacao anti-robo em {url} (redirecionado para {response.url})")
             raise BlockedError("O site bloqueou a consulta automática (verificação anti-robô)")
 
-        return BeautifulSoup(response.content, 'html.parser')
+        soup = BeautifulSoup(response.content, 'html.parser')
+
+        # Paginas de captcha/anti-robo que respondem 200 no proprio endereco
+        titulo_pagina = (soup.title.get_text(' ', strip=True) if soup.title else '').lower()
+        if any(marcador in titulo_pagina for marcador in BLOCKED_TITLE_MARKERS):
+            logger.warning(f"Acesso bloqueado por verificacao anti-robo em {url} (titulo: {titulo_pagina[:80]})")
+            raise BlockedError("O site bloqueou a consulta automática (verificação anti-robô)")
+
+        return soup
 
     def clean_price(self, price_str):
         """Limpa e converte string de preço para float"""

@@ -14,7 +14,18 @@
 
         <!-- Body -->
         <div class="card-body p-8">
-            {% if mensagem_sucesso %}
+            {% if email_indisponivel %}
+                <div class="alert alert-info">
+                    <i class="bi bi-person-badge-fill"></i>
+                    <span>O envio de e-mail não está disponível no momento. Peça ao administrador da lista um
+                        link para criar uma nova senha.</span>
+                </div>
+                <div class="text-center mt-4">
+                    <a href="{% url 'login' %}" class="text-primary font-semibold hover:underline">
+                        <i class="bi bi-arrow-left mr-1"></i>Voltar para o Login
+                    </a>
+                </div>
+            {% elif mensagem_sucesso %}
                 <div class="alert alert-success">
                     <i class="bi bi-check-circle-fill"></i>
                     <span>{{ mensagem_sucesso }}</span>

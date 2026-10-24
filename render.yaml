@@ -119,6 +119,15 @@ services:
       - key: VAPID_ADMIN_EMAIL
         sync: false
 
+      # ==============================================================================
+      # E-mail (redefinicao de senha) - o Render Free bloqueia SMTP; usa a API da Brevo
+      # ==============================================================================
+      - key: BREVO_API_KEY
+        sync: false
+
+      - key: DEFAULT_FROM_EMAIL
+        sync: false
+
       - key: SITE_URL
         value: https://lista-presentes-im4b.onrender.com
 

@@ -98,6 +98,11 @@ def criar_issue_falha_imagem(presente, url_imagem, erro_descricao, usuario=None)
         
         # Fazer request
         logger.info(f"Criando issue no GitHub para presente {presente.id}")
+        # Nao duplica: reaproveita issue aberta com o mesmo titulo
+        existente = _issue_aberta_com_titulo(payload['title'], headers)
+        if existente:
+            return existente
+
         response = requests.post(url, json=payload, headers=headers, timeout=10)
         
         if response.status_code == 201:
@@ -272,6 +277,11 @@ Este tipo de erro indica que:
 
         # Fazer request
         logger.info(f"Criando issue no GitHub para falha de scraping: {dominio}")
+        # Nao duplica: reaproveita issue aberta com o mesmo titulo
+        existente = _issue_aberta_com_titulo(payload['title'], headers)
+        if existente:
+            return existente
+
         response = requests.post(url, json=payload, headers=headers, timeout=10)
 
         if response.status_code == 201:
@@ -313,6 +323,36 @@ Este tipo de erro indica que:
             'success': False,
             'error': str(e)
         }
+
+
+def _issue_aberta_com_titulo(titulo, headers):
+    """
+    Procura issue aberta gerada automaticamente com o mesmo titulo.
+
+    Retorna o mesmo formato de sucesso da criacao, ou None se nao houver
+    (ou se a consulta falhar: na duvida, a issue e criada).
+    """
+    url = f"{settings.GITHUB_API_BASE_URL}/repos/{settings.GITHUB_REPO_OWNER}/{settings.GITHUB_REPO_NAME}/issues"
+    try:
+        response = requests.get(
+            url, headers=headers, timeout=10,
+            params={'state': 'open', 'labels': 'auto-generated', 'per_page': 100},
+        )
+        if response.status_code != 200:
+            return None
+        for issue in response.json():
+            if issue.get('title') == titulo and 'pull_request' not in issue:
+                logger.info(f"Issue #{issue.get('number')} ja existe para: {titulo}")
+                return {
+                    'success': True,
+                    'issue_number': issue.get('number'),
+                    'issue_url': issue.get('html_url'),
+                    'data': issue,
+                    'existente': True,
+                }
+    except Exception as e:
+        logger.warning(f"Nao foi possivel verificar issues existentes: {e}")
+    return None
 
 
 def _get_app_version():
@@ -371,6 +411,11 @@ def criar_issue_erro_geral(titulo, descricao, contexto=None, labels=None):
             'labels': labels or ['auto-generated'],
         }
         
+        # Nao duplica: reaproveita issue aberta com o mesmo titulo
+        existente = _issue_aberta_com_titulo(payload['title'], headers)
+        if existente:
+            return existente
+
         response = requests.post(url, json=payload, headers=headers, timeout=10)
         
         if response.status_code == 201:
