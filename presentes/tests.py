@@ -1,3 +1,4 @@
+import contextlib
 import re
 from datetime import timedelta
 from io import StringIO
@@ -1238,17 +1239,27 @@ class IssueDuplicadaTest(TestCase):
 class EmailsTest(TestCase):
     """Redefinicao de senha, boas-vindas e presente comprado."""
 
-    def _executar_em_segundo_plano(self):
-        """As threads dos e-mails rodam de forma sincrona no teste"""
+    @contextlib.contextmanager
+    def _enviar_apos_commit(self):
+        """
+        Roda os envios agendados para depois do commit, de forma sincrona.
+
+        O connection.close() da thread fica simulado durante todo o bloco,
+        inclusive quando os callbacks rodam na saida do
+        captureOnCommitCallbacks: senao fecharia a conexao do proprio teste
+        (no PostgreSQL do CI isso quebra os testes seguintes).
+        """
         def iniciar(thread):
             thread._target(*thread._args, **thread._kwargs)
-        return mock.patch('presentes.emails.threading.Thread.start', iniciar)
+        with mock.patch('presentes.emails.connection.close'), \
+                mock.patch('presentes.emails.threading.Thread.start', iniciar), \
+                self.captureOnCommitCallbacks(execute=True):
+            yield
 
     def test_boas_vindas_no_cadastro(self):
         from django.core import mail
 
-        with self._executar_em_segundo_plano(), self.captureOnCommitCallbacks(execute=True), \
-                mock.patch('presentes.emails.connection.close'):
+        with self._enviar_apos_commit():
             self.client.post(reverse('registro'), {
                 'email': 'novo@exemplo.com', 'first_name': 'Bia', 'last_name': 'Souza', 'username': 'bia',
                 'password1': '1234', 'password2': '1234', 'avatar': 'avatar1',
@@ -1276,8 +1287,7 @@ class EmailsTest(TestCase):
         presente = Presente.objects.create(grupo=grupo, usuario=dono, descricao='Fone & Capa', preco='99.90')
 
         self.client.force_login(comprador)
-        with self._executar_em_segundo_plano(), self.captureOnCommitCallbacks(execute=True), \
-                mock.patch('presentes.emails.connection.close'):
+        with self._enviar_apos_commit():
             self.client.post(reverse('marcar_comprado', args=[presente.pk]))
 
         self.assertEqual(len(mail.outbox), 1)
