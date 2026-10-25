@@ -824,6 +824,13 @@ class {nome_classe}Scraper(BaseScraper):
                 except Exception as e:
                     logger.debug(f"Erro ao criar issue para site não mapeado: {str(e)}")
 
+            elif dados_faltando and scraper.aviso:
+                # Limite conhecido da loja (ex.: anuncio do ML fora do catalogo):
+                # nao ha o que ajustar no codigo, entao nao abre issue. O motivo
+                # vai para o log e para o admin (busca_imagem_resultado).
+                logger.info(f"Leitura incompleta por limite conhecido da loja ({type(scraper).__name__}): "
+                            f"{scraper.aviso}")
+
             elif dados_faltando:
                 # Site mapeado com leitura incompleta: o site provavelmente mudou
                 # o layout e o scraper específico precisa de ajuste
@@ -833,13 +840,11 @@ class {nome_classe}Scraper(BaseScraper):
 
                     domain = urlparse(url).netloc
                     nome_scraper = type(scraper).__name__
-                    motivo = (f"**Motivo conhecido:** {scraper.aviso}" if scraper.aviso else
-                              "Provavelmente o site mudou o layout e o scraper precisa de ajuste.")
                     criar_issue_erro_geral(
                         titulo=f"[AUTO] Leitura incompleta em site mapeado: {domain}",
                         descricao=f"""## Leitura Incompleta em Site Mapeado
 
-O **{nome_scraper}** não conseguiu ler todos os dados do produto (faltou: {', '.join(dados_faltando)}). {motivo}
+O **{nome_scraper}** não conseguiu ler todos os dados do produto (faltou: {', '.join(dados_faltando)}). Provavelmente o site mudou o layout e o scraper precisa de ajuste.
 
 ### URL de Exemplo
 ```
@@ -863,7 +868,7 @@ O **{nome_scraper}** não conseguiu ler todos os dados do produto (faltou: {', '
                             'Status': 'Leitura incompleta com scraper específico',
                             'Dados faltando': ', '.join(dados_faltando),
                         },
-                        labels=['auto-generated', 'scraping'] if scraper.aviso else ['auto-generated', 'bug', 'scraping']
+                        labels=['auto-generated', 'bug', 'scraping']
                     )
                     logger.info(f"🐛 Issue criada: leitura incompleta com {nome_scraper} em {domain}")
                 except Exception as e:
