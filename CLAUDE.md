@@ -9,3 +9,9 @@
   assistente/ferramenta de IA em mensagens de commit, títulos e descrições
   de PR e comentários no GitHub. Isso inclui linhas `Co-Authored-By`,
   `Claude-Session`, rodapés "Generated with ..." e links de sessão.
+
+## Issues
+
+- Não fechar issues sem desenvolvimento feito. Fechar uma issue só quando o
+  PR que a resolve for para a main ou quando for pedido explicitamente
+  ("Fechar issues x").

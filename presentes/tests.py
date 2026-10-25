@@ -17,7 +17,7 @@ from .models import (
 )
 from .mercadolivre_api import _titulo_da_descricao, buscar_produto, extrair_ids, obter_access_token
 from .push import enviar_push
-from .scrapers import ScraperFactory
+from .scrapers import ScraperFactory, limpar_url_rastreio
 from .relevancia import calcular_relevancia, resultado_relevante
 from .services import IAService
 
@@ -1404,3 +1404,58 @@ class IssueSiteNaoMapeadoTest(TestCase):
         self.assertEqual(kwargs['titulo'], '[AUTO] Leitura incompleta em site mapeado: www.kabum.com.br')
         self.assertEqual(kwargs['contexto']['Scraper usado'], 'KabumScraper')
         self.assertEqual(kwargs['contexto']['Dados faltando'], 'preço')
+
+
+class DecathlonScraperTest(TestCase):
+    """Decathlon: preco vem do JSON-LD (ProductGroup com uma variante por tamanho)."""
+
+    HTML = (
+        '<html><head><title>Luva | Decathlon</title>'
+        '<meta property="og:title" content="Luva Corength Roxa">'
+        '<script type="application/ld+json">[{"@type": "ProductGroup", "name": "Luva Corength Roxa",'
+        ' "image": ["https://decathlonpro.vtexassets.com/luva.jpg"], "hasVariant": ['
+        '{"@type": "Product", "sku": "1", "offers": {"price": 79.99, '
+        '"availability": "https://schema.org/OutOfStock"}},'
+        '{"@type": "Product", "sku": "2", "offers": {"price": 71.99, '
+        '"availability": "https://schema.org/InStock"}},'
+        '{"@type": "Product", "sku": "3", "offers": {"price": 65.00, '
+        '"availability": "https://schema.org/InStock"}}]}]</script>'
+        '</head></html>'
+    ).encode()
+
+    def _extrair(self, url):
+        resposta = mock.Mock(url=url, content=self.HTML, status_code=200)
+        resposta.raise_for_status.return_value = None
+        with mock.patch('presentes.scrapers.requests.get', return_value=resposta) as get, \
+                mock.patch('presentes.github_helper.criar_issue_erro_geral') as criar_issue:
+            resultado = ScraperFactory.extract_product_info(url)
+        return resultado, criar_issue, get
+
+    def test_le_titulo_preco_e_imagem_do_json_ld(self):
+        resultado, criar_issue, _ = self._extrair('https://www.decathlon.com.br/luva-8948970/p')
+        self.assertTrue(resultado['success'])
+        self.assertFalse(resultado['used_generic_scraper'])
+        self.assertEqual(resultado['titulo'], 'Luva Corength Roxa')
+        # Primeira variante em estoque
+        self.assertEqual(resultado['preco'], 71.99)
+        self.assertEqual(resultado['imagem_url'], 'https://decathlonpro.vtexassets.com/luva.jpg')
+        criar_issue.assert_not_called()
+
+    def test_usa_o_preco_da_variante_do_link(self):
+        resultado, _, _ = self._extrair('https://www.decathlon.com.br/luva-8948970/p?skuId=3')
+        self.assertEqual(resultado['preco'], 65.00)
+
+    def test_remove_parametros_de_rastreio_da_url(self):
+        _, _, get = self._extrair('https://www.decathlon.com.br/luva-8948970/p?utm_source=chatgpt.com&skuId=3')
+        self.assertEqual(get.call_args[0][0], 'https://www.decathlon.com.br/luva-8948970/p?skuId=3')
+
+
+class LimparUrlRastreioTest(TestCase):
+
+    def test_remove_utm_gclid_e_fbclid(self):
+        self.assertEqual(
+            limpar_url_rastreio('https://loja.com/p?id=7&utm_source=x&utm_medium=y&gclid=1&fbclid=2'),
+            'https://loja.com/p?id=7')
+
+    def test_url_sem_query_fica_igual(self):
+        self.assertEqual(limpar_url_rastreio('https://loja.com/p'), 'https://loja.com/p')

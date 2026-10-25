@@ -1149,8 +1149,10 @@ def extrair_info_produto_view(request):
         }, status=400)
 
     try:
-        from .scrapers import ScraperFactory
+        from .scrapers import ScraperFactory, limpar_url_rastreio
         from .github_helper import criar_issue_falha_scraping
+
+        url = limpar_url_rastreio(url)
 
         logger.info(f"Extraindo informações de: {url}")
 
