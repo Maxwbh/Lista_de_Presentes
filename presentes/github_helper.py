@@ -4,10 +4,34 @@ Cria issues automaticamente para problemas de download de imagem
 """
 import requests
 import logging
+import threading
+import time
 from django.conf import settings
 from datetime import datetime
 
 logger = logging.getLogger(__name__)
+
+# Issues criadas por este processo nos ultimos minutos, por titulo. A
+# listagem de issues do GitHub demora alguns segundos para mostrar uma issue
+# recem-criada; sem isto, leituras seguidas (ex.: busca de imagens em lote)
+# abriam varias issues iguais.
+_ISSUES_RECENTES = {}
+_ISSUES_RECENTES_LOCK = threading.Lock()
+VALIDADE_ISSUES_RECENTES = 600  # segundos
+
+
+def _lembrar_issue_criada(titulo, issue):
+    with _ISSUES_RECENTES_LOCK:
+        _ISSUES_RECENTES[titulo] = (time.monotonic(), issue)
+
+
+def _issue_recente(titulo):
+    with _ISSUES_RECENTES_LOCK:
+        registro = _ISSUES_RECENTES.get(titulo)
+        if registro and time.monotonic() - registro[0] < VALIDADE_ISSUES_RECENTES:
+            return registro[1]
+        _ISSUES_RECENTES.pop(titulo, None)
+        return None
 
 
 def criar_issue_falha_imagem(presente, url_imagem, erro_descricao, usuario=None):
@@ -107,6 +131,7 @@ def criar_issue_falha_imagem(presente, url_imagem, erro_descricao, usuario=None)
         
         if response.status_code == 201:
             issue_data = response.json()
+            _lembrar_issue_criada(payload['title'], issue_data)
             issue_number = issue_data.get('number')
             issue_url = issue_data.get('html_url')
             
@@ -295,6 +320,7 @@ Este tipo de erro indica que:
 
         if response.status_code == 201:
             issue_data = response.json()
+            _lembrar_issue_criada(payload['title'], issue_data)
             issue_number = issue_data.get('number')
             issue_url = issue_data.get('html_url')
 
@@ -350,6 +376,8 @@ def _comentar_nova_ocorrencia(issue, corpo, chave, headers):
                 return
         requests.post(url_comentarios, headers=headers, timeout=10,
                       json={'body': f"## Nova ocorrência\n\n{corpo}"})
+        # Para a issue lembrada em memoria: os proximos comentarios consultam a lista
+        issue['comments'] = (issue.get('comments') or 0) + 1
         logger.info(f"Nova ocorrência registrada na issue #{issue.get('number')}")
     except Exception as e:
         logger.warning(f"Nao foi possivel comentar na issue #{issue.get('number')}: {e}")
@@ -365,6 +393,18 @@ def _issue_aberta_com_titulo(titulo, headers, corpo=None, chave=None):
     Retorna o mesmo formato de sucesso da criacao, ou None se nao houver
     (ou se a consulta falhar: na duvida, a issue e criada).
     """
+    recente = _issue_recente(titulo)
+    if recente:
+        logger.info(f"Issue #{recente.get('number')} criada há pouco para: {titulo}")
+        _comentar_nova_ocorrencia(recente, corpo, chave, headers)
+        return {
+            'success': True,
+            'issue_number': recente.get('number'),
+            'issue_url': recente.get('html_url'),
+            'data': recente,
+            'existente': True,
+        }
+
     url = f"{settings.GITHUB_API_BASE_URL}/repos/{settings.GITHUB_REPO_OWNER}/{settings.GITHUB_REPO_NAME}/issues"
     try:
         response = requests.get(
@@ -455,6 +495,7 @@ def criar_issue_erro_geral(titulo, descricao, contexto=None, labels=None):
         
         if response.status_code == 201:
             issue_data = response.json()
+            _lembrar_issue_criada(payload['title'], issue_data)
             logger.info(f"Issue criada: {issue_data.get('html_url')}")
             return {
                 'success': True,

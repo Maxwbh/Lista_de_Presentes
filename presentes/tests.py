@@ -1207,6 +1207,30 @@ class ScraperBloqueioCaptchaTest(TestCase):
 class IssueDuplicadaTest(TestCase):
     """Issues #12, #13 e #14: a mesma issue criada varias vezes."""
 
+    def setUp(self):
+        from . import github_helper
+        github_helper._ISSUES_RECENTES.clear()
+
+    def test_issue_recem_criada_nao_duplica_mesmo_sem_aparecer_na_listagem(self):
+        # Issues #26 a #29: a listagem do GitHub ainda nao mostrava a issue criada
+        # segundos antes, e a mesma issue foi aberta 4 vezes
+        from .github_helper import criar_issue_erro_geral
+
+        criada = mock.Mock(status_code=201, json=mock.Mock(return_value={
+            'number': 26, 'html_url': 'u', 'body': 'URL: https://loja.com/1',
+            'comments': 0, 'comments_url': 'https://api.github.com/repos/x/y/issues/26/comments'}))
+        with mock.patch('presentes.github_helper.requests.get',
+                        return_value=mock.Mock(status_code=200, json=mock.Mock(return_value=[]))), \
+                mock.patch('presentes.github_helper.requests.post', return_value=criada) as post:
+            primeira = criar_issue_erro_geral('[AUTO] Site X', 'URL: https://loja.com/1',
+                                              contexto={'URL': 'https://loja.com/1'})
+            segunda = criar_issue_erro_geral('[AUTO] Site X', 'URL: https://loja.com/1',
+                                             contexto={'URL': 'https://loja.com/1'})
+
+        post.assert_called_once()
+        self.assertEqual(primeira['issue_number'], 26)
+        self.assertEqual(segunda['issue_number'], 26)
+
     def test_reaproveita_issue_aberta_com_mesmo_titulo(self):
         from .github_helper import criar_issue_erro_geral
 
@@ -1402,16 +1426,23 @@ class IssueSiteNaoMapeadoTest(TestCase):
         with mock.patch('presentes.mercadolivre_api._get', return_value={'plain_text': texto}):
             self.assertEqual(_titulo_da_descricao('MLB123', 'token'), 'Pelúcia de vaca 45 cm')
 
-    def test_anuncio_ml_fora_do_catalogo_explica_o_motivo_na_issue(self):
+    def test_anuncio_ml_fora_do_catalogo_nao_abre_issue(self):
+        # Limite do Mercado Livre, nao defeito no codigo: so informa o motivo
         url = 'https://produto.mercadolivre.com.br/MLB-5186755357'
         with mock.patch('presentes.mercadolivre_api.buscar_produto', return_value=('Pelúcia', None, None)), \
                 mock.patch('presentes.github_helper.criar_issue_erro_geral') as criar_issue:
             resultado = ScraperFactory.extract_product_info(url)
+        self.assertTrue(resultado['success'])
         self.assertIn('fora do catálogo', resultado['aviso'])
-        kwargs = criar_issue.call_args[1]
-        self.assertIn('Motivo conhecido', kwargs['descricao'])
-        self.assertNotIn('mudou o layout', kwargs['descricao'])
-        self.assertNotIn('bug', kwargs['labels'])
+        criar_issue.assert_not_called()
+
+    def test_site_mapeado_sem_motivo_conhecido_continua_abrindo_issue(self):
+        url = 'https://produto.mercadolivre.com.br/MLB-5186755357'
+        with mock.patch('presentes.mercadolivre_api.buscar_produto', return_value=('Pelúcia', 99.9, None)), \
+                mock.patch('presentes.github_helper.criar_issue_erro_geral') as criar_issue:
+            ScraperFactory.extract_product_info(url)
+        criar_issue.assert_called_once()
+        self.assertIn('bug', criar_issue.call_args[1]['labels'])
 
     def test_descricao_so_com_separador_nao_vira_titulo(self):
         texto = '________________________________________________\nLuva de treino roxa tamanho M\n'
