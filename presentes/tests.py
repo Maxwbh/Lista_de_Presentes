@@ -1459,3 +1459,69 @@ class LimparUrlRastreioTest(TestCase):
 
     def test_url_sem_query_fica_igual(self):
         self.assertEqual(limpar_url_rastreio('https://loja.com/p'), 'https://loja.com/p')
+
+
+class BuscarImagensAdminTest(TestCase):
+    """Botao e acao do admin que buscam no site a imagem dos presentes sem imagem."""
+
+    def setUp(self):
+        self.admin = Usuario.objects.create_superuser(
+            email='adm-img@exemplo.com', username='adm-img', password='SenhaForte!2026')
+        self.client.force_login(self.admin)
+        self.sem_imagem = Presente.objects.create(
+            usuario=self.admin, descricao='Tesoura', url='https://www.loja.com.br/tesoura')
+        self.sem_link = Presente.objects.create(usuario=self.admin, descricao='Sabonete')
+        self.com_imagem = Presente.objects.create(
+            usuario=self.admin, descricao='Meia', url='https://www.loja.com.br/meia', imagem_base64='aGVsbG8=')
+        self.url_botao = reverse('admin:presentes_presente_buscar_imagens')
+
+    def _leitura(self, preco=59.9):
+        return {'success': True, 'titulo': 'Tesoura', 'preco': preco,
+                'imagem_url': 'https://www.loja.com.br/foto.jpg'}
+
+    def _foto(self):
+        resposta = mock.Mock(content=b'jpeg', headers={'content-type': 'image/jpeg'})
+        resposta.raise_for_status.return_value = None
+        return resposta
+
+    def test_filtro_sem_imagem_e_botao_com_total(self):
+        resposta = self.client.get(reverse('admin:presentes_presente_changelist') + '?tem_imagem=nao')
+        self.assertContains(resposta, 'Buscar imagens que faltam (1)')
+        descricoes = [p.descricao for p in resposta.context['cl'].result_list]
+        self.assertCountEqual(descricoes, ['Tesoura', 'Sabonete'])
+
+    def test_botao_busca_imagem_e_preco_que_faltavam(self):
+        with mock.patch('presentes.scrapers.ScraperFactory.extract_product_info',
+                        return_value=self._leitura()) as extrair, \
+                mock.patch('presentes.services.requests.get', return_value=self._foto()):
+            resposta = self.client.post(self.url_botao, follow=True)
+        # So o presente sem imagem e com link e consultado
+        extrair.assert_called_once_with('https://www.loja.com.br/tesoura')
+        self.sem_imagem.refresh_from_db()
+        self.assertTrue(self.sem_imagem.tem_imagem())
+        self.assertEqual(str(self.sem_imagem.preco), '59.90')
+        self.assertContains(resposta, '1 de 1 presente(s) ganharam imagem')
+        self.assertContains(resposta, 'ganharam também o preço')
+
+    def test_preco_existente_nao_e_alterado(self):
+        self.sem_imagem.preco = 10
+        self.sem_imagem.save()
+        with mock.patch('presentes.scrapers.ScraperFactory.extract_product_info',
+                        return_value=self._leitura()), \
+                mock.patch('presentes.services.requests.get', return_value=self._foto()):
+            self.client.post(self.url_botao)
+        self.sem_imagem.refresh_from_db()
+        self.assertEqual(str(self.sem_imagem.preco), '10.00')
+
+    def test_muitos_presentes_rodam_em_segundo_plano(self):
+        for i in range(6):
+            Presente.objects.create(usuario=self.admin, descricao=f'Item {i}', url=f'https://loja.com/{i}')
+        with mock.patch('presentes.admin.threading.Thread') as thread:
+            resposta = self.client.post(self.url_botao, follow=True)
+        thread.return_value.start.assert_called_once()
+        self.assertContains(resposta, 'Busca de imagem iniciada para 7 presentes')
+
+    def test_get_nao_dispara_busca(self):
+        with mock.patch('presentes.admin._buscar_imagens') as buscar:
+            self.client.get(self.url_botao)
+        buscar.assert_not_called()
