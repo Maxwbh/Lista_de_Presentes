@@ -311,6 +311,7 @@ def dashboard_view(request):
     ).count()
 
     context = {
+        'grupo': grupo_ativo,
         'total_usuarios': total_usuarios,
         'meus_presentes_ativos': meus_presentes_ativos,
         'presentes_nao_comprados': presentes_nao_comprados,
@@ -1211,7 +1212,9 @@ def extrair_info_produto_view(request):
                     url_produto=url,
                     dados_extraidos=dados_extraidos,
                     usuario=request.user,
-                    grupo=request.user.grupo_ativo if hasattr(request.user, 'grupo_ativo') else None
+                    grupo=request.user.grupo_ativo if hasattr(request.user, 'grupo_ativo') else None,
+                    erro=error_message,
+                    log_extracao=result.get('log_extracao'),
                 )
 
                 # Preparar mensagem de resposta

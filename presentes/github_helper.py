@@ -144,7 +144,8 @@ def criar_issue_falha_imagem(presente, url_imagem, erro_descricao, usuario=None)
         }
 
 
-def criar_issue_falha_scraping(url_produto, dados_extraidos, usuario=None, grupo=None):
+def criar_issue_falha_scraping(url_produto, dados_extraidos, usuario=None, grupo=None,
+                               erro=None, log_extracao=None):
     """
     Cria uma issue no GitHub para falha no scraping/extracao de dados de produto.
 
@@ -157,6 +158,8 @@ def criar_issue_falha_scraping(url_produto, dados_extraidos, usuario=None, grupo
                         Exemplo: {'titulo': 'ABC', 'preco': None, 'imagem_url': None}
         usuario: Usuario que tentou adicionar (opcional)
         grupo: Grupo ao qual o usuario pertence (opcional)
+        erro: Mensagem do erro da extracao (opcional)
+        log_extracao: Linhas de log da extracao (opcional)
 
     Returns:
         dict: Resposta da API do GitHub ou None em caso de falha
@@ -174,6 +177,7 @@ def criar_issue_falha_scraping(url_produto, dados_extraidos, usuario=None, grupo
     try:
         # Extrair dominio da URL
         from urllib.parse import urlparse
+        from .scrapers import secao_log_extracao
         dominio = urlparse(url_produto).netloc
 
         # Preparar dados da issue
@@ -207,6 +211,11 @@ Este tipo de erro indica que:
 {url_produto}
 ```
 
+### Erro
+```
+{erro or 'N/A'}
+```
+{secao_log_extracao(log_extracao)}
 ### Dominio
 `{dominio}`
 

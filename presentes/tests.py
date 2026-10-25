@@ -15,7 +15,7 @@ from .models import (
     PushSubscription, SugestaoCompra,
     Usuario,
 )
-from .mercadolivre_api import buscar_produto, extrair_ids, obter_access_token
+from .mercadolivre_api import _titulo_da_descricao, buscar_produto, extrair_ids, obter_access_token
 from .push import enviar_push
 from .scrapers import ScraperFactory
 from .relevancia import calcular_relevancia, resultado_relevante
@@ -1346,6 +1346,10 @@ class IssueSiteNaoMapeadoTest(TestCase):
         self.assertTrue(resultado['success'])
         criar_issue.assert_called_once()
         self.assertEqual(criar_issue.call_args[1]['titulo'], '[AUTO] Site não mapeado: loja-nova.com.br')
+        # A issue mostra o log da leitura (resposta da pagina)
+        descricao = criar_issue.call_args[1]['descricao']
+        self.assertIn('### Log da Extração', descricao)
+        self.assertIn('HTTP', descricao)
 
     def test_leitura_sem_imagem_abre_issue_dizendo_o_que_faltou(self):
         html = (b'<html><head><title>Loja</title>'
@@ -1368,6 +1372,15 @@ class IssueSiteNaoMapeadoTest(TestCase):
             resultado = ScraperFactory.extract_product_info('https://loja-nova.com.br/produto/1')
         self.assertEqual(resultado['error_type'], 'parsing')
         falha_scraping.assert_called_once()
+        kwargs = falha_scraping.call_args[1]
+        self.assertIn('Nao foi possivel extrair titulo', kwargs['erro'])
+        self.assertTrue(any('Página obtida' in linha for linha in kwargs['log_extracao']))
+        self.assertTrue(resultado['log_extracao'])
+
+    def test_descricao_so_com_separador_nao_vira_titulo(self):
+        texto = '________________________________________________\nLuva de treino roxa tamanho M\n'
+        with mock.patch('presentes.mercadolivre_api._get', return_value={'plain_text': texto}):
+            self.assertEqual(_titulo_da_descricao('MLB123', 'token'), 'Luva de treino roxa tamanho M')
 
     def _extrair_site_mapeado(self, dados):
         url = 'https://www.kabum.com.br/produto/1'
