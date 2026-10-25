@@ -4,6 +4,7 @@ Cada loja tem sua própria lógica de extração otimizada.
 """
 import requests
 from bs4 import BeautifulSoup
+import json
 import re
 import logging
 import threading
@@ -49,6 +50,23 @@ def capturar_log_extracao():
     finally:
         for log in loggers:
             log.removeHandler(captura)
+
+
+# Parametros de rastreamento (ex.: utm_source=...) nao identificam o produto
+# e nao devem ir para a leitura nem para as issues
+PARAMETROS_RASTREIO = re.compile(r'^(utm_\w+|gclid|fbclid|gad_source|srsltid)$', re.IGNORECASE)
+
+
+def limpar_url_rastreio(url):
+    """Remove da URL os parametros de rastreamento (utm_*, gclid, fbclid...)"""
+    from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
+
+    partes = urlsplit(url)
+    if not partes.query:
+        return url
+    query = [(k, v) for k, v in parse_qsl(partes.query, keep_blank_values=True)
+             if not PARAMETROS_RASTREIO.match(k)]
+    return urlunsplit(partes._replace(query=urlencode(query)))
 
 
 def secao_log_extracao(linhas):
@@ -454,6 +472,93 @@ class KabumScraper(BaseScraper):
         return (titulo, preco, imagem_url)
 
 
+class DecathlonScraper(BaseScraper):
+    """
+    Scraper especifico para a Decathlon Brasil (loja VTEX).
+
+    O preco nao vem em meta tags: fica no JSON-LD (schema.org) da pagina,
+    dentro de um ProductGroup com uma variante (Product) por tamanho/cor.
+    """
+
+    def _produtos_json_ld(self, soup):
+        """Objetos Product/ProductGroup do JSON-LD da pagina"""
+        produtos = []
+        for script in soup.find_all('script', type='application/ld+json'):
+            try:
+                dados = json.loads(script.string or script.get_text() or '')
+            except ValueError:
+                continue
+            for item in dados if isinstance(dados, list) else [dados]:
+                if isinstance(item, dict) and item.get('@type') in ('Product', 'ProductGroup'):
+                    produtos.append(item)
+        return produtos
+
+    @staticmethod
+    def _preco_oferta(produto):
+        ofertas = produto.get('offers') or {}
+        for oferta in ofertas if isinstance(ofertas, list) else [ofertas]:
+            preco = oferta.get('price') or oferta.get('lowPrice')
+            if preco not in (None, ''):
+                try:
+                    return float(preco)
+                except (TypeError, ValueError):
+                    pass
+        return None
+
+    def _preco(self, produto, sku_id):
+        """Preco da variante do link (?skuId=), senao da primeira em estoque, senao o menor"""
+        variantes = produto.get('hasVariant') or [produto]
+        if sku_id:
+            for variante in variantes:
+                if str(variante.get('sku')) == sku_id:
+                    preco = self._preco_oferta(variante)
+                    if preco:
+                        return preco
+        em_estoque = [v for v in variantes
+                      if 'InStock' in str((v.get('offers') or {}).get('availability', ''))]
+        for variante in em_estoque:
+            preco = self._preco_oferta(variante)
+            if preco:
+                return preco
+        precos = [p for p in (self._preco_oferta(v) for v in variantes) if p]
+        return min(precos) if precos else None
+
+    def extract(self, url):
+        """
+        Retorna: (titulo, preco, imagem_url)
+        Lanca NetworkError para erros de rede/HTTP.
+        Lanca ParsingError se conseguir acessar mas nao extrair o titulo.
+        """
+        from urllib.parse import parse_qs
+
+        soup = self.get_soup(url)
+        produtos = self._produtos_json_ld(soup)
+        produto = produtos[0] if produtos else {}
+        if not produtos:
+            logger.info("Decathlon: página sem JSON-LD de produto")
+
+        titulo = produto.get('name')
+        if not titulo:
+            og_title = soup.find('meta', property='og:title')
+            titulo = og_title.get('content') if og_title else None
+
+        sku_id = (parse_qs(urlparse(url).query).get('skuId') or [None])[0]
+        preco = self._preco(produto, sku_id) if produto else None
+
+        imagens = produto.get('image')
+        imagem_url = imagens[0] if isinstance(imagens, list) and imagens else imagens
+        if not imagem_url:
+            og_image = soup.find('meta', property='og:image')
+            imagem_url = og_image.get('content') if og_image else None
+
+        logger.info(f"Decathlon - Título: {bool(titulo)}, Preço: {preco}, Imagem: {bool(imagem_url)}")
+
+        if not titulo:
+            raise ParsingError(f"Nao foi possivel extrair titulo da Decathlon. Dados parciais: preco={preco}, imagem={bool(imagem_url)}")
+
+        return (titulo.strip()[:200], preco, imagem_url)
+
+
 class GenericScraper(BaseScraper):
     """Scraper genérico para qualquer loja"""
 
@@ -559,6 +664,9 @@ class ScraperFactory:
         elif 'kabum.com' in domain:
             logger.info(f"🎮 Usando KabumScraper para {domain}")
             return KabumScraper(), False
+        elif 'decathlon.com' in domain:
+            logger.info(f"🏃 Usando DecathlonScraper para {domain}")
+            return DecathlonScraper(), False
         else:
             logger.warning("=" * 80)
             logger.warning(f"⚠️  SITE NÃO MAPEADO: {domain}")
@@ -593,6 +701,7 @@ class ScraperFactory:
                 'partial_data': {'titulo': ..., 'preco': ..., 'imagem_url': ...}
               }
         """
+        url = limpar_url_rastreio(url)
         with capturar_log_extracao() as log_extracao:
             return ScraperFactory._extrair(url, log_extracao)
 
@@ -616,6 +725,7 @@ class ScraperFactory:
                     from urllib.parse import urlparse
 
                     domain = urlparse(url).netloc
+                    nome_classe = domain.removeprefix('www.').split('.')[0].title()
                     titulo_issue = f"[AUTO] Site não mapeado: {domain}"
                     descricao_issue = f"""## Site Não Mapeado Detectado
 
@@ -643,7 +753,7 @@ O **scraper genérico** extraiu os dados deste site de forma **incompleta** (fal
 ### Ações Sugeridas
 - [ ] Analisar estrutura HTML do site `{domain}`
 - [ ] Identificar padrões de classes CSS para título, preço, imagem
-- [ ] Criar classe `{domain.split('.')[0].title()}Scraper` em `scrapers.py`
+- [ ] Criar classe `{nome_classe}Scraper` em `scrapers.py`
 - [ ] Implementar método `extract()` específico
 - [ ] Adicionar ao `ScraperFactory.get_scraper()`
 - [ ] Testar com múltiplas URLs do site
@@ -662,7 +772,7 @@ Se este for um dos sites abaixo, priorize a implementação:
 
 ### Exemplo de Implementação
 ```python
-class {domain.split('.')[0].title()}Scraper(BaseScraper):
+class {nome_classe}Scraper(BaseScraper):
     def extract(self, url):
         soup = self.get_soup(url)
 
