@@ -6,10 +6,25 @@
 <!-- Header -->
 <div class="relative mb-8 animate-fade-in bg-gradient-to-r from-primary via-primary/90 to-secondary rounded-3xl px-8 py-10 text-white overflow-hidden">
     <div class="absolute -top-10 -right-10 w-40 h-40 bg-white/10 rounded-full blur-2xl"></div>
-    <h2 class="text-3xl font-extrabold tracking-tight">
-        Bem-vindo, <span class="text-white/90">{{ user.first_name }}</span>!
-    </h2>
-    <p class="text-white/70 mt-1">Aqui está o resumo da sua lista de presentes</p>
+    <div class="relative flex flex-col sm:flex-row sm:items-center gap-5">
+        <!-- Imagem do grupo -->
+        <div class="shrink-0 w-24 h-24 sm:w-28 sm:h-28 rounded-2xl overflow-hidden ring-4 ring-white/30 shadow-lg bg-white/15 flex items-center justify-center">
+            {% if grupo.tem_imagem %}
+                <img src="{% url 'servir_imagem_grupo' grupo.pk %}" alt="{{ grupo.nome }}" class="w-full h-full object-cover">
+            {% else %}
+                <i class="bi bi-people-fill text-4xl text-white/70"></i>
+            {% endif %}
+        </div>
+        <div class="min-w-0">
+            <p class="text-sm font-bold uppercase tracking-wider text-white/70 truncate">
+                <i class="bi bi-people"></i> {{ grupo.nome }}
+            </p>
+            <h2 class="text-3xl font-extrabold tracking-tight mt-1">
+                Bem-vindo, <span class="text-white/90">{{ user.first_name }}</span>!
+            </h2>
+            <p class="text-white/70 mt-1">Aqui está o resumo da sua lista de presentes</p>
+        </div>
+    </div>
 </div>
 
 <!-- Stats Cards -->

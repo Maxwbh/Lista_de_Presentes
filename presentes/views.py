@@ -311,6 +311,7 @@ def dashboard_view(request):
     ).count()
 
     context = {
+        'grupo': grupo_ativo,
         'total_usuarios': total_usuarios,
         'meus_presentes_ativos': meus_presentes_ativos,
         'presentes_nao_comprados': presentes_nao_comprados,
