@@ -1,0 +1,30 @@
+{% extends "admin/change_list.html" %}
+
+{% block extrastyle %}
+    {{ block.super }}
+    <style>
+        /* Botao no mesmo estilo dos links da barra de ferramentas do admin */
+        .object-tools .botao-buscar-imagens {
+            display: block; float: left; padding: 3px 12px; border: 0; border-radius: 15px;
+            background: var(--object-tools-bg); color: var(--object-tools-fg);
+            font-family: inherit; font-size: 0.6875rem; font-weight: 400; letter-spacing: 0.5px;
+            line-height: 1rem; text-transform: uppercase; cursor: pointer;
+        }
+        .object-tools .botao-buscar-imagens:hover { background: var(--object-tools-hover-bg); }
+        .object-tools .botao-buscar-imagens:disabled { opacity: 0.5; cursor: default; }
+    </style>
+{% endblock %}
+
+{% block object-tools-items %}
+    <li>
+        <form method="post" action="{% url 'admin:presentes_presente_buscar_imagens' %}">
+            {% csrf_token %}
+            <button type="submit" class="botao-buscar-imagens"
+                    title="Busca a foto (e o preço, se faltar) no site do link original de cada presente sem imagem"
+                    {% if not total_sem_imagem %}disabled{% endif %}>
+                Buscar imagens que faltam ({{ total_sem_imagem }})
+            </button>
+        </form>
+    </li>
+    {{ block.super }}
+{% endblock %}

@@ -613,7 +613,9 @@ class IAService:
     def buscar_imagem_para_presente(presente):
         """
         Baixa a foto do produto para presentes sem imagem, usando o scraper
-        da loja (URL original do presente). Chamado na atualização de preços.
+        da loja (URL original do presente). Se o presente estiver sem preço,
+        preenche também o preço lido no site. Chamado na atualização de
+        preços e pelo botão do admin.
         """
         if presente.tem_imagem() or not presente.url:
             return False
@@ -626,6 +628,13 @@ class IAService:
             if resultado:
                 if resultado.get('success'):
                     imagem_url = resultado.get('imagem_url')
+                    # Aproveita a leitura para preencher o preco que faltava
+                    if presente.preco is None and resultado.get('preco'):
+                        from decimal import Decimal
+                        presente.preco = Decimal(str(resultado['preco'])).quantize(Decimal('0.01'))
+                        presente.save(update_fields=['preco'])
+                        presente.registrar_preco(presente.preco, fonte='site')
+                        logger.info(f"Preço preenchido pelo site para presente {presente.id}: {presente.preco}")
                 else:
                     imagem_url = (resultado.get('partial_data') or {}).get('imagem_url')
 

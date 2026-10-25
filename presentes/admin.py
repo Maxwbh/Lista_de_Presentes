@@ -1,7 +1,69 @@
-from django.contrib import admin
+import logging
+import threading
+
+from django.contrib import admin, messages
 from django.contrib.auth.admin import UserAdmin
+from django.db import connection
+from django.db.models import Q
+from django.shortcuts import redirect
+from django.urls import path, reverse
 from .models import Usuario, Presente, Compra, SugestaoCompra, Notificacao, Grupo, GrupoMembro, PrecoHistorico, PesquisaPrecoLog
 from .models import AcessoHora, DespertarServidor
+
+logger = logging.getLogger(__name__)
+
+# Ate este numero de presentes a busca de imagens roda na hora e mostra o
+# resultado; acima disso roda em segundo plano para nao estourar o tempo
+# limite da requisicao (cada leitura de site pode levar alguns segundos)
+LIMITE_BUSCA_IMAGEM_NA_HORA = 5
+
+SEM_IMAGEM = (Q(imagem_base64__isnull=True) | Q(imagem_base64='')) & (Q(imagem__isnull=True) | Q(imagem=''))
+COM_LINK = Q(url__isnull=False) & ~Q(url='')
+
+
+def _buscar_imagens(ids):
+    """
+    Busca no site (link original) a imagem de cada presente; quem estiver sem
+    preco ganha tambem o preco lido. Retorna (imagens, precos) encontrados.
+    """
+    from .services import IAService
+
+    imagens = precos = 0
+    for presente in Presente.objects.filter(pk__in=ids):
+        sem_preco = presente.preco is None
+        if IAService.buscar_imagem_para_presente(presente):
+            imagens += 1
+        if sem_preco and presente.preco is not None:
+            precos += 1
+    logger.info(f"[IMAGENS] Busca no site: {imagens} imagens e {precos} preços para {len(ids)} presentes")
+    return imagens, precos
+
+
+def _buscar_imagens_em_segundo_plano(ids):
+    def executar():
+        try:
+            _buscar_imagens(ids)
+        except Exception:
+            logger.exception("[IMAGENS] Erro na busca de imagens em segundo plano")
+        finally:
+            connection.close()
+
+    threading.Thread(target=executar, daemon=True).start()
+
+
+class TemImagemFilter(admin.SimpleListFilter):
+    title = 'imagem'
+    parameter_name = 'tem_imagem'
+
+    def lookups(self, request, model_admin):
+        return [('sim', 'Com imagem'), ('nao', 'Sem imagem')]
+
+    def queryset(self, request, queryset):
+        if self.value() == 'nao':
+            return queryset.filter(SEM_IMAGEM)
+        if self.value() == 'sim':
+            return queryset.exclude(SEM_IMAGEM)
+        return queryset
 
 
 @admin.register(Usuario)
@@ -44,8 +106,10 @@ class UsuarioAdmin(UserAdmin):
 @admin.register(Presente)
 class PresenteAdmin(admin.ModelAdmin):
     """Admin para gerenciar Presentes"""
-    list_display = ['descricao_curta', 'usuario', 'preco', 'status', 'tem_sugestoes', 'data_cadastro']
-    list_filter = ['status', 'data_cadastro']
+    list_display = ['descricao_curta', 'usuario', 'preco', 'status', 'com_imagem', 'tem_sugestoes', 'data_cadastro']
+    list_filter = ['status', TemImagemFilter, 'data_cadastro']
+    actions = ['buscar_imagem_no_site']
+    change_list_template = 'admin/presentes/presente/change_list.html'
     search_fields = ['descricao', 'usuario__email', 'usuario__first_name', 'usuario__last_name']
     ordering = ['-data_cadastro']
     date_hierarchy = 'data_cadastro'
@@ -69,6 +133,53 @@ class PresenteAdmin(admin.ModelAdmin):
         """Mostrar descrição resumida"""
         return obj.descricao[:50] + '...' if len(obj.descricao) > 50 else obj.descricao
     descricao_curta.short_description = 'Descrição'
+
+    @admin.display(description='Imagem', boolean=True)
+    def com_imagem(self, obj):
+        return obj.tem_imagem()
+
+    def get_urls(self):
+        urls = [
+            path('buscar-imagens/', self.admin_site.admin_view(self.buscar_imagens_faltantes_view),
+                 name='presentes_presente_buscar_imagens'),
+        ]
+        return urls + super().get_urls()
+
+    def changelist_view(self, request, extra_context=None):
+        extra_context = extra_context or {}
+        extra_context['total_sem_imagem'] = Presente.objects.filter(SEM_IMAGEM & COM_LINK).count()
+        return super().changelist_view(request, extra_context=extra_context)
+
+    def _buscar(self, request, queryset):
+        ids = list(queryset.filter(SEM_IMAGEM & COM_LINK).values_list('pk', flat=True))
+        if not ids:
+            self.message_user(request, 'Nenhum presente sem imagem e com link para buscar.', messages.INFO)
+        elif len(ids) <= LIMITE_BUSCA_IMAGEM_NA_HORA:
+            imagens, precos = _buscar_imagens(ids)
+            mensagem = f'{imagens} de {len(ids)} presente(s) ganharam imagem buscada no site.'
+            if precos:
+                mensagem += f' {precos} ganharam também o preço que faltava.'
+            if imagens < len(ids):
+                mensagem += ' Os demais continuam sem imagem: o site não informou uma ou bloqueou a consulta.'
+            self.message_user(request, mensagem, messages.SUCCESS if imagens else messages.WARNING)
+        else:
+            _buscar_imagens_em_segundo_plano(ids)
+            self.message_user(
+                request,
+                f'Busca de imagem iniciada para {len(ids)} presentes. Ela roda em segundo plano e '
+                f'pode levar alguns minutos; recarregue a página com o filtro "Sem imagem" para acompanhar.',
+                messages.INFO,
+            )
+
+    @admin.action(description='Buscar imagem no site (link original)')
+    def buscar_imagem_no_site(self, request, queryset):
+        self._buscar(request, queryset)
+
+    def buscar_imagens_faltantes_view(self, request):
+        """Botao da lista: busca a imagem de todos os presentes sem imagem que tem link"""
+        if request.method == 'POST':
+            self._buscar(request, Presente.objects.all())
+        return redirect(reverse('admin:presentes_presente_changelist') + '?tem_imagem=nao')
 
     def tem_sugestoes(self, obj):
         """Indicar se tem sugestões de compra"""
