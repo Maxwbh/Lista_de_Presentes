@@ -6,9 +6,57 @@ import requests
 from bs4 import BeautifulSoup
 import re
 import logging
+import threading
+from contextlib import contextmanager
 from urllib.parse import urlparse
 
 logger = logging.getLogger(__name__)
+
+# Loggers cujas mensagens entram nas issues automaticas, para a issue mostrar
+# o que aconteceu na leitura (chamadas da API, respostas HTTP, avisos)
+LOGGERS_EXTRACAO = ('presentes.scrapers', 'presentes.mercadolivre_api')
+
+
+class _CapturaLog(logging.Handler):
+    """Guarda as mensagens de log da thread que esta fazendo a extracao."""
+
+    def __init__(self, limite=40):
+        super().__init__(logging.INFO)
+        self.thread = threading.get_ident()
+        self.limite = limite
+        self.linhas = []
+
+    def emit(self, record):
+        if record.thread != self.thread:
+            return
+        mensagem = record.getMessage().strip()
+        if not mensagem or set(mensagem) <= set('= '):
+            return
+        if record.exc_info and record.exc_info[1]:
+            mensagem += f" ({type(record.exc_info[1]).__name__}: {record.exc_info[1]})"
+        self.linhas.append(f"{record.levelname} {record.name.rsplit('.', 1)[-1]}: {mensagem[:400]}")
+        del self.linhas[:-self.limite]
+
+
+@contextmanager
+def capturar_log_extracao():
+    captura = _CapturaLog()
+    loggers = [logging.getLogger(nome) for nome in LOGGERS_EXTRACAO]
+    for log in loggers:
+        log.addHandler(captura)
+    try:
+        yield captura.linhas
+    finally:
+        for log in loggers:
+            log.removeHandler(captura)
+
+
+def secao_log_extracao(linhas):
+    """Secao markdown com o log da extracao, para o corpo das issues"""
+    if not linhas:
+        return ''
+    texto = '\n'.join(linhas).replace('```', "'''")
+    return f"\n### Log da Extração\n```\n{texto}\n```\n"
 
 
 class ScrapingError(Exception):
@@ -104,6 +152,8 @@ class BaseScraper:
 
         # Paginas de captcha/anti-robo que respondem 200 no proprio endereco
         titulo_pagina = (soup.title.get_text(' ', strip=True) if soup.title else '').lower()
+        logger.info(f"Página obtida: HTTP {response.status_code}, {len(response.content)} bytes, "
+                    f"URL final {response.url}, título da página: {titulo_pagina[:100] or '(vazio)'}")
         if any(marcador in titulo_pagina for marcador in BLOCKED_TITLE_MARKERS):
             logger.warning(f"Acesso bloqueado por verificacao anti-robo em {url} (titulo: {titulo_pagina[:80]})")
             raise BlockedError("O site bloqueou a consulta automática (verificação anti-robô)")
@@ -543,6 +593,11 @@ class ScraperFactory:
                 'partial_data': {'titulo': ..., 'preco': ..., 'imagem_url': ...}
               }
         """
+        with capturar_log_extracao() as log_extracao:
+            return ScraperFactory._extrair(url, log_extracao)
+
+    @staticmethod
+    def _extrair(url, log_extracao):
         try:
             scraper, is_generic = ScraperFactory.get_scraper(url)
             titulo, preco, imagem_url = scraper.extract(url)
@@ -578,7 +633,7 @@ O **scraper genérico** extraiu os dados deste site de forma **incompleta** (fal
 - **Título**: {titulo[:100] if titulo else 'N/A'}...
 - **Preço**: R$ {preco if preco else 'N/A'}
 - **Imagem**: {'Sim' if imagem_url else 'Não'}
-
+{secao_log_extracao(log_extracao)}
 ### Por Que Adicionar Suporte Específico?
 1. **Maior taxa de sucesso**: Scrapers específicos conhecem a estrutura exata do site
 2. **Mais dados**: Podem extrair informações adicionais (descrição, avaliações, etc.)
@@ -671,7 +726,7 @@ O **{nome_scraper}** não conseguiu ler todos os dados do produto (faltou: {', '
 - **Título**: {titulo[:100] if titulo else 'N/A'}
 - **Preço**: R$ {preco if preco else 'N/A'}
 - **Imagem**: {'Sim' if imagem_url else 'Não'}
-
+{secao_log_extracao(log_extracao)}
 ### Ações Sugeridas
 - [ ] Abrir a URL e conferir se o produto mostra {', '.join(dados_faltando)}
 - [ ] Atualizar os seletores do `{nome_scraper}` em `scrapers.py`
@@ -740,7 +795,9 @@ O **{nome_scraper}** não conseguiu ler todos os dados do produto (faltou: {', '
                     url_produto=url,
                     dados_extraidos=partial_data,
                     usuario=None,  # Usuario nao disponivel neste contexto
-                    grupo=None
+                    grupo=None,
+                    erro=str(e),
+                    log_extracao=list(log_extracao),
                 )
 
                 if issue_result and issue_result.get('success'):
@@ -755,7 +812,8 @@ O **{nome_scraper}** não conseguiu ler todos os dados do produto (faltou: {', '
                 'success': False,
                 'error_type': 'parsing',
                 'error_message': str(e),
-                'partial_data': partial_data
+                'partial_data': partial_data,
+                'log_extracao': list(log_extracao),
             }
 
         except Exception as e:

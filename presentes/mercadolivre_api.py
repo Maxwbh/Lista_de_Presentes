@@ -240,9 +240,12 @@ def _titulo_da_descricao(item_id, access_token):
         texto = _get(f"/items/{item_id}/description", access_token).get('plain_text') or ''
     except MercadoLivreAPIError:
         return None
-    linhas = [linha.strip() for linha in texto.splitlines() if linha.strip()]
+    # Linhas so de separador (ex.: '______') nao servem de titulo
+    linhas = [linha.strip() for linha in texto.splitlines()
+              if sum(c.isalnum() for c in linha) >= 3]
     if linhas and 10 <= len(linhas[0]) <= 150:
         return linhas[0]
+    logger.info(f"Descrição do anúncio {item_id} sem linha que sirva de título")
     return None
 
 
@@ -296,10 +299,13 @@ def buscar_produto(url):
         url = expandir_link_curto(url)
         item_id, produto_id = extrair_ids(url)
     if not item_id and not produto_id:
+        logger.info(f"API: nenhum ID de anúncio/produto reconhecido na URL {url}")
         return None
+    logger.info(f"API: anúncio={item_id}, produto de catálogo={produto_id}")
 
     access_token = obter_access_token()
     if not access_token:
+        logger.info("API: credenciais do Mercado Livre não configuradas")
         return None
 
     titulo_anuncio = (_titulo_da_descricao(item_id, access_token) if item_id else None) or titulo_do_link(url)
@@ -308,10 +314,13 @@ def buscar_produto(url):
     if not produto_id:
         # Link so de anuncio: acha o produto de catalogo pelo titulo
         if not titulo_anuncio:
+            logger.info("API: sem título do anúncio para procurar o produto no catálogo")
             return None
         encontrado = _produto_do_anuncio(titulo_anuncio, item_id, access_token)
         if not encontrado:
             # Anuncio fora do catalogo: so o titulo
+            logger.info(f"API: anúncio {item_id} não encontrado no catálogo "
+                        f"(busca por '{titulo_anuncio[:80]}'); sem preço e imagem")
             return titulo_anuncio, None, None
         produto_id, preco = encontrado
 
