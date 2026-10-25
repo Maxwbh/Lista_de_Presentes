@@ -155,6 +155,10 @@ class Presente(models.Model):
     imagem_nome = models.CharField(max_length=255, blank=True, null=True, help_text='Nome original do arquivo')
     imagem_tipo = models.CharField(max_length=50, blank=True, null=True, help_text='MIME type da imagem')
 
+    # Resultado da ultima busca de imagem no site (link original)
+    busca_imagem_em = models.DateTimeField(null=True, blank=True)
+    busca_imagem_resultado = models.CharField(max_length=300, blank=True, default='')
+
     class Meta:
         verbose_name = 'Presente'
         verbose_name_plural = 'Presentes'

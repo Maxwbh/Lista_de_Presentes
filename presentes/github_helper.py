@@ -99,7 +99,7 @@ def criar_issue_falha_imagem(presente, url_imagem, erro_descricao, usuario=None)
         # Fazer request
         logger.info(f"Criando issue no GitHub para presente {presente.id}")
         # Nao duplica: reaproveita issue aberta com o mesmo titulo
-        existente = _issue_aberta_com_titulo(payload['title'], headers)
+        existente = _issue_aberta_com_titulo(payload['title'], headers, payload['body'], url_imagem)
         if existente:
             return existente
 
@@ -287,7 +287,7 @@ Este tipo de erro indica que:
         # Fazer request
         logger.info(f"Criando issue no GitHub para falha de scraping: {dominio}")
         # Nao duplica: reaproveita issue aberta com o mesmo titulo
-        existente = _issue_aberta_com_titulo(payload['title'], headers)
+        existente = _issue_aberta_com_titulo(payload['title'], headers, payload['body'], url_produto)
         if existente:
             return existente
 
@@ -334,9 +334,33 @@ Este tipo de erro indica que:
         }
 
 
-def _issue_aberta_com_titulo(titulo, headers):
+def _comentar_nova_ocorrencia(issue, corpo, chave, headers):
+    """
+    Registra na issue ja aberta uma nova ocorrencia (ex.: outro produto do
+    mesmo site), para ela nao ser reaproveitada em silencio. Nao comenta se
+    a chave (URL do produto) ja aparece na issue ou nos comentarios.
+    """
+    if not corpo or not chave or chave in (issue.get('body') or ''):
+        return
+    try:
+        url_comentarios = issue.get('comments_url')
+        if issue.get('comments'):
+            response = requests.get(url_comentarios, headers=headers, timeout=10, params={'per_page': 100})
+            if response.status_code == 200 and any(chave in (c.get('body') or '') for c in response.json()):
+                return
+        requests.post(url_comentarios, headers=headers, timeout=10,
+                      json={'body': f"## Nova ocorrência\n\n{corpo}"})
+        logger.info(f"Nova ocorrência registrada na issue #{issue.get('number')}")
+    except Exception as e:
+        logger.warning(f"Nao foi possivel comentar na issue #{issue.get('number')}: {e}")
+
+
+def _issue_aberta_com_titulo(titulo, headers, corpo=None, chave=None):
     """
     Procura issue aberta gerada automaticamente com o mesmo titulo.
+
+    Se achar e receber o corpo e a chave (URL do produto) da nova
+    ocorrencia, comenta nela com os detalhes da nova ocorrencia.
 
     Retorna o mesmo formato de sucesso da criacao, ou None se nao houver
     (ou se a consulta falhar: na duvida, a issue e criada).
@@ -352,6 +376,7 @@ def _issue_aberta_com_titulo(titulo, headers):
         for issue in response.json():
             if issue.get('title') == titulo and 'pull_request' not in issue:
                 logger.info(f"Issue #{issue.get('number')} ja existe para: {titulo}")
+                _comentar_nova_ocorrencia(issue, corpo, chave, headers)
                 return {
                     'success': True,
                     'issue_number': issue.get('number'),
@@ -421,7 +446,8 @@ def criar_issue_erro_geral(titulo, descricao, contexto=None, labels=None):
         }
         
         # Nao duplica: reaproveita issue aberta com o mesmo titulo
-        existente = _issue_aberta_com_titulo(payload['title'], headers)
+        existente = _issue_aberta_com_titulo(payload['title'], headers, payload['body'],
+                                             (contexto or {}).get('URL'))
         if existente:
             return existente
 
