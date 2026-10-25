@@ -123,6 +123,9 @@ class BaseScraper:
     """Classe base para scrapers de lojas"""
 
     def __init__(self):
+        # Explicacao para o usuario quando a leitura vem incompleta por um
+        # limite conhecido da loja (nao e falha do scraper)
+        self.aviso = None
         self.headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
             'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
@@ -328,6 +331,13 @@ class AmazonScraper(BaseScraper):
         return (titulo, preco, imagem_url)
 
 
+AVISO_ML_FORA_DO_CATALOGO = (
+    'Anúncio fora do catálogo do Mercado Livre: a API oficial não informa preço e foto '
+    'de anúncios de outros vendedores, e a página exige verificação de conta. '
+    'Preencha o preço e a foto manualmente.'
+)
+
+
 class MercadoLivreScraper(BaseScraper):
     """Scraper específico para Mercado Livre"""
 
@@ -345,6 +355,8 @@ class MercadoLivreScraper(BaseScraper):
             resultado = buscar_produto(url)
             if resultado and resultado[0]:
                 logger.info(f"Mercado Livre (API) - Título: True, Preço: {resultado[1]}, Imagem: {bool(resultado[2])}")
+                if not resultado[1] and not resultado[2]:
+                    self.aviso = AVISO_ML_FORA_DO_CATALOGO
                 return resultado
         except MercadoLivreAPIError as e:
             logger.warning(f"API do Mercado Livre falhou, tentando a pagina: {e}")
@@ -821,11 +833,13 @@ class {nome_classe}Scraper(BaseScraper):
 
                     domain = urlparse(url).netloc
                     nome_scraper = type(scraper).__name__
+                    motivo = (f"**Motivo conhecido:** {scraper.aviso}" if scraper.aviso else
+                              "Provavelmente o site mudou o layout e o scraper precisa de ajuste.")
                     criar_issue_erro_geral(
                         titulo=f"[AUTO] Leitura incompleta em site mapeado: {domain}",
                         descricao=f"""## Leitura Incompleta em Site Mapeado
 
-O **{nome_scraper}** não conseguiu ler todos os dados do produto (faltou: {', '.join(dados_faltando)}). Provavelmente o site mudou o layout e o scraper precisa de ajuste.
+O **{nome_scraper}** não conseguiu ler todos os dados do produto (faltou: {', '.join(dados_faltando)}). {motivo}
 
 ### URL de Exemplo
 ```
@@ -849,7 +863,7 @@ O **{nome_scraper}** não conseguiu ler todos os dados do produto (faltou: {', '
                             'Status': 'Leitura incompleta com scraper específico',
                             'Dados faltando': ', '.join(dados_faltando),
                         },
-                        labels=['auto-generated', 'bug', 'scraping']
+                        labels=['auto-generated', 'scraping'] if scraper.aviso else ['auto-generated', 'bug', 'scraping']
                     )
                     logger.info(f"🐛 Issue criada: leitura incompleta com {nome_scraper} em {domain}")
                 except Exception as e:
@@ -860,7 +874,8 @@ O **{nome_scraper}** não conseguiu ler todos os dados do produto (faltou: {', '
                 'titulo': titulo,
                 'preco': preco,
                 'imagem_url': imagem_url,
-                'used_generic_scraper': is_generic
+                'used_generic_scraper': is_generic,
+                'aviso': scraper.aviso,
             }
 
         except BlockedError as e:

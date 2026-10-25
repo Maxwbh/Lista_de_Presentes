@@ -1220,6 +1220,26 @@ class IssueDuplicadaTest(TestCase):
         post.assert_not_called()
         self.assertEqual(resultado['issue_number'], 12)
 
+    def test_nova_ocorrencia_vira_comentario_na_issue_aberta(self):
+        from .github_helper import criar_issue_erro_geral
+
+        abertas = [{'number': 22, 'title': '[AUTO] Leitura incompleta em site mapeado: produto.mercadolivre.com.br',
+                    'html_url': 'u', 'body': 'URL: https://produto.mercadolivre.com.br/MLB-1',
+                    'comments': 0, 'comments_url': 'https://api.github.com/repos/x/y/issues/22/comments'}]
+        with mock.patch('presentes.github_helper.requests.get',
+                        return_value=mock.Mock(status_code=200, json=mock.Mock(return_value=abertas))), \
+                mock.patch('presentes.github_helper.requests.post') as post:
+            criar_issue_erro_geral(abertas[0]['title'], 'detalhes do MLB-2',
+                                   contexto={'URL': 'https://produto.mercadolivre.com.br/MLB-2'})
+            # A mesma URL de novo nao comenta outra vez
+            criar_issue_erro_geral(abertas[0]['title'], 'detalhes do MLB-1',
+                                   contexto={'URL': 'https://produto.mercadolivre.com.br/MLB-1'})
+
+        post.assert_called_once()
+        self.assertEqual(post.call_args[0][0], abertas[0]['comments_url'])
+        self.assertIn('Nova ocorrência', post.call_args[1]['json']['body'])
+        self.assertIn('detalhes do MLB-2', post.call_args[1]['json']['body'])
+
     def test_cria_quando_nao_existe(self):
         from .github_helper import criar_issue_erro_geral
 
@@ -1377,6 +1397,22 @@ class IssueSiteNaoMapeadoTest(TestCase):
         self.assertTrue(any('Página obtida' in linha for linha in kwargs['log_extracao']))
         self.assertTrue(resultado['log_extracao'])
 
+    def test_descricao_com_aviso_entre_simbolos_nao_vira_titulo(self):
+        texto = '*****************ATENÇÃO FRETE GRÁTIS ******************\nPelúcia de vaca 45 cm\n'
+        with mock.patch('presentes.mercadolivre_api._get', return_value={'plain_text': texto}):
+            self.assertEqual(_titulo_da_descricao('MLB123', 'token'), 'Pelúcia de vaca 45 cm')
+
+    def test_anuncio_ml_fora_do_catalogo_explica_o_motivo_na_issue(self):
+        url = 'https://produto.mercadolivre.com.br/MLB-5186755357'
+        with mock.patch('presentes.mercadolivre_api.buscar_produto', return_value=('Pelúcia', None, None)), \
+                mock.patch('presentes.github_helper.criar_issue_erro_geral') as criar_issue:
+            resultado = ScraperFactory.extract_product_info(url)
+        self.assertIn('fora do catálogo', resultado['aviso'])
+        kwargs = criar_issue.call_args[1]
+        self.assertIn('Motivo conhecido', kwargs['descricao'])
+        self.assertNotIn('mudou o layout', kwargs['descricao'])
+        self.assertNotIn('bug', kwargs['labels'])
+
     def test_descricao_so_com_separador_nao_vira_titulo(self):
         texto = '________________________________________________\nLuva de treino roxa tamanho M\n'
         with mock.patch('presentes.mercadolivre_api._get', return_value={'plain_text': texto}):
@@ -1520,6 +1556,30 @@ class BuscarImagensAdminTest(TestCase):
             resposta = self.client.post(self.url_botao, follow=True)
         thread.return_value.start.assert_called_once()
         self.assertContains(resposta, 'Busca de imagem iniciada para 7 presentes')
+
+    def test_registra_o_motivo_quando_nao_acha_a_foto(self):
+        casos = [
+            ({'success': True, 'titulo': 'Pelúcia', 'preco': None, 'imagem_url': None,
+              'aviso': 'Anúncio fora do catálogo do Mercado Livre'}, 'fora do catálogo'),
+            ({'success': False, 'error_type': 'blocked', 'error_message': 'x'}, 'bloqueou a consulta'),
+            ({'success': False, 'error_type': 'network', 'error_message': 'HTTP 404'}, 'HTTP 404'),
+        ]
+        for leitura, esperado in casos:
+            with mock.patch('presentes.scrapers.ScraperFactory.extract_product_info', return_value=leitura):
+                resposta = self.client.post(self.url_botao, follow=True)
+            self.sem_imagem.refresh_from_db()
+            self.assertIn(esperado, self.sem_imagem.busca_imagem_resultado)
+            self.assertIsNotNone(self.sem_imagem.busca_imagem_em)
+            # A mensagem do admin mostra o motivo de cada presente
+            self.assertContains(resposta, f'Tesoura: {self.sem_imagem.busca_imagem_resultado}')
+
+    def test_foto_encontrada_fica_registrada(self):
+        with mock.patch('presentes.scrapers.ScraperFactory.extract_product_info',
+                        return_value=self._leitura()), \
+                mock.patch('presentes.services.requests.get', return_value=self._foto()):
+            self.client.post(self.url_botao)
+        self.sem_imagem.refresh_from_db()
+        self.assertEqual(self.sem_imagem.busca_imagem_resultado, 'Foto encontrada. Preço preenchido.')
 
     def test_get_nao_dispara_busca(self):
         with mock.patch('presentes.admin._buscar_imagens') as buscar:

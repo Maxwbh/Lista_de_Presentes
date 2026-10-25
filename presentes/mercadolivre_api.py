@@ -229,6 +229,13 @@ def titulo_do_link(url):
     return titulo[:1].upper() + titulo[1:] if titulo else None
 
 
+def _parece_titulo(linha):
+    """Linha com texto de verdade: pelo menos 3 letras/numeros e no maximo 20% de simbolos"""
+    visiveis = [c for c in linha if not c.isspace()]
+    alfanumericos = sum(c.isalnum() for c in visiveis)
+    return alfanumericos >= 3 and (len(visiveis) - alfanumericos) <= 0.2 * len(visiveis)
+
+
 def _titulo_da_descricao(item_id, access_token):
     """
     Primeira linha da descricao do anuncio, que costuma repetir o titulo.
@@ -240,9 +247,9 @@ def _titulo_da_descricao(item_id, access_token):
         texto = _get(f"/items/{item_id}/description", access_token).get('plain_text') or ''
     except MercadoLivreAPIError:
         return None
-    # Linhas so de separador (ex.: '______') nao servem de titulo
-    linhas = [linha.strip() for linha in texto.splitlines()
-              if sum(c.isalnum() for c in linha) >= 3]
+    # Linhas de separador ou de aviso cercado de simbolos (ex.: '______',
+    # '*****ATENCAO FRETE GRATIS*****') nao servem de titulo
+    linhas = [linha.strip() for linha in texto.splitlines() if _parece_titulo(linha)]
     if linhas and 10 <= len(linhas[0]) <= 150:
         return linhas[0]
     logger.info(f"Descrição do anúncio {item_id} sem linha que sirva de título")

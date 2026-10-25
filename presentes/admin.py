@@ -7,6 +7,7 @@ from django.db import connection
 from django.db.models import Q
 from django.shortcuts import redirect
 from django.urls import path, reverse
+from django.utils import timezone
 from .models import Usuario, Presente, Compra, SugestaoCompra, Notificacao, Grupo, GrupoMembro, PrecoHistorico, PesquisaPrecoLog
 from .models import AcessoHora, DespertarServidor
 
@@ -106,7 +107,8 @@ class UsuarioAdmin(UserAdmin):
 @admin.register(Presente)
 class PresenteAdmin(admin.ModelAdmin):
     """Admin para gerenciar Presentes"""
-    list_display = ['descricao_curta', 'usuario', 'preco', 'status', 'com_imagem', 'tem_sugestoes', 'data_cadastro']
+    list_display = ['descricao_curta', 'usuario', 'preco', 'status', 'com_imagem', 'ultima_busca_imagem',
+                    'tem_sugestoes', 'data_cadastro']
     list_filter = ['status', TemImagemFilter, 'data_cadastro']
     actions = ['buscar_imagem_no_site']
     change_list_template = 'admin/presentes/presente/change_list.html'
@@ -138,6 +140,12 @@ class PresenteAdmin(admin.ModelAdmin):
     def com_imagem(self, obj):
         return obj.tem_imagem()
 
+    @admin.display(description='Última busca de imagem', ordering='busca_imagem_em')
+    def ultima_busca_imagem(self, obj):
+        if not obj.busca_imagem_em:
+            return '-'
+        return f"{timezone.localtime(obj.busca_imagem_em):%d/%m %H:%M} · {obj.busca_imagem_resultado}"
+
     def get_urls(self):
         urls = [
             path('buscar-imagens/', self.admin_site.admin_view(self.buscar_imagens_faltantes_view),
@@ -159,15 +167,16 @@ class PresenteAdmin(admin.ModelAdmin):
             mensagem = f'{imagens} de {len(ids)} presente(s) ganharam imagem buscada no site.'
             if precos:
                 mensagem += f' {precos} ganharam também o preço que faltava.'
-            if imagens < len(ids):
-                mensagem += ' Os demais continuam sem imagem: o site não informou uma ou bloqueou a consulta.'
             self.message_user(request, mensagem, messages.SUCCESS if imagens else messages.WARNING)
+            for presente in Presente.objects.filter(pk__in=ids).filter(SEM_IMAGEM):
+                self.message_user(request, f'{presente.descricao[:60]}: {presente.busca_imagem_resultado}',
+                                  messages.WARNING)
         else:
             _buscar_imagens_em_segundo_plano(ids)
             self.message_user(
                 request,
                 f'Busca de imagem iniciada para {len(ids)} presentes. Ela roda em segundo plano e '
-                f'pode levar alguns minutos; recarregue a página com o filtro "Sem imagem" para acompanhar.',
+                f'pode levar alguns minutos; recarregue a página e veja a coluna "Última busca de imagem".',
                 messages.INFO,
             )
 
