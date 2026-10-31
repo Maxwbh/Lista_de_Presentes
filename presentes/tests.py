@@ -1115,6 +1115,21 @@ class RegistroAcessosTest(TestCase):
         self.assertEqual(resposta.status_code, 200)
         self.assertIn('cron_keep_alive_utc', resposta.json())
 
+    @override_settings(CRON_TOKEN='token-relatorio')
+    def test_resumo_com_token_do_cron_sem_login(self):
+        # Workflow relatorio-acessos.yml: analise sem precisar de alguem logado
+        url = reverse('acessos_resumo')
+        self.assertEqual(self.client.get(url).status_code, 403)
+        self.assertEqual(self.client.get(url, HTTP_X_CRON_TOKEN='errado').status_code, 403)
+        resposta = self.client.get(url, {'dias': 7}, HTTP_X_CRON_TOKEN='token-relatorio')
+        self.assertEqual(resposta.status_code, 200)
+        self.assertEqual(resposta.json()['periodo_dias'], 7)
+
+    @override_settings(CRON_TOKEN='')
+    def test_sem_cron_token_configurado_header_vazio_nao_libera(self):
+        resposta = self.client.get(reverse('acessos_resumo'), HTTP_X_CRON_TOKEN='')
+        self.assertEqual(resposta.status_code, 403)
+
 
 class SenhaSimplesTest(TestCase):
     """Senha simples de 4 digitos permitida no cadastro e na redefinicao."""

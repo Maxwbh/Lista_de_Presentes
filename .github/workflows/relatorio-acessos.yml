@@ -1,0 +1,75 @@
+# GitHub Actions: Relatorio de acessos
+# Busca o resumo de acessos por hora e de despertares do servidor
+# (/api/acessos/resumo/) para revisar os horarios do keep-alive.yml sem
+# ninguem precisar abrir a pagina logado como administrador.
+#
+# O resumo so tem contagens (acessos por hora/dia da semana e despertares),
+# nenhum dado pessoal. Ele aparece no log e no resumo da execucao.
+#
+# Requer o secret CRON_TOKEN (mesmo valor do CRON_TOKEN configurado no Render).
+
+name: Relatorio de Acessos
+
+# Somente sob demanda (Actions > Relatorio de Acessos > Run workflow, ou
+# disparado pelo Claude quando for pedida a revisao dos horarios)
+on:
+  workflow_dispatch:
+    inputs:
+      dias:
+        description: 'Periodo em dias'
+        required: false
+        default: '30'
+
+jobs:
+  relatorio:
+    name: Buscar resumo de acessos
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Buscar resumo
+        env:
+          RENDER_BASE: ${{ vars.RENDER_URL }}
+          CRON_TOKEN: ${{ secrets.CRON_TOKEN }}
+          DIAS: ${{ github.event.inputs.dias || '30' }}
+        run: |
+          if [ -z "$CRON_TOKEN" ]; then
+            echo "❌ Secret CRON_TOKEN nao configurado no repositorio."
+            echo "   Settings > Secrets and variables > Actions > New secret: CRON_TOKEN"
+            exit 1
+          fi
+
+          BASE="${RENDER_BASE:-https://lista-presentes-im4b.onrender.com}"
+          BASE="${BASE%/}"
+
+          # Acordar o servidor (no Render Free pode levar ~1 minuto)
+          for tentativa in 1 2 3 4 5 6; do
+            codigo=$(curl -s -o /dev/null -w "%{http_code}" --max-time 60 "$BASE/health/" || true)
+            echo "health: HTTP $codigo (tentativa $tentativa)"
+            [ "$codigo" = "200" ] && break
+            sleep 10
+          done
+
+          codigo=$(curl -s -o resumo-acessos.json -w "%{http_code}" --max-time 60 \
+            -H "X-Cron-Token: $CRON_TOKEN" \
+            "$BASE/api/acessos/resumo/?dias=$DIAS")
+          echo "resumo: HTTP $codigo"
+          if [ "$codigo" != "200" ]; then
+            cat resumo-acessos.json || true
+            exit 1
+          fi
+
+          echo "===== RESUMO DE ACESSOS ($DIAS dias) ====="
+          cat resumo-acessos.json
+          {
+            echo "## Resumo de acessos ($DIAS dias)"
+            echo '```json'
+            cat resumo-acessos.json
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Guardar resumo
+        uses: actions/upload-artifact@v4
+        with:
+          name: resumo-acessos
+          path: resumo-acessos.json
+          retention-days: 90

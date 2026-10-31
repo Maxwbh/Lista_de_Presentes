@@ -2023,12 +2023,22 @@ def compartilhar_view(request):
     return redirect(f"{destino}?{urlencode(params)}" if params else destino)
 
 
-@login_required
 def acessos_resumo_view(request):
-    """Resumo de acessos por hora e despertares do servidor, com sugestao de cron (superusuarios)"""
+    """
+    Resumo de acessos por hora e despertares do servidor, com sugestao de cron.
+
+    Acesso: superusuario logado, ou o header 'X-Cron-Token' com o CRON_TOKEN
+    (usado pelo workflow relatorio-acessos.yml, para a analise rodar sem
+    ninguem precisar abrir a pagina).
+    """
+    import hmac
+    from django.conf import settings
     from .acessos import resumo_acessos
 
-    if not request.user.is_superuser:
+    token_esperado = getattr(settings, 'CRON_TOKEN', '') or ''
+    token_recebido = request.headers.get('X-Cron-Token', '')
+    por_token = bool(token_esperado) and hmac.compare_digest(token_recebido, token_esperado)
+    if not por_token and not request.user.is_superuser:
         return JsonResponse({'error': 'Apenas administradores'}, status=403)
     try:
         dias = min(max(int(request.GET.get('dias', 30)), 1), 365)
