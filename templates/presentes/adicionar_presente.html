@@ -30,7 +30,18 @@
             <p class="text-xs text-base-content/50 mb-4">Cole o link do produto e deixe a mágica acontecer — descrição, preço e imagem preenchidos automaticamente</p>
 
             <div class="flex flex-col sm:flex-row gap-2">
-                {{ form.url }}
+                <div class="relative flex-1 min-w-0">
+                    <i class="bi bi-link-45deg absolute left-3.5 top-1/2 -translate-y-1/2 text-lg text-base-content/40 pointer-events-none"></i>
+                    {{ form.url }}
+                    <div class="absolute right-1.5 top-1/2 -translate-y-1/2 flex items-center gap-0.5">
+                        <button type="button" id="btn-limpar-link" class="btn btn-ghost btn-sm btn-circle text-base-content/40 hover:text-base-content" title="Limpar link" aria-label="Limpar link" style="display: none;">
+                            <i class="bi bi-x-lg"></i>
+                        </button>
+                        <button type="button" id="btn-colar-link" class="btn btn-ghost btn-sm rounded-lg gap-1 text-primary font-semibold" title="Colar o link copiado" aria-label="Colar link">
+                            <i class="bi bi-clipboard"></i> <span class="hidden sm:inline">Colar</span>
+                        </button>
+                    </div>
+                </div>
                 <button class="btn btn-primary rounded-xl gap-2 shrink-0" type="button" id="btn-buscar-info" title="Buscar informações do produto">
                     <i class="bi bi-search"></i> Buscar Informações
                 </button>
@@ -162,6 +173,15 @@
         previewContainer.style.display = 'block';
         placeholder.style.display = 'none';
     }
+
+    function hideImagePreview() {
+        imagePreview.style.display = 'none';
+        previewContainer.style.display = 'none';
+        placeholder.style.display = 'flex';
+    }
+
+    // Link e valores preenchidos pela ultima busca de informacoes
+    const valoresDaBusca = {};
 
     imageInput.addEventListener('change', function(e) {
         const file = e.target.files[0];
@@ -314,9 +334,7 @@
     function removeImage() {
         imageInput.value = '';
         urlImagemInput.value = '';
-        imagePreview.style.display = 'none';
-        previewContainer.style.display = 'none';
-        placeholder.style.display = 'flex';
+        hideImagePreview();
     }
 
     // Contador de caracteres
@@ -337,6 +355,56 @@
     const btnBuscarInfo = document.getElementById('btn-buscar-info');
     const urlProdutoInput = document.getElementById('{{ form.url.id_for_label }}');
     const loadingInfo = document.getElementById('loading-info');
+
+    // ===== CAMPO DO LINK =====
+    const btnLimparLink = document.getElementById('btn-limpar-link');
+    const btnColarLink = document.getElementById('btn-colar-link');
+    urlProdutoInput.classList.add('pl-10', 'pr-20', 'sm:pr-32');
+    urlProdutoInput.setAttribute('autocomplete', 'off');
+    urlProdutoInput.setAttribute('inputmode', 'url');
+
+    const pareceLink = (texto) => /^(https?:\/\/)?[^\s.]+\.[^\s]+$/i.test(texto.trim());
+    const atualizarBotoesLink = () => {
+        btnLimparLink.style.display = urlProdutoInput.value ? '' : 'none';
+    };
+    urlProdutoInput.addEventListener('input', atualizarBotoesLink);
+    atualizarBotoesLink();
+
+    btnLimparLink.addEventListener('click', () => {
+        urlProdutoInput.value = '';
+        atualizarBotoesLink();
+        urlProdutoInput.focus();
+    });
+
+    // Enter no campo do link busca as informacoes (em vez de enviar o formulario)
+    urlProdutoInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            btnBuscarInfo.click();
+        }
+    });
+
+    // Colar um link (Ctrl+V ou botao Colar) ja busca as informacoes
+    const buscarSeForLink = () => {
+        atualizarBotoesLink();
+        if (pareceLink(urlProdutoInput.value)) btnBuscarInfo.click();
+    };
+    urlProdutoInput.addEventListener('paste', () => setTimeout(buscarSeForLink, 0));
+
+    if (!navigator.clipboard || !navigator.clipboard.readText) {
+        btnColarLink.style.display = 'none';
+    }
+    btnColarLink.addEventListener('click', async () => {
+        try {
+            const texto = (await navigator.clipboard.readText()).trim();
+            if (!texto) return;
+            urlProdutoInput.value = texto;
+            buscarSeForLink();
+        } catch (e) {
+            // Sem permissao para ler a area de transferencia: o usuario cola com Ctrl+V
+            urlProdutoInput.focus();
+        }
+    });
 
     btnBuscarInfo.addEventListener('click', async function() {
         const url = urlProdutoInput.value.trim();
@@ -371,23 +439,37 @@
                 throw new Error(data.error || 'Erro ao buscar informações');
             }
 
-            // Preencher campos
-            // No compartilhamento a descricao veio do texto compartilhado: o titulo da loja e melhor
-            if (data.titulo && (!descricaoInput.value || {{ buscar_automaticamente|yesno:"true,false" }})) {
-                descricaoInput.value = data.titulo;
-                charCount.textContent = data.titulo.length;
-            }
+            // Preencher campos. Link novo (diferente da ultima busca): limpa
+            // descricao, preco e imagem e usa so os dados do novo produto,
+            // mesmo que algo tenha sido digitado. Mesmo link buscado de novo:
+            // so preenche o que estiver vazio ou ainda vier da busca anterior.
+            const linkNovo = url !== valoresDaBusca.link;
+            valoresDaBusca.link = url;
+            const preencher = (campo, chave, valor) => {
+                const podeTrocar = linkNovo || !campo.value || campo.value === valoresDaBusca[chave];
+                if (!podeTrocar) return false;
+                campo.value = valor || '';
+                valoresDaBusca[chave] = campo.value;
+                return true;
+            };
 
-            if (data.preco && !precoInput.value) {
-                // Campo numerico (type=number): o valor precisa do ponto decimal;
-                // com virgula o navegador descarta o valor
-                precoInput.value = Number(data.preco).toFixed(2);
-            }
+            preencher(descricaoInput, 'descricao', data.titulo);
+            charCount.textContent = descricaoInput.value.length;
 
-            if (data.imagem_url && !urlImagemInput.value && !imageInput.files.length) {
-                urlImagemInput.value = data.imagem_url;
-                // Mostrar preview da imagem
-                showImagePreview(data.imagem_url);
+            // Campo numerico (type=number): o valor precisa do ponto decimal;
+            // com virgula o navegador descarta o valor
+            preencher(precoInput, 'preco', data.preco ? Number(data.preco).toFixed(2) : '');
+
+            if (linkNovo) {
+                // A imagem enviada por arquivo era do produto anterior
+                imageInput.value = '';
+            }
+            if (!imageInput.files.length && preencher(urlImagemInput, 'imagem', data.imagem_url)) {
+                if (data.imagem_url) {
+                    showImagePreview(data.imagem_url);
+                } else {
+                    hideImagePreview();
+                }
             }
 
             // Mostrar mensagem de sucesso

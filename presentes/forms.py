@@ -93,7 +93,7 @@ class PresenteForm(forms.ModelForm):
         required=False,
         label='URL da Imagem',
         widget=forms.URLInput(attrs={
-            'class': 'form-control',
+            'class': 'input input-bordered w-full flex-1 min-w-0 rounded-xl',
             'placeholder': 'https://exemplo.com/imagem.jpg',
             'id': 'url-imagem-input'
         })
@@ -104,16 +104,16 @@ class PresenteForm(forms.ModelForm):
         fields = ['descricao', 'url', 'preco', 'imagem']
         widgets = {
             'descricao': forms.Textarea(attrs={
-                'class': 'form-control',
+                'class': 'textarea textarea-bordered w-full rounded-xl text-base',
                 'rows': 3,
                 'placeholder': 'Descreva o presente...'
             }),
             'url': forms.URLInput(attrs={
-                'class': 'form-control',
-                'placeholder': 'https://... (opcional)'
+                'class': 'input input-bordered w-full flex-1 min-w-0 rounded-xl',
+                'placeholder': 'Cole aqui o link do produto'
             }),
             'preco': forms.NumberInput(attrs={
-                'class': 'form-control',
+                'class': 'input input-bordered w-full rounded-xl',
                 'placeholder': '0.00',
                 'step': '0.01'
             }),

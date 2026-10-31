@@ -1030,12 +1030,13 @@ class CompartilharPeloCelularTest(TestCase):
         })
         self.assertContains(resposta, 'value="https://www.amazon.com.br/dp/B0TESTE"')
         self.assertContains(resposta, 'Fone Bluetooth')
-        self.assertContains(resposta, 'btnBuscarInfo.click();')
+        # Busca automatica do link compartilhado
+        self.assertContains(resposta, 'Link recebido pelo compartilhamento do celular')
 
     def test_tela_de_adicionar_ignora_url_que_nao_e_http(self):
         resposta = self.client.get(reverse('adicionar_presente'), {'url': 'javascript:alert(1)'})
         self.assertNotContains(resposta, 'javascript:alert(1)')
-        self.assertNotContains(resposta, 'btnBuscarInfo.click();')
+        self.assertNotContains(resposta, 'Link recebido pelo compartilhamento do celular')
 
     def test_manifest_declara_share_target(self):
         import json
