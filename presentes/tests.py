@@ -1696,3 +1696,43 @@ class ConverterPrecoTest(TestCase):
         self.assertEqual(converter_preco_decimal('R$ 1.371,60'), Decimal('1371.60'))
         self.assertEqual(converter_preco_decimal('254.0'), Decimal('254.00'))
         self.assertIsNone(converter_preco_decimal('sem preço'))
+
+
+class DadosEstruturadosTest(TestCase):
+    """Issues #31 (Farm Rio) e #32 (amzn.to)."""
+
+    def test_preco_de_oferta_embutida_em_atributo(self):
+        # Farm Rio (deco.cx): o produto schema.org vem com URL-encoding num atributo
+        from urllib.parse import quote
+        oferta = quote('{"offers":{"@type":"AggregateOffer","priceCurrency":"BRL",'
+                       '"highPrice":311.35,"lowPrice":311.35,"offerCount":2}}')
+        html = ('<html><head><meta property="og:title" content="Calca Estampada">'
+                '<meta property="og:image" content="https://farmrio.com.br/foto.jpg"></head>'
+                f'<body><div data-dt-event="{oferta}"></div></body></html>').encode()
+        resposta = mock.Mock(url='https://www.farmrio.com.br/calca/p', content=html, status_code=200)
+        resposta.raise_for_status.return_value = None
+        with mock.patch('presentes.scrapers.requests.get', return_value=resposta), \
+                mock.patch('presentes.github_helper.criar_issue_erro_geral') as criar_issue:
+            resultado = ScraperFactory.extract_product_info('https://www.farmrio.com.br/calca/p')
+        self.assertEqual(resultado['preco'], 311.35)
+        criar_issue.assert_not_called()
+
+    def test_preco_do_json_ld_no_scraper_generico(self):
+        html = ('<html><head><meta property="og:title" content="Tenis">'
+                '<script type="application/ld+json">{"@type": "Product", "name": "Tenis",'
+                ' "offers": {"@type": "Offer", "price": "199.90", "priceCurrency": "BRL"}}</script>'
+                '</head></html>').encode()
+        resposta = mock.Mock(url='https://loja.com.br/tenis', content=html, status_code=200)
+        resposta.raise_for_status.return_value = None
+        with mock.patch('presentes.scrapers.requests.get', return_value=resposta), \
+                mock.patch('presentes.github_helper.criar_issue_erro_geral'):
+            resultado = ScraperFactory.extract_product_info('https://loja.com.br/tenis')
+        self.assertEqual(resultado['preco'], 199.90)
+
+    def test_link_curto_da_amazon_usa_o_scraper_da_amazon(self):
+        from .scrapers import AmazonScraper
+        for url in ('https://amzn.to/4pxiozo', 'https://a.co/d/abc123'):
+            with self.subTest(url=url):
+                scraper, generico = ScraperFactory.get_scraper(url)
+                self.assertIsInstance(scraper, AmazonScraper)
+                self.assertFalse(generico)

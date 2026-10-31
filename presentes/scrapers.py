@@ -205,6 +205,71 @@ class BaseScraper:
                 return meta['content'].strip().upper()
         return None
 
+    def _produtos_json_ld(self, soup):
+        """Objetos Product/ProductGroup do JSON-LD da pagina"""
+        produtos = []
+        for script in soup.find_all('script', type='application/ld+json'):
+            try:
+                dados = json.loads(script.string or script.get_text() or '')
+            except ValueError:
+                continue
+            for item in dados if isinstance(dados, list) else [dados]:
+                if isinstance(item, dict) and item.get('@type') in ('Product', 'ProductGroup'):
+                    produtos.append(item)
+        return produtos
+
+    @staticmethod
+    def _preco_oferta(produto):
+        ofertas = produto.get('offers') or {}
+        for oferta in ofertas if isinstance(ofertas, list) else [ofertas]:
+            preco = oferta.get('price') or oferta.get('lowPrice')
+            preco = converter_preco(preco)
+            if preco:
+                return preco
+        return None
+
+    def _preco(self, produto, sku_id):
+        """Preco da variante do link (?skuId=), senao da primeira em estoque, senao o menor"""
+        variantes = produto.get('hasVariant') or [produto]
+        if sku_id:
+            for variante in variantes:
+                if str(variante.get('sku')) == sku_id:
+                    preco = self._preco_oferta(variante)
+                    if preco:
+                        return preco
+        em_estoque = [v for v in variantes
+                      if 'InStock' in str((v.get('offers') or {}).get('availability', ''))]
+        for variante in em_estoque:
+            preco = self._preco_oferta(variante)
+            if preco:
+                return preco
+        precos = [p for p in (self._preco_oferta(v) for v in variantes) if p]
+        return min(precos) if precos else None
+
+    def preco_dados_estruturados(self, soup, sku_id=None):
+        """
+        Preco dos dados estruturados (schema.org) da pagina: primeiro o
+        JSON-LD; senao, ofertas embutidas em scripts/atributos (lojas VTEX e
+        deco.cx, ex.: Farm Rio, guardam o produto com URL-encoding num
+        atributo). So aceita ofertas em reais.
+        """
+        produtos = self._produtos_json_ld(soup)
+        if produtos:
+            preco = self._preco(produtos[0], sku_id)
+            if preco:
+                return preco
+
+        from urllib.parse import unquote
+        html = unquote(str(soup))
+        for oferta in re.finditer(r'"priceCurrency"\s*:\s*"BRL"', html):
+            trecho = html[oferta.end():oferta.end() + 400]
+            valor = re.search(r'"(?:lowPrice|price)"\s*:\s*"?(\d+(?:\.\d+)?)', trecho)
+            if valor:
+                preco = converter_preco(valor.group(1))
+                if preco:
+                    return preco
+        return None
+
     def extract(self, url):
         """Método a ser implementado por subclasses"""
         raise NotImplementedError
@@ -498,49 +563,6 @@ class DecathlonScraper(BaseScraper):
     dentro de um ProductGroup com uma variante (Product) por tamanho/cor.
     """
 
-    def _produtos_json_ld(self, soup):
-        """Objetos Product/ProductGroup do JSON-LD da pagina"""
-        produtos = []
-        for script in soup.find_all('script', type='application/ld+json'):
-            try:
-                dados = json.loads(script.string or script.get_text() or '')
-            except ValueError:
-                continue
-            for item in dados if isinstance(dados, list) else [dados]:
-                if isinstance(item, dict) and item.get('@type') in ('Product', 'ProductGroup'):
-                    produtos.append(item)
-        return produtos
-
-    @staticmethod
-    def _preco_oferta(produto):
-        ofertas = produto.get('offers') or {}
-        for oferta in ofertas if isinstance(ofertas, list) else [ofertas]:
-            preco = oferta.get('price') or oferta.get('lowPrice')
-            if preco not in (None, ''):
-                try:
-                    return float(preco)
-                except (TypeError, ValueError):
-                    pass
-        return None
-
-    def _preco(self, produto, sku_id):
-        """Preco da variante do link (?skuId=), senao da primeira em estoque, senao o menor"""
-        variantes = produto.get('hasVariant') or [produto]
-        if sku_id:
-            for variante in variantes:
-                if str(variante.get('sku')) == sku_id:
-                    preco = self._preco_oferta(variante)
-                    if preco:
-                        return preco
-        em_estoque = [v for v in variantes
-                      if 'InStock' in str((v.get('offers') or {}).get('availability', ''))]
-        for variante in em_estoque:
-            preco = self._preco_oferta(variante)
-            if preco:
-                return preco
-        precos = [p for p in (self._preco_oferta(v) for v in variantes) if p]
-        return min(precos) if precos else None
-
     def extract(self, url):
         """
         Retorna: (titulo, preco, imagem_url)
@@ -635,6 +657,9 @@ class GenericScraper(BaseScraper):
             if price_meta and price_meta.get('content'):
                 preco = self.preco_de_meta(price_meta.get('content'))
 
+        if not preco and (not moeda or moeda == 'BRL'):
+            preco = self.preco_dados_estruturados(soup)
+
         # Com moeda estrangeira, so o valor em reais da pagina serve: os
         # textos de preco estariam em outra moeda
         if not preco and (not moeda or moeda == 'BRL'):
@@ -684,7 +709,8 @@ class ScraperFactory:
         """
         domain = urlparse(url).netloc.lower()
 
-        if 'amazon.com' in domain:
+        # amzn.to e a.co: links curtos da Amazon (o requests segue o redirecionamento)
+        if 'amazon.com' in domain or domain in ('amzn.to', 'www.amzn.to', 'a.co', 'amzn.com'):
             logger.info(f"🛍️  Usando AmazonScraper para {domain}")
             return AmazonScraper(), False
         elif 'mercadolivre.com' in domain or 'mercadolibre.com' in domain or domain.endswith('meli.la'):
