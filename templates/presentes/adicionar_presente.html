@@ -30,7 +30,18 @@
             <p class="text-xs text-base-content/50 mb-4">Cole o link do produto e deixe a mágica acontecer — descrição, preço e imagem preenchidos automaticamente</p>
 
             <div class="flex flex-col sm:flex-row gap-2">
-                {{ form.url }}
+                <div class="relative flex-1 min-w-0">
+                    <i class="bi bi-link-45deg absolute left-3.5 top-1/2 -translate-y-1/2 text-lg text-base-content/40 pointer-events-none"></i>
+                    {{ form.url }}
+                    <div class="absolute right-1.5 top-1/2 -translate-y-1/2 flex items-center gap-0.5">
+                        <button type="button" id="btn-limpar-link" class="btn btn-ghost btn-sm btn-circle text-base-content/40 hover:text-base-content" title="Limpar link" aria-label="Limpar link" style="display: none;">
+                            <i class="bi bi-x-lg"></i>
+                        </button>
+                        <button type="button" id="btn-colar-link" class="btn btn-ghost btn-sm rounded-lg gap-1 text-primary font-semibold" title="Colar o link copiado" aria-label="Colar link">
+                            <i class="bi bi-clipboard"></i> <span class="hidden sm:inline">Colar</span>
+                        </button>
+                    </div>
+                </div>
                 <button class="btn btn-primary rounded-xl gap-2 shrink-0" type="button" id="btn-buscar-info" title="Buscar informações do produto">
                     <i class="bi bi-search"></i> Buscar Informações
                 </button>
@@ -344,6 +355,56 @@
     const btnBuscarInfo = document.getElementById('btn-buscar-info');
     const urlProdutoInput = document.getElementById('{{ form.url.id_for_label }}');
     const loadingInfo = document.getElementById('loading-info');
+
+    // ===== CAMPO DO LINK =====
+    const btnLimparLink = document.getElementById('btn-limpar-link');
+    const btnColarLink = document.getElementById('btn-colar-link');
+    urlProdutoInput.classList.add('pl-10', 'pr-20', 'sm:pr-32');
+    urlProdutoInput.setAttribute('autocomplete', 'off');
+    urlProdutoInput.setAttribute('inputmode', 'url');
+
+    const pareceLink = (texto) => /^(https?:\/\/)?[^\s.]+\.[^\s]+$/i.test(texto.trim());
+    const atualizarBotoesLink = () => {
+        btnLimparLink.style.display = urlProdutoInput.value ? '' : 'none';
+    };
+    urlProdutoInput.addEventListener('input', atualizarBotoesLink);
+    atualizarBotoesLink();
+
+    btnLimparLink.addEventListener('click', () => {
+        urlProdutoInput.value = '';
+        atualizarBotoesLink();
+        urlProdutoInput.focus();
+    });
+
+    // Enter no campo do link busca as informacoes (em vez de enviar o formulario)
+    urlProdutoInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            btnBuscarInfo.click();
+        }
+    });
+
+    // Colar um link (Ctrl+V ou botao Colar) ja busca as informacoes
+    const buscarSeForLink = () => {
+        atualizarBotoesLink();
+        if (pareceLink(urlProdutoInput.value)) btnBuscarInfo.click();
+    };
+    urlProdutoInput.addEventListener('paste', () => setTimeout(buscarSeForLink, 0));
+
+    if (!navigator.clipboard || !navigator.clipboard.readText) {
+        btnColarLink.style.display = 'none';
+    }
+    btnColarLink.addEventListener('click', async () => {
+        try {
+            const texto = (await navigator.clipboard.readText()).trim();
+            if (!texto) return;
+            urlProdutoInput.value = texto;
+            buscarSeForLink();
+        } catch (e) {
+            // Sem permissao para ler a area de transferencia: o usuario cola com Ctrl+V
+            urlProdutoInput.focus();
+        }
+    });
 
     btnBuscarInfo.addEventListener('click', async function() {
         const url = urlProdutoInput.value.trim();
