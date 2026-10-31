@@ -1616,3 +1616,39 @@ class BuscarImagensAdminTest(TestCase):
         with mock.patch('presentes.admin._buscar_imagens') as buscar:
             self.client.get(self.url_botao)
         buscar.assert_not_called()
+
+
+class PrecoMetaTagTest(TestCase):
+    """Preco das meta tags: formato de maquina (ponto decimal) e moeda estrangeira."""
+
+    def _extrair(self, html, url='https://www.loja-nova.com.br/produto/1'):
+        resposta = mock.Mock(url=url, content=html.encode(), status_code=200)
+        resposta.raise_for_status.return_value = None
+        with mock.patch('presentes.scrapers.requests.get', return_value=resposta), \
+                mock.patch('presentes.github_helper.criar_issue_erro_geral'):
+            return ScraperFactory.extract_product_info(url)
+
+    def test_ponto_decimal_da_meta_tag(self):
+        # Antes '309.90' virava 30990 (o ponto era lido como separador de milhar)
+        resultado = self._extrair(
+            '<html><head><meta property="og:title" content="Shampoo">'
+            '<meta property="product:price:amount" content="309.90"></head></html>')
+        self.assertEqual(resultado['preco'], 309.90)
+
+    def test_preco_em_dolar_usa_o_valor_em_reais_da_pagina(self):
+        # Compras Paraguai: 'US$ 254,00 (R$ 1.371,60)', meta em USD
+        resultado = self._extrair(
+            '<html><head><meta property="og:title" content="SSD WD Green 2TB">'
+            '<meta itemprop="price" content="254.00"><meta itemprop="priceCurrency" content="USD">'
+            '</head><body><div class="cotacao">Dólar hoje: R$ 5,40</div>'
+            '<div class="price"><span>US$ 254,00</span> <span>(R$ 1.371,60)</span></div></body></html>',
+            url='https://www.comprasparaguai.com.br/ssd_54489/')
+        self.assertEqual(resultado['preco'], 1371.60)
+
+    def test_preco_em_dolar_sem_valor_em_reais_fica_vazio(self):
+        resultado = self._extrair(
+            '<html><head><meta property="og:title" content="SSD WD Green 2TB">'
+            '<meta property="product:price:amount" content="254.00">'
+            '<meta property="product:price:currency" content="USD"></head>'
+            '<body><span class="price">Por 254,00</span></body></html>')
+        self.assertIsNone(resultado['preco'])

@@ -197,6 +197,27 @@ class BaseScraper:
         except:
             return None
 
+    def preco_de_meta(self, valor):
+        """
+        Preco de meta tag/JSON-LD (schema.org), que vem em formato de maquina:
+        ponto como separador decimal ('254.00', '1371.6'). Se vier formatado
+        para leitura ('R$ 1.371,60'), usa clean_price.
+        """
+        valor = str(valor or '').strip()
+        if re.fullmatch(r'\d+(\.\d+)?', valor):
+            return float(valor)
+        return self.clean_price(valor)
+
+    @staticmethod
+    def moeda_da_pagina(soup):
+        """Moeda do preco informada nas meta tags (ex.: 'USD'), ou None"""
+        for atributos in ({'property': 'product:price:currency'}, {'property': 'og:price:currency'},
+                          {'itemprop': 'priceCurrency'}):
+            meta = soup.find('meta', attrs=atributos)
+            if meta and meta.get('content'):
+                return meta['content'].strip().upper()
+        return None
+
     def extract(self, url):
         """Método a ser implementado por subclasses"""
         raise NotImplementedError
@@ -389,11 +410,9 @@ class MercadoLivreScraper(BaseScraper):
         for candidate in price_candidates:
             if candidate:
                 if candidate.name == 'meta':
-                    price_text = candidate.get('content', '')
+                    preco = self.preco_de_meta(candidate.get('content', ''))
                 else:
-                    price_text = candidate.get_text(strip=True)
-
-                preco = self.clean_price(price_text)
+                    preco = self.clean_price(candidate.get_text(strip=True))
                 if preco:
                     break
 
@@ -616,11 +635,22 @@ class GenericScraper(BaseScraper):
             r'(\d+(?:[.,]\d{3})*(?:[.,]\d{2}))\s*reais?',
         ]
 
-        price_meta = soup.find('meta', property='product:price:amount') or soup.find('meta', attrs={'itemprop': 'price'})
-        if price_meta and price_meta.get('content'):
-            preco = self.clean_price(price_meta.get('content'))
+        moeda = self.moeda_da_pagina(soup)
+        if moeda and moeda != 'BRL':
+            # Preco em outra moeda (ex.: lojas do Paraguai em US$): usa o valor
+            # em reais que a pagina mostra entre parenteses, ex. 'US$ 254,00 (R$ 1.371,60)'
+            logger.info(f"Preço da página em {moeda}; procurando o valor em reais")
+            em_reais = re.search(r'\(\s*R\$\s*(\d{1,3}(?:\.\d{3})*,\d{2})\s*\)', soup.get_text(' '))
+            if em_reais:
+                preco = self.clean_price(em_reais.group(1))
+        else:
+            price_meta = soup.find('meta', property='product:price:amount') or soup.find('meta', attrs={'itemprop': 'price'})
+            if price_meta and price_meta.get('content'):
+                preco = self.preco_de_meta(price_meta.get('content'))
 
-        if not preco:
+        # Com moeda estrangeira, so o valor em reais da pagina serve: os
+        # textos de preco estariam em outra moeda
+        if not preco and (not moeda or moeda == 'BRL'):
             price_elements = soup.find_all(['span', 'div', 'strong', 'p'], class_=re.compile(r'price|preco|valor|value', re.I))
             for elem in price_elements:
                 text = elem.get_text(strip=True)
