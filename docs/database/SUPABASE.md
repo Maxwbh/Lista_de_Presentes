@@ -1,313 +1,109 @@
-# Supabase PostgreSQL - Configuração Atual
+# 🐘 Supabase PostgreSQL
 
-## ✅ Status Atual
-
-**Esta aplicação usa Supabase PostgreSQL com Schema Isolado `lista_presentes`.**
-
-Configuração permite:
-- ✅ Múltiplas apps Django no mesmo banco Supabase (isoladas por schema)
-- ✅ 500MB Free Tier (vs 256MB Render PostgreSQL)
-- ✅ Dashboard web para queries SQL
-- ✅ Possibilidade de usar Supabase Storage/Auth/Realtime no futuro
-
-**Schema:** `lista_presentes` (configurado automaticamente via `settings.py`)
+Em produção o app usa PostgreSQL do **Supabase**, num schema próprio (`lista_presentes`), acessado pelo Render via `DATABASE_URL`. Localmente, sem `DATABASE_URL`, usa SQLite ([INSTALACAO.md](../development/INSTALACAO.md#️-banco-de-dados)).
 
 ---
 
-## 📋 Configuração Supabase
+## 🔌 Conexão
 
-### Vantagens
-- ✅ Múltiplas apps Django isoladas no mesmo banco (via schemas)
-- ✅ Mais armazenamento: 500 MB (vs 256 MB Render PostgreSQL)
-- ✅ Dashboard web para queries SQL
-- ✅ Supabase Storage/Auth/Realtime disponíveis
-
-### Schema Isolado
-- 📁 **Schema:** `lista_presentes` (configurado automaticamente)
-- 🔒 **Isolamento:** Evita conflitos de `django_migrations` entre apps
-- ⚙️ **Configuração:** Ver [SCHEMA_ISOLADO.md](SCHEMA_ISOLADO.md)
-
-### Variáveis de Ambiente (Render Dashboard)
+No Render (**Environment**), defina a URL do **Connection Pooler** do Supabase (Dashboard do Supabase → **Connect**):
 
 ```bash
-# Database Connection (Connection Pooler - porta 6543)
-# IMPORTANTE: Não adicionar ?options= - search_path configurado automaticamente
-DATABASE_URL=postgresql://postgres.YOUR_PROJECT_ID:YOUR_PASSWORD_ENCODED@aws-1-us-east-2.pooler.supabase.com:6543/postgres
-
-# Supabase API (Opcional - uso futuro)
-SUPABASE_URL=https://YOUR_PROJECT_ID.supabase.co
-SUPABASE_KEY=sb_publishable_YOUR_ANON_KEY
-
-# GitHub (Auto-create Issues)
-GITHUB_TOKEN=<fornecido pelo administrador>
-GITHUB_REPO_OWNER=Maxwbh
-GITHUB_REPO_NAME=Lista_de_Presentes
-GITHUB_AUTO_CREATE_ISSUES=True
+DATABASE_URL=postgresql://postgres.SEU_PROJETO:SENHA_COM_URL_ENCODING@aws-1-us-east-2.pooler.supabase.com:6543/postgres
 ```
 
-**Configurar em:** https://dashboard.render.com/web/lista-presentes/environment
+- **Não** adicione `?options=...`: o `settings.py` acrescenta `search_path=lista_presentes` automaticamente.
+- Use o pooler (`*.pooler.supabase.com`), não o host direto `db.SEU_PROJETO.supabase.co:5432`, que é só IPv6 e costuma dar `Network is unreachable` no Render.
+- Senha com caracteres especiais precisa de URL encoding (`@` → `%40`, `#` → `%23`, `!` → `%21`).
+- `SUPABASE_URL` e `SUPABASE_KEY` existem no `settings.py`, mas o Django não as usa hoje.
 
-> 💡 **Nota:** O `search_path=lista_presentes` é aplicado automaticamente via `settings.py` (signal `connection_created`)
+### O que o `settings.py` configura
+
+| Configuração | Motivo |
+|--------------|--------|
+| `search_path=lista_presentes` (na URL e em `OPTIONS`) | Tabelas só no schema próprio, nunca em `public` |
+| Signal `connection_created` (`presentes/apps.py`) roda `SET search_path TO lista_presentes` | O pooler em modo transação (porta 6543) ignora as opções de conexão |
+| `DISABLE_SERVER_SIDE_CURSORS = True` | O modo transação não suporta cursores do lado do servidor (`.iterator()`) |
+| `conn_max_age=600`, `conn_health_checks=True` | Reaproveita conexões e descarta as quebradas |
+| `connect_timeout=10` e TCP keepalives | Falha rápido e detecta conexões ociosas fechadas pelo pooler |
+
+O pooler tem dois modos: **transação** (porta 6543, usado acima) e **sessão** (porta 5432 no mesmo host do pooler). O comentário do `settings.py` recomenda o modo sessão para conexões persistentes (`conn_max_age`); o signal e o `DISABLE_SERVER_SIDE_CURSORS` mantêm o modo transação funcionando.
 
 ---
 
-## 🔐 Segurança - Row Level Security (RLS)
+## 🗂️ Schema isolado `lista_presentes`
 
-### Status
+Vários apps Django podem dividir o mesmo banco Supabase sem conflito de `django_migrations`, porque cada um usa seu schema:
 
-✅ **RLS Habilitado** em todas as 23 tabelas Django:
-- Banco de dados protegido contra acesso não autorizado via API PostgREST
-- Django funciona normalmente (role `postgres` tem BYPASSRLS)
-- Database Linter: 0 erros de segurança
-
-### Script SQL Executado
-
-```sql
--- Habilitar RLS em todas as tabelas Django (schema lista_presentes)
-ALTER TABLE lista_presentes.django_migrations ENABLE ROW LEVEL SECURITY;
-ALTER TABLE lista_presentes.django_content_type ENABLE ROW LEVEL SECURITY;
-ALTER TABLE lista_presentes.auth_permission ENABLE ROW LEVEL SECURITY;
-ALTER TABLE lista_presentes.auth_group ENABLE ROW LEVEL SECURITY;
-ALTER TABLE lista_presentes.auth_group_permissions ENABLE ROW LEVEL SECURITY;
-ALTER TABLE lista_presentes.django_admin_log ENABLE ROW LEVEL SECURITY;
-ALTER TABLE lista_presentes.django_session ENABLE ROW LEVEL SECURITY;
-ALTER TABLE lista_presentes.django_site ENABLE ROW LEVEL SECURITY;
-ALTER TABLE lista_presentes.account_emailaddress ENABLE ROW LEVEL SECURITY;
-ALTER TABLE lista_presentes.account_emailconfirmation ENABLE ROW LEVEL SECURITY;
-ALTER TABLE lista_presentes.socialaccount_socialaccount ENABLE ROW LEVEL SECURITY;
-ALTER TABLE lista_presentes.socialaccount_socialapp ENABLE ROW LEVEL SECURITY;
-ALTER TABLE lista_presentes.socialaccount_socialapp_sites ENABLE ROW LEVEL SECURITY;
-ALTER TABLE lista_presentes.socialaccount_socialtoken ENABLE ROW LEVEL SECURITY;
-ALTER TABLE lista_presentes.presentes_usuario ENABLE ROW LEVEL SECURITY;
-ALTER TABLE lista_presentes.presentes_usuario_groups ENABLE ROW LEVEL SECURITY;
-ALTER TABLE lista_presentes.presentes_usuario_user_permissions ENABLE ROW LEVEL SECURITY;
-ALTER TABLE lista_presentes.presentes_grupo ENABLE ROW LEVEL SECURITY;
-ALTER TABLE lista_presentes.presentes_grupomembro ENABLE ROW LEVEL SECURITY;
-ALTER TABLE lista_presentes.presentes_presente ENABLE ROW LEVEL SECURITY;
-ALTER TABLE lista_presentes.presentes_compra ENABLE ROW LEVEL SECURITY;
-ALTER TABLE lista_presentes.presentes_sugestaocompra ENABLE ROW LEVEL SECURITY;
-ALTER TABLE lista_presentes.presentes_notificacao ENABLE ROW LEVEL SECURITY;
+```
+outro_app.django_migrations
+lista_presentes.django_migrations   ← este app
 ```
 
-**Script completo:** `scripts/enable_rls_supabase.sql` (já atualizado para schema `lista_presentes`)
+O search path contém **apenas** `lista_presentes` (sem `public`): se o schema não existir, o PostgreSQL dá erro em vez de criar tabelas no lugar errado. Quem cria o schema:
 
-### Como Funciona
+- `scripts/ensure_schema.py` — rodado pelo `build.sh` (Render) e pelo `entrypoint.sh` (Docker) antes das migrações; idempotente.
+- Nos testes, o próprio signal cria o schema no banco de teste.
 
-| Role | BYPASSRLS? | Usado por | Resultado |
-|------|------------|-----------|-----------|
-| `postgres` | ✅ Sim | Django (DATABASE_URL) | Acesso total |
-| `authenticator` | ❌ Não | PostgREST API | Bloqueado (0 rows) |
-| `anon` | ❌ Não | API pública | Bloqueado (0 rows) |
-| `authenticated` | ❌ Não | API com auth | Bloqueado (0 rows) |
-
-**Resultado:** API Supabase bloqueada, Django funciona normalmente.
+Para migrar tabelas antigas de `public` para o schema: `scripts/create_isolated_schema.sql`. Detalhes: [SCHEMA_ISOLADO.md](SCHEMA_ISOLADO.md).
 
 ---
 
-## 🗂️ Schema Isolado
+## 🔐 Row Level Security (RLS)
 
-### Por Que Usar Schema Próprio?
+O Supabase expõe os schemas pela API REST (PostgREST). Com RLS habilitado e **sem políticas**, a API não retorna nenhuma linha, enquanto o Django continua com acesso total (conecta como `postgres`, que ignora RLS).
 
-Quando você tem **múltiplas aplicações Django** no mesmo banco Supabase:
+1. Supabase → **SQL Editor** → execute [`scripts/enable_rls_supabase.sql`](../../scripts/enable_rls_supabase.sql).
+2. O script cobre as 23 tabelas originais. As tabelas criadas depois precisam ser incluídas manualmente:
 
-```
-❌ PROBLEMA (schema public compartilhado):
-App 1 → public.django_migrations
-App 2 → public.django_migrations  ← CONFLITO!
-App 3 → public.django_migrations  ← CONFLITO!
+   ```sql
+   ALTER TABLE lista_presentes.presentes_precohistorico     ENABLE ROW LEVEL SECURITY;
+   ALTER TABLE lista_presentes.presentes_pesquisaprecolog   ENABLE ROW LEVEL SECURITY;
+   ALTER TABLE lista_presentes.presentes_pushsubscription   ENABLE ROW LEVEL SECURITY;
+   ALTER TABLE lista_presentes.presentes_mercadolivretoken  ENABLE ROW LEVEL SECURITY;
+   ALTER TABLE lista_presentes.presentes_despertarservidor  ENABLE ROW LEVEL SECURITY;
+   ALTER TABLE lista_presentes.presentes_acessohora         ENABLE ROW LEVEL SECURITY;
+   ```
 
-Resultado: InconsistentMigrationHistory
-```
+3. Confira (e repita a cada nova tabela, ou use o **Database Linter** do Supabase):
 
-```
-✅ SOLUÇÃO (schema isolado):
-App 1 → gestao_contrato.django_migrations
-App 2 → lista_presentes.django_migrations  ← Esta app
-App 3 → outra_app.django_migrations
+   ```sql
+   SELECT tablename, rowsecurity AS rls_enabled
+   FROM pg_tables
+   WHERE schemaname = 'lista_presentes'
+   ORDER BY tablename;
+   ```
 
-Resultado: Cada app isolada, sem conflitos
-```
-
-### Configuração
-
-**DATABASE_URL com search_path:**
-```
-?options=-csearch_path%3Dlista_presentes
-```
-
-**O que faz:**
-- Django cria tabelas em `lista_presentes.` ao invés de `public.`
-- Evita conflitos com outras apps Django
-- Mantém histórico de migrações isolado
-
-**Documentação completa:** [SCHEMA_ISOLADO.md](SCHEMA_ISOLADO.md)
-
----
-
-## 🎯 Connection Pooler
-
-### Por Que Usar?
-
-**URL Recomendada:** `aws-1-us-east-2.pooler.supabase.com:6543`
-
-```
-Django → Render → Internet → Supabase Pooler (PgBouncer) → PostgreSQL
-                              ↓
-                         ✅ FUNCIONA
-```
-
-**Vantagens:**
-- ✅ Suporta IPv4 e IPv6
-- ✅ Pool de conexões gerenciado (PgBouncer)
-- ✅ Menor latência e mais estável
-- ✅ Suporta mais conexões simultâneas
-- ✅ Compatível com Render Free Tier
-
-### Alternativa (Não Recomendada)
-
-**URL Direta:** `db.YOUR_PROJECT_ID.supabase.co:5432`
-
-```
-Django → Render → Internet → Supabase (IPv6) → PostgreSQL
-                              ↓
-                    ❌ "Network is unreachable"
-```
-
-**Problemas:**
-- ❌ IPv6 pode não ser roteável no Render Free Tier
-- ❌ Conexões diretas podem ser bloqueadas
-- ❌ Limites de conexões simultâneas
-
----
-
-## 🆘 Troubleshooting
-
-### Erro: "password authentication failed"
-
-**Causa:** URL encoding incorreto
-
-**Solução:** Verifique que DATABASE_URL tem `%21%40%23` (não `!@#`)
-
-```bash
-# ✅ Correto
-postgresql://...senha:YOUR_PASSWORD_ENCODED@...
-
-# ❌ Errado
-postgresql://...senha:YOUR_PASSWORD@...
-```
-
-### Erro: "Network is unreachable"
-
-**Causa:** Usando host errado
-
-**Solução:** Use Connection Pooler:
-```
-aws-1-us-east-2.pooler.supabase.com:6543  (não db.YOUR_PROJECT_ID.supabase.co:5432)
-```
-
-### Erro: "Using SQLite instead of PostgreSQL"
-
-**Causa:** DATABASE_URL não configurada
-
-**Solução:**
-1. Render Dashboard > Environment
-2. Adicionar DATABASE_URL
-3. Save Changes
-4. Aguardar redeploy
-
-### Erro: "permission denied for table"
-
-**Causa:** Role não tem permissões
-
-**Solução:**
-```sql
-GRANT ALL ON ALL TABLES IN SCHEMA public TO postgres;
-GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO postgres;
-```
-
-### Erro: "InconsistentMigrationHistory"
-
-**Não é erro!** Build.sh corrige automaticamente:
-```bash
-⚠️  InconsistentMigrationHistory detected!
-🔧 Auto-fixing migration history...
-✅ Fixed with --fake-initial
-```
-
-Se falhar, veja: `migrations.md`
-
----
-
-## 📊 Comparação: Supabase vs Render PostgreSQL
-
-| Aspecto | Supabase (Atual) | Render PostgreSQL |
-|---------|------------------|-------------------|
-| **Armazenamento** | ✅ 500 MB | ⚠️ 256 MB |
-| **Interface Web** | ✅ Dashboard completo | ❌ CLI apenas |
-| **Backup** | ✅ Automático (7 dias) | ❌ Manual |
-| **Conectividade** | ✅ Pooler funciona | ✅ Mesma rede |
-| **Latência** | ⚠️ 50-100ms | ✅ <1ms |
-| **RLS** | ✅ Suportado | ✅ Suportado |
-| **Custo** | ✅ Free | ✅ Free |
-
-**Recomendação:** Supabase com Connection Pooler (configuração atual).
+Se o schema `lista_presentes` não estiver exposto na API (Supabase → Settings → API → Exposed schemas), a API já não o acessa; o RLS continua sendo uma proteção extra.
 
 ---
 
 ## 🔍 Verificação
 
-### Teste de Conexão
-
 ```bash
-# Teste local
-export DATABASE_URL="postgresql://..."
-python scripts/check_database_config.py
+DATABASE_URL="postgresql://..." python scripts/check_database_config.py
 ```
 
-**Saída esperada:**
-```
-✅ DATABASE_URL está definida
-✅ Django está usando PostgreSQL ✅
-✅ Conectado ao Supabase PostgreSQL ✨
-✅ Conexão OK!
-```
-
-### Verificar RLS Habilitado
-
-```sql
--- Executar no Supabase SQL Editor
-SELECT
-    tablename,
-    rowsecurity AS rls_enabled
-FROM pg_tables
-WHERE schemaname = 'public'
-  AND tablename LIKE ANY(ARRAY['django_%', 'presentes_%', 'auth_%', 'account_%', 'socialaccount_%'])
-ORDER BY tablename;
-```
-
-**Resultado esperado:** Todas as linhas com `rls_enabled = true`
-
-### Verificar API Bloqueada
-
-```bash
-# Tentar acessar via API (deve retornar vazio)
-curl https://YOUR_PROJECT_ID.supabase.co/rest/v1/presentes_usuario \
-  -H "apikey: sb_publishable_YOUR_ANON_KEY"
-```
-
-**Resultado esperado:** `[]` (lista vazia)
+O script confirma que a `DATABASE_URL` foi lida, que o Django está em PostgreSQL (e não SQLite) e testa a conexão. No deploy, o `build.sh` faz um teste parecido e falha se estiver em SQLite.
 
 ---
 
-## 🔗 Links Úteis
+## 🆘 Solução de problemas
 
-- **Supabase Dashboard**: https://app.supabase.com/project/YOUR_PROJECT_ID
-- **Supabase SQL Editor**: https://app.supabase.com/project/YOUR_PROJECT_ID/sql/new
-- **Database Linter**: https://app.supabase.com/project/YOUR_PROJECT_ID/database/linter
-- **Supabase RLS Docs**: https://supabase.com/docs/guides/auth/row-level-security
-- **PostgreSQL RLS Docs**: https://www.postgresql.org/docs/current/ddl-rowsecurity.html
+| Erro | Solução |
+|------|---------|
+| `Network is unreachable` | Use o host do pooler, não `db.SEU_PROJETO.supabase.co` |
+| `password authentication failed` | Usuário no formato `postgres.SEU_PROJETO` e senha com URL encoding |
+| `no schema has been selected to create in` | Schema ausente: `python scripts/ensure_schema.py` |
+| `permission denied for schema/table` | Rode `ensure_schema.py` (concede `GRANT` no schema `lista_presentes` ao `postgres`) |
+| `Using SQLite instead of PostgreSQL!` (build) | `DATABASE_URL` não definida no Render |
+| `InconsistentMigrationHistory` | O `build.sh` tenta corrigir; se persistir, veja [migrations.md](migrations.md) |
+| Erros com `.iterator()` / cursores | Confirme que `DISABLE_SERVER_SIDE_CURSORS` continua no `settings.py` |
 
 ---
 
-**Última atualização:** 2026-02-07
-**Versão:** 1.1.31
+## 🔗 Links
+
+- Supabase Dashboard: https://supabase.com/dashboard
+- Conexão com o banco: https://supabase.com/docs/guides/database/connecting-to-postgres
+- RLS no Supabase: https://supabase.com/docs/guides/database/postgres/row-level-security

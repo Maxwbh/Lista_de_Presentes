@@ -1,384 +1,144 @@
-# Sistema de Logging e Issues Automáticas para Scraping
+# 🔍 Extração de Produtos, Logs e Issues Automáticas
 
-Documentação do sistema de logging aprimorado e geração automática de issues no GitHub para falhas de scraping.
+Como o sistema lê título, preço e imagem a partir do link de um produto, o que aparece nos logs do Render e quando uma issue é aberta automaticamente no GitHub.
 
-## Visão Geral
-
-O sistema de scraping foi melhorado para:
-1. **Logs visíveis no console do Render** com formatação clara
-2. **Criação automática de issues no GitHub** quando falhas de parsing ocorrem
-3. **Diferenciação entre erros de rede e erros de parsing**
-
-## Tipos de Erro
-
-### 1. NetworkError (Erro de Rede/HTTP)
-**O que é**: Problemas ao acessar a URL (404, 500, timeout, conexão falhou, etc.)
-
-**Comportamento**:
-- ❌ **NÃO gera issue no GitHub** (são erros temporários/externos)
-- ⚠️  Log de warning no console
-- Retorna `error_type: 'network'`
-
-**Exemplos**:
-- HTTP 404 (página não encontrada)
-- HTTP 500 (erro do servidor)
-- Timeout (servidor não respondeu)
-- Connection refused (servidor offline)
-
-**Log no Console**:
-```
-================================================================================
-⚠️  ERRO DE REDE ao acessar: https://amazon.com.br/produto/12345
-   Status HTTP: 404
-   Erro: Erro HTTP 404: Not Found
-================================================================================
-```
-
-### 2. ParsingError (Erro de Extração de Dados)
-**O que é**: Site acessível mas dados não podem ser extraídos (título, preço, imagem)
-
-**Comportamento**:
-- ✅ **GERA issue no GitHub automaticamente**
-- ❌ Log de erro no console
-- Retorna `error_type: 'parsing'`
-- Issue criada com labels: `auto-generated`, `enhancement`, `scraping`
-
-**Exemplos**:
-- Site mudou estrutura HTML
-- Site não suportado pelo sistema
-- Scraper desatualizado
-- Site protegido (captcha, anti-bot)
-
-**Log no Console**:
-```
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-❌ ERRO CRÍTICO DE SCRAPING - AMAZON
-   URL: https://amazon.com.br/produto/12345
-   Título: Não extraído ❌
-   Preço: Não extraído
-   Imagem: Não extraída
-
-   ⚠️  ATENÇÃO: Issue será criada automaticamente no GitHub
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-================================================================================
-⚠️  ERRO DE PARSING ao extrair dados de: https://amazon.com.br/produto/12345
-   Erro: Nao foi possivel extrair titulo da Amazon. Dados parciais: preco=None, imagem=False
-
-   ℹ️  Tentando criar issue no GitHub automaticamente...
-================================================================================
-✅ Issue #123 criada: https://github.com/Maxwbh/Lista_de_Presentes/issues/123
-```
-
-## Logs de Sucesso
-
-### Amazon
-```
-================================================================================
-🛍️  AMAZON SCRAPING - URL: https://amazon.com.br/produto/12345...
-   📝 Título:  ✅ Extraído - Produto XYZ Incrível e Maravilhoso...
-   💰 Preço:   ✅ Extraído - R$ 199.90
-   🖼️  Imagem:  ✅ Extraída
-================================================================================
-```
-
-### Mercado Livre
-```
-================================================================================
-🛒 MERCADO LIVRE SCRAPING - URL: https://mercadolivre.com.br/MLB-12345...
-   📝 Título:  ✅ Extraído - Produto ABC...
-   💰 Preço:   ✅ Extraído - R$ 299.90
-   🖼️  Imagem:  ⚠️  Não encontrada
-================================================================================
-```
-
-### Kabum
-```
-================================================================================
-🎮 KABUM SCRAPING - URL: https://kabum.com.br/produto/12345...
-   📝 Título:  ✅ Extraído - Placa de Vídeo...
-   💰 Preço:   ⚠️  Não encontrado
-   🖼️  Imagem:  ✅ Extraída
-================================================================================
-```
-
-### Generic (Site Desconhecido)
-```
-================================================================================
-🌐 SCRAPING GENÉRICO - URL: https://loja-desconhecida.com.br/produto...
-   📝 Título:  ✅ Extraído - Produto Teste...
-   💰 Preço:   ✅ Extraído - R$ 99.99
-   🖼️  Imagem:  ✅ Extraída
-================================================================================
-```
-
-## Issues Automáticas no GitHub
-
-### Requisitos
-
-As seguintes variáveis de ambiente devem estar configuradas:
-
-```bash
-# Render Dashboard > Environment Variables
-GITHUB_TOKEN=ghp_...                           # Token de acesso pessoal
-GITHUB_REPO_OWNER=Maxwbh                       # Dono do repositório
-GITHUB_REPO_NAME=Lista_de_Presentes            # Nome do repositório
-GITHUB_AUTO_CREATE_ISSUES=True                 # Habilitar auto-criação
-```
-
-### Estrutura da Issue Criada
-
-**Título**:
-```
-[AUTO] Falha ao extrair dados: amazon.com.br
-```
-
-**Labels**:
-- `auto-generated` - Issue criada automaticamente
-- `enhancement` - Melhoria necessária
-- `scraping` - Relacionado a scraping
-- `needs-triage` - Precisa análise
-- `extracao-titulo` - Se título falhou
-- `extracao-preco` - Se preço falhou
-- `extracao-imagem` - Se imagem falhou
-
-**Corpo da Issue**:
-```markdown
-## Falha Automatica na Extracao de Dados de Produto
-
-### Problema Detectado
-O sistema conseguiu acessar a URL do produto (sem erros HTTP), mas **nao conseguiu extrair** os seguintes dados:
-**Título, Preço**
-
-Este tipo de erro indica que:
-1. O site mudou sua estrutura HTML
-2. O site nao e suportado pelo sistema
-3. O template de extracao precisa ser atualizado
-
-### URL do Produto
-```
-https://amazon.com.br/produto/12345
-```
-
-### Dominio
-`amazon.com.br`
-
-### Dados Extraidos (Parcialmente)
-- **Titulo**: ❌ Nao extraido
-- **Preco**: ❌ Nao extraido
-- **Imagem**: ✅ https://m.media-amazon.com/images/...
-
-### Contexto do Usuario
-- **Usuario**: N/A
-- **Grupo**: N/A
-- **Data**: 2026-02-03 17:30:00
-
-### Acoes Sugeridas
-- [ ] Verificar se o dominio `amazon.com.br` ja esta implementado em `scrapers.py`
-- [ ] Acessar a URL manualmente e inspecionar a estrutura HTML
-- [ ] Verificar se o site usa JavaScript para carregar dados (SPA)
-- [ ] Implementar scraper especifico para `amazon.com.br` se for site conhecido
-- [ ] Atualizar scraper generico para detectar novos padroes
-- [ ] Verificar se o site tem protecao anti-bot (Cloudflare, etc.)
-
-### Informacoes Tecnicas
-- **Tipo de erro**: Falha de scraping/parsing (site acessivel)
-- **Origem**: Sistema automatico de extracao via URL
-- **Severidade**: Media
-- **Categoria**: Enhancement/Bug
-- **Necessita acao**: Sim - atualizar scrapers
-
-### Como Reproduzir
-1. Acessar sistema
-2. Adicionar novo presente
-3. Inserir URL: `https://amazon.com.br/produto/12345`
-4. Tentar extrair dados automaticamente
-5. Observar que campos nao sao preenchidos
+Código: [`presentes/scrapers.py`](../../presentes/scrapers.py), [`presentes/mercadolivre_api.py`](../../presentes/mercadolivre_api.py), [`presentes/precos.py`](../../presentes/precos.py), [`presentes/github_helper.py`](../../presentes/github_helper.py).
 
 ---
-*Esta issue foi criada automaticamente quando o sistema detectou falha na extracao de dados.*
-*Versao: 1.1.13*
+
+## 🛍️ Scrapers
+
+A `ScraperFactory` escolhe o scraper pelo domínio da URL:
+
+| Scraper | Domínios | Como lê |
+|---------|----------|---------|
+| `AmazonScraper` | `amazon.com*`, links curtos `amzn.to`, `a.co`, `amzn.com` | Seletores HTML (título, preço, imagem/`data-a-dynamic-image`) |
+| `MercadoLivreScraper` | `mercadolivre.com*`, `mercadolibre.com*`, `meli.la` | **API oficial primeiro**; se ela falhar, a página |
+| `KabumScraper` | `kabum.com*` | Seletores HTML |
+| `DecathlonScraper` | `decathlon.com*` | JSON-LD (schema.org) da página, com `og:title`/`og:image` de reserva |
+| `GenericScraper` | qualquer outro site | Meta tags, JSON-LD e ofertas schema.org embutidas |
+
+Antes da leitura, os **parâmetros de rastreamento** são removidos da URL (`utm_*`, `gclid`, `fbclid`, `gad_source`, `srsltid`).
+
+### Mercado Livre
+
+- O site bloqueia consultas automáticas (página `/gz/account-verification`), por isso a API oficial é o caminho preferido. Requer `MERCADOLIVRE_CLIENT_ID` e `MERCADOLIVRE_CLIENT_SECRET`. O token é obtido por `client_credentials`.
+- A API não libera `/items` de anúncios de outros vendedores, mas libera o **catálogo**: `/products/{id}` (nome e fotos) e `/products/{id}/items` (preço).
+- Link só de anúncio (`MLB-123-titulo`): o título vem da descrição do anúncio (ou do link) e o produto é procurado no catálogo por esse título.
+- **Limite conhecido:** anúncio **fora do catálogo** traz só o título. O scraper preenche `aviso` explicando que preço e foto devem ser preenchidos manualmente, e não é aberta issue.
+- Links curtos (`mercadolivre.com/sec/...`, `meli.la`) são expandidos.
+
+### Scraper genérico
+
+- **Título:** `og:title`, `twitter:title` e outras alternativas.
+- **Preço:**
+  1. meta tags `product:price:amount` / `itemprop="price"`;
+  2. dados estruturados: JSON-LD (`Product`/`ProductGroup`, com variantes) e ofertas schema.org embutidas em scripts/atributos, inclusive com URL-encoding (lojas VTEX/deco.cx, ex.: Farm Rio). Só aceita ofertas em `BRL`;
+  3. textos com classe `price`/`preco`/`valor`.
+- **Moeda diferente de BRL** (meta `product:price:currency` etc.): usa apenas o valor em reais que a página mostra entre parênteses, ex.: `US$ 254,00 (R$ 1.371,60)`.
+- **Imagem:** `og:image` ou `twitter:image`.
+
+### Conversão de preço
+
+Todas as leituras usam `converter_preco()` de `presentes/precos.py`, que identifica o separador decimal: com ponto e vírgula, o último é o decimal (`1.371,60`, `1,371.60`); com um só separador, ele é decimal quando tem 1 ou 2 dígitos depois (`254,00`) e de milhar com 3 dígitos (`1.371`).
+
+---
+
+## 🚦 Resultados da extração
+
+`ScraperFactory.extract_product_info(url)` (usada por `/api/extrair-info-produto/` e pela busca de imagem) devolve:
+
+| Situação | `success` / `error_type` | Abre issue? |
+|----------|--------------------------|-------------|
+| Leitura completa | `True` | Não |
+| Leitura incompleta com `aviso` (limite conhecido da loja) | `True`, com `aviso` | **Não** |
+| Leitura incompleta, site **não mapeado** (genérico) | `True` | Sim: `[AUTO] Site não mapeado: <domínio>` |
+| Leitura incompleta, site **mapeado** | `True` | Sim: `[AUTO] Leitura incompleta em site mapeado: <domínio>` |
+| Sem título (`ParsingError`) | `False`, `parsing` | Sim: `[AUTO] Falha ao extrair dados: <domínio>` |
+| Bloqueio anti-robô (`BlockedError`) | `False`, `blocked` | **Não** |
+| Erro de rede/HTTP (`NetworkError`) | `False`, `network` | Não |
+
+O bloqueio é detectado por redirecionamento para URLs como `/gz/account-verification`, `/captcha` e `/challenge`, ou por títulos de página como "captcha", "bot manager", "just a moment" e "access denied".
+
+---
+
+## 🐛 Issues automáticas
+
+### Configuração (Render → Environment)
+
+```bash
+GITHUB_TOKEN=ghp_...                 # token com permissão de criar issues no repositório
+GITHUB_REPO_OWNER=Maxwbh             # padrão
+GITHUB_REPO_NAME=Lista_de_Presentes  # padrão
+GITHUB_AUTO_CREATE_ISSUES=True       # padrão; False desliga a criação
 ```
 
-## Configuração do GitHub Token
+Sem `GITHUB_TOKEN`, ou com `GITHUB_AUTO_CREATE_ISSUES=False`, nenhuma issue é criada (o log registra o motivo).
 
-### 1. Criar Token no GitHub
+### Tipos de issue
 
-1. Acesse: https://github.com/settings/tokens
-2. Clique em "Generate new token" > "Classic"
-3. Nome: `Lista de Presentes - Auto Issues`
-4. Expiration: `No expiration` (ou 90 dias)
-5. Scopes necessários:
-   - ✅ `repo` (acesso completo a repositórios privados/públicos)
-     - ✅ `repo:status`
-     - ✅ `repo_deployment`
-     - ✅ `public_repo`
-     - ✅ `repo:invite`
-     - ✅ `security_events`
-6. Clique em "Generate token"
-7. **COPIE O TOKEN** (você não verá novamente!)
+| Título | Quando | Labels |
+|--------|--------|--------|
+| `[AUTO] Site não mapeado: <domínio>` | Genérico leu de forma incompleta | `auto-generated`, `enhancement`, `new-site-support`, `low-priority` |
+| `[AUTO] Leitura incompleta em site mapeado: <domínio>` | Scraper específico leu de forma incompleta (provável mudança de layout) | `auto-generated`, `bug`, `scraping` |
+| `[AUTO] Falha ao extrair dados: <domínio>` | Nenhum título extraído | `auto-generated`, `enhancement`, `scraping`, `needs-triage`, `extracao-*` |
+| `[AUTO] Falha ao carregar imagem: <presente>` | Falha ao baixar a imagem informada para um presente | `auto-generated`, `bug`, `imagem`, `needs-triage` |
 
-### 2. Adicionar no Render
+As issues de extração trazem a URL, os dados lidos, o erro e a seção **"Log da Extração"**: as mensagens de log dos módulos `presentes.scrapers` e `presentes.mercadolivre_api` daquela leitura (até 40 linhas).
 
-1. Dashboard do Render > Service > Environment
-2. Adicionar variável: `GITHUB_TOKEN`
-3. Valor: Cole o token copiado
-4. Save Changes
-5. Redeploy (manual ou aguardar próximo deploy)
+### Sem duplicatas
 
-### 3. Testar
+- Antes de criar, o sistema procura uma issue **aberta** com label `auto-generated` e **o mesmo título**. Se existir, não cria outra: adiciona um comentário **"Nova ocorrência"** com os detalhes, a menos que a mesma URL já apareça na issue ou nos comentários.
+- As issues criadas nos **últimos 10 minutos** ficam guardadas em memória (a listagem do GitHub demora para mostrar uma issue recém-criada). Isso evita issues repetidas em leituras seguidas, como na busca de imagens em lote.
+
+---
+
+## 🖼️ Admin: buscar imagens que faltam
+
+Em **Admin → Presentes**:
+
+- Botão **"Buscar imagens que faltam (N)"**: busca a imagem de todos os presentes sem imagem que têm link e abre a lista filtrada por "Sem imagem".
+- Ação **"Buscar imagem no site (link original)"** para os presentes selecionados.
+- Filtro **"Por imagem"** (com/sem imagem).
+- Coluna **"Última busca de imagem"**: data e resultado (`busca_imagem_resultado`), ex.: "Foto encontrada.", "O site bloqueou a consulta automática." ou o `aviso` da loja.
+
+Lotes grandes rodam em segundo plano: recarregue a página para ver a coluna atualizada. Se o presente estiver sem preço, a busca também preenche o preço lido no site.
+
+---
+
+## 📋 Logs no Render
+
+Render Dashboard → serviço → **Logs**. Mensagens úteis:
+
+| Mensagem | Significado |
+|----------|-------------|
+| `🛍️ Usando AmazonScraper`, `🛒 Usando MercadoLivreScraper`, `🎮 Usando KabumScraper`, `🏃 Usando DecathlonScraper` | Scraper escolhido |
+| `⚠️ SITE NÃO MAPEADO: <domínio>` | Vai usar o scraper genérico |
+| `<Loja> - Título: True, Preço: ..., Imagem: ...` | Resumo da leitura |
+| `API: ...` | Passos da API do Mercado Livre |
+| `Acesso bloqueado ...` | Bloqueio anti-robô (sem issue) |
+| `Leitura incompleta por limite conhecido da loja` | `aviso` preenchido (sem issue) |
+| `⚠️ ERRO DE PARSING ao extrair dados de: <url>` | Vai tentar abrir issue |
+| `✅ Issue #N criada` / `Issue #N ja existe` / `Nova ocorrência registrada na issue #N` | Resultado da issue |
+
+O nível de log padrão é `INFO` (`LOGGING` em `lista_presentes/settings.py`).
+
+### Testar a criação de issue
 
 ```python
-# Via Render Shell ou localmente
-python manage.py shell
-
+# python manage.py shell
 from presentes.github_helper import criar_issue_falha_scraping
-
-result = criar_issue_falha_scraping(
-    url_produto='https://amazon.com.br/teste',
+criar_issue_falha_scraping(
+    url_produto='https://loja.exemplo.com/produto',
     dados_extraidos={'titulo': None, 'preco': None, 'imagem_url': None},
 )
-
-print(result)
-# Deve retornar: {'success': True, 'issue_number': 123, 'issue_url': '...'}
+# {'success': True, 'issue_number': ..., 'issue_url': '...'}
 ```
 
-## Desabilitar Issues Automáticas
+---
 
-Para desabilitar temporariamente (sem remover token):
+## 🆘 Troubleshooting
 
-```bash
-# Render Dashboard > Environment
-GITHUB_AUTO_CREATE_ISSUES=False
-```
-
-## Monitoramento no Render
-
-### Ver Logs em Tempo Real
-
-1. Render Dashboard > Service > Logs
-2. Procurar por:
-   - `🛍️` - Scraping Amazon
-   - `🛒` - Scraping Mercado Livre
-   - `🎮` - Scraping Kabum
-   - `🌐` - Scraping Genérico
-   - `✅` - Sucesso
-   - `❌` - Erro crítico
-   - `⚠️` - Warning
-
-### Filtrar Logs
-
-```bash
-# Apenas sucessos
-grep "✅" logs.txt
-
-# Apenas erros críticos
-grep "❌ ERRO CRÍTICO" logs.txt
-
-# Apenas parsing errors
-grep "ERRO DE PARSING" logs.txt
-
-# Issues criadas
-grep "Issue #" logs.txt
-```
-
-## Análise de Problemas
-
-### Issue Criada Mas Não Devia
-
-**Causa**: `GITHUB_AUTO_CREATE_ISSUES=True` está ativo
-
-**Solução**:
-1. Desabilitar: `GITHUB_AUTO_CREATE_ISSUES=False`
-2. Ou remover `GITHUB_TOKEN`
-
-### Issue Não Criada Mas Devia
-
-**Causa Possível 1**: Token inválido/expirado
-```bash
-# Verificar logs
-grep "GITHUB_TOKEN nao configurado" logs.txt
-grep "Falha ao criar issue" logs.txt
-```
-
-**Solução**: Gerar novo token e atualizar `GITHUB_TOKEN`
-
-**Causa Possível 2**: Feature desabilitada
-```bash
-# Verificar
-echo $GITHUB_AUTO_CREATE_ISSUES  # Deve ser "True"
-```
-
-**Solução**: `GITHUB_AUTO_CREATE_ISSUES=True`
-
-**Causa Possível 3**: NetworkError (não deve gerar issue)
-```bash
-# Verificar se foi erro de rede (404, 500, timeout)
-grep "ERRO DE REDE" logs.txt
-```
-
-**Solução**: NetworkErrors são esperados e não geram issues
-
-### Logs Não Aparecem
-
-**Causa**: Nível de log configurado incorretamente
-
-**Solução**: Verificar `settings.py`:
-```python
-LOGGING = {
-    'version': 1,
-    'disable_existing_loggers': False,
-    'handlers': {
-        'console': {
-            'class': 'logging.StreamHandler',
-            'level': 'INFO',  # Deve ser INFO ou DEBUG
-        },
-    },
-    'loggers': {
-        'presentes': {
-            'handlers': ['console'],
-            'level': 'INFO',  # Deve ser INFO ou DEBUG
-        },
-    },
-}
-```
-
-## Estatísticas
-
-Para análise de problemas, use os logs:
-
-```bash
-# Quantas falhas de scraping hoje?
-grep "ERRO CRÍTICO DE SCRAPING" logs.txt | wc -l
-
-# Quais sites falharam mais?
-grep "ERRO CRÍTICO DE SCRAPING" logs.txt | grep -oP "(?<=SCRAPING - )[A-Z]+" | sort | uniq -c
-
-# Quantas issues foram criadas?
-grep "Issue #[0-9]+ criada" logs.txt | wc -l
-
-# Taxa de sucesso por site
-grep -c "AMAZON.*✅ Extraído" logs.txt
-```
-
-## Changelog
-
-### v1.1.14 (2026-02-03)
-- ✨ Logs formatados com emojis e separadores visuais
-- ✨ Diferenciação clara entre NetworkError e ParsingError
-- ✨ Integração automática com criação de issues no GitHub
-- ✨ Logs de erro crítico bem visíveis no console do Render
-- ✨ Informação de criação de issue nos logs
-- 📝 Documentação completa do sistema de logging
-
-## Contato
-
-Dúvidas ou problemas:
-- Maxwell Oliveira (@maxwbh)
-- maxwbh@gmail.com
-
-## Referências
-
-- [Scrapers Implementation](presentes/scrapers.py)
-- [GitHub Helper](presentes/github_helper.py)
-- [Django Logging](https://docs.djangoproject.com/en/4.2/topics/logging/)
+- **Issue não foi criada:** confira `GITHUB_TOKEN` (válido e com permissão de issues) e `GITHUB_AUTO_CREATE_ISSUES`. Bloqueios, erros de rede e leituras com `aviso` não abrem issue de propósito. Se já havia issue aberta com o mesmo título, procure o comentário "Nova ocorrência".
+- **Mercado Livre sem preço/foto:** veja se as credenciais da API estão configuradas e se o anúncio está no catálogo (a mensagem do `aviso` explica).
+- **Preço errado:** verifique a moeda da página; preços fora de BRL só são aceitos pelo valor em reais entre parênteses.

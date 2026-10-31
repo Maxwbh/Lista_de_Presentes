@@ -1,433 +1,122 @@
-# Deploy no Render.com - Guia Completo
+# 🚀 Deploy no Render.com
 
-## 📋 Configuração
+O app roda no plano **Free** do Render, com banco PostgreSQL no **Supabase** ([SUPABASE.md](../database/SUPABASE.md)). A configuração está em [`render.yaml`](../../render.yaml) (Blueprint), [`build.sh`](../../build.sh) e [`gunicorn.conf.py`](../../gunicorn.conf.py).
 
-### Aplicação
-- **URL**: https://your-app-name.onrender.com
-- **Dashboard**: https://dashboard.render.com/web/lista-presentes
-- **Branch**: Automático (main/production)
-
-### Database
-- **Provider**: Supabase PostgreSQL (Configuração Atual)
-- **Schema**: `lista_presentes` (isolado)
-- **Armazenamento**: 500 MB Free Tier
-- **Latência**: 50-100ms (Connection Pooler)
-- **Isolamento**: Schema isolado para múltiplas apps Django
-- **Setup**: Manual via Dashboard (DATABASE_URL)
-
-**Alternativa:** Render PostgreSQL (veja seção "Database" no final deste documento)
+- **App:** https://lista-presentes-im4b.onrender.com
+- **Deploy automático:** a cada push na branch `main` (`branch: main` no `render.yaml`)
+- **Health check:** `/health/`
 
 ---
 
-## 🚀 Free Tier - Características e Otimizações
+## 📦 Plano Free: limites
 
-### Limites do Free Tier
+| Item | Valor |
+|------|-------|
+| RAM | 512 MB, CPU compartilhada |
+| Horas | 750 horas de instância por mês (somando os serviços da conta) |
+| Sleep | Dorme após 15 min sem acesso; o primeiro acesso acorda o serviço (cerca de 1 min) |
+| SMTP | Portas bloqueadas: o e-mail sai pela API HTTP da Brevo |
+| Shell/SSH | Não disponível no Free: comandos de manutenção rodam no `build.sh` ou localmente apontando para o banco de produção |
 
-**Web Service:**
-- RAM: 512 MB
-- CPU: Compartilhada
-- Inatividade: Desliga após 15 minutos sem uso
-- Cold Start: 30-60 segundos
-- Horas/mês: 750 horas gratuitas
-- SSL: HTTPS automático
-
-### Otimizações Implementadas
-
-#### 1. Gunicorn (`gunicorn.conf.py`)
-
-```python
-# Free Tier (512 MB RAM)
-workers = 1                # 1 worker
-threads = 2                # 2 threads por worker
-timeout = 120              # 2 minutos
-max_requests = 1000        # Reinicia após 1000 requests
-preload_app = True         # Economiza memória
-```
-
-**Benefícios:**
-- `max_requests`: Previne memory leaks
-- `preload_app`: Compartilha código entre workers
-- `threads`: Concorrência sem usar muita RAM
-
-#### 2. Build Script (`build.sh`)
-
-```bash
-#!/usr/bin/env bash
-set -o errexit
-
-# 1. Testar conexão database
-python -c "import django; django.setup(); ..."
-
-# 2. Instalar dependências
-pip install --upgrade pip
-pip install -r requirements.txt
-
-# 3. Coletar static files
-python manage.py collectstatic --noinput
-
-# 4. Corrigir histórico de migrações (auto)
-python manage.py fix_migration_history
-
-# 5. Aplicar migrações
-python manage.py migrate --noinput
-
-# 6. Criar/atualizar admin user
-python manage.py shell < scripts/create_or_update_admin.py
-```
+Gunicorn (`gunicorn.conf.py`): 1 worker `gthread` com 4 threads, timeout de 120 s, `max_requests` 1000, `preload_app = True`. Ajustável por `WEB_CONCURRENCY`, `GUNICORN_THREADS`, `GUNICORN_TIMEOUT` e `MAX_REQUESTS`. Não aumente os workers no Free.
 
 ---
 
-## 🔑 Variáveis de Ambiente
+## 🛠️ Criar o serviço
 
-### Obrigatórias
+1. No Render: **New → Blueprint** e selecione o repositório (o `render.yaml` cria o web service `lista-presentes`).
+   Manualmente, use: Build Command `bash build.sh` e Start Command `gunicorn --config gunicorn.conf.py lista_presentes.wsgi:application`.
+2. Preencha as variáveis marcadas como `sync: false` (abaixo) em **Environment**.
+3. Faça o deploy e acompanhe os logs do build.
 
-```bash
-# Django
-SECRET_KEY=<gerado automaticamente>
-ALLOWED_HOSTS=.onrender.com,your-app-name.onrender.com
+### O que o `build.sh` faz
 
-# Database (Supabase PostgreSQL com Schema Isolado)
-# IMPORTANTE: Não adicionar ?options= - search_path configurado automaticamente
-DATABASE_URL=postgresql://postgres.YOUR_PROJECT:YOUR_PASSWORD_ENCODED@aws-1-us-east-2.pooler.supabase.com:6543/postgres
+1. Instala as dependências (`pip install -r requirements.txt`).
+2. Compila o Tailwind CSS (`npx tailwindcss` em `theme/static_src` → `theme/static/css/dist/styles.css`).
+3. Roda `collectstatic`.
+4. Testa a conexão com o banco e **falha se estiver em SQLite** (falta `DATABASE_URL`).
+5. Garante o schema `lista_presentes` (`scripts/ensure_schema.py`).
+6. Roda `makemigrations` e `migrate --run-syncdb`; se der `InconsistentMigrationHistory`, tenta `--fake-initial` e depois `fix_migration_history --reset`.
+7. Roda `fix_admin` (cria/promove o superusuário).
 
-# Supabase (Opcional - para uso futuro com Supabase SDK)
-SUPABASE_URL=https://YOUR_PROJECT_ID.supabase.co
-SUPABASE_KEY=sb_publishable_YOUR_ANON_KEY
+### Arquivos estáticos
 
-# GitHub (Auto-create Issues)
-GITHUB_TOKEN=<fornecido pelo administrador>
-GITHUB_REPO_OWNER=Maxwbh
-GITHUB_REPO_NAME=Lista_de_Presentes
-GITHUB_AUTO_CREATE_ISSUES=True
-```
-
-### Opcionais
-
-```bash
-# Debug (apenas desenvolvimento)
-DEBUG=False
-
-# Django Admin
-DJANGO_SUPERUSER_USERNAME=admin
-DJANGO_SUPERUSER_PASSWORD=<senha forte>
-DJANGO_SUPERUSER_EMAIL=admin@example.com
-```
-
-**Configurar em:** https://dashboard.render.com/web/lista-presentes/environment
+Servidos pelo **WhiteNoise** via `STORAGES` do Django 5.1 com `CompressedManifestStaticFilesStorage`: cada versão do CSS/JS ganha nome com hash (ex.: `styles.<hash>.css`), então o navegador não fica com arquivo antigo após o deploy. O antigo `STATICFILES_STORAGE` é ignorado pelo Django 5.1; não o use.
 
 ---
 
-## 👤 Criar/Atualizar Admin User
+## 🔑 Variáveis de ambiente
 
-### Durante Deploy (Automático)
+Já definidas no `render.yaml`: `PYTHON_VERSION=3.11.0`, `DEBUG=false`, `DJANGO_SETTINGS_MODULE`, `SECRET_KEY` (gerada), `ALLOWED_HOSTS`, `SITE_URL`, `GITHUB_REPO_OWNER`, `GITHUB_REPO_NAME`, `GITHUB_AUTO_CREATE_ISSUES`, `WEB_CONCURRENCY=1`, `GUNICORN_TIMEOUT=120`, `MAX_REQUESTS=1000`.
 
-O script `scripts/create_or_update_admin.py` é executado automaticamente no `build.sh`:
+Preencher no Dashboard:
 
-```python
-# Se admin não existe: cria
-# Se admin existe: atualiza senha e email
-```
+| Variável | Obrigatória | Uso |
+|----------|-------------|-----|
+| `DATABASE_URL` | ✅ | Supabase (pooler). Não adicione `?options=`: o `search_path` é aplicado pelo código |
+| `DJANGO_SUPERUSER_EMAIL`, `DJANGO_SUPERUSER_PASSWORD` | ✅ | Admin criado pelo `fix_admin`. Sem elas, o padrão do comando é uma senha fraca. `RESET_ADMIN_PASSWORD=true` redefine a senha de um admin existente |
+| `CRON_TOKEN` | ✅ para os workflows | Mesmo valor no Render e no secret `CRON_TOKEN` do GitHub |
+| `GEMINI_API_KEY` | Recomendada | IA principal; `ANTHROPIC_API_KEY` e `OPENAI_API_KEY` são fallback |
+| `BREVO_API_KEY`, `DEFAULT_FROM_EMAIL` | Recomendada | E-mail (redefinição de senha, boas-vindas). Remetente verificado na Brevo |
+| `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_ADMIN_EMAIL` | Opcional | Push. Gere com `python manage.py gerar_chaves_vapid` |
+| `MERCADOLIVRE_CLIENT_ID`, `MERCADOLIVRE_CLIENT_SECRET` | Opcional | API do Mercado Livre (Redirect URI `{SITE_URL}/integracoes/mercadolivre/callback/`) |
+| `GITHUB_TOKEN` | Opcional | Issues automáticas para falhas de imagem |
+| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` (e demais provedores) | Opcional | Login social ([SOCIAL_LOGIN_CONFIG.md](../features/SOCIAL_LOGIN_CONFIG.md)) |
+| `SUPABASE_URL`, `SUPABASE_KEY` | Opcional | Não usadas pelo Django hoje |
 
-### Manualmente (Render Shell)
-
-```bash
-# Acessar Shell no Render Dashboard
-python manage.py createsuperuser --username admin --email admin@example.com
-```
-
-**Credenciais padrão:**
-- Username: `admin` (de DJANGO_SUPERUSER_USERNAME)
-- Password: (de DJANGO_SUPERUSER_PASSWORD)
-- Email: (de DJANGO_SUPERUSER_EMAIL)
-
-**Admin URL:** https://your-app-name.onrender.com/admin/
+Lista completa com padrões: [INSTALACAO.md](../development/INSTALACAO.md#️-variáveis-de-ambiente).
 
 ---
 
-## 🧪 Gerar Dados de Teste
+## ⏰ Keep-alive e tarefas agendadas
 
-### Via Django Shell (Render Dashboard)
+O Render Free não tem cron nativo; as tarefas rodam no GitHub Actions:
 
-```python
-from presentes.tests.factories import *
+| Workflow | Função |
+|----------|--------|
+| [`keep-alive.yml`](../../.github/workflows/keep-alive.yml) | Ping em `/health/` a cada 14 min **só nas horas de uso** de cada dia da semana (definidas pelo relatório de acessos), para não estourar as 750 h/mês. Fora delas o serviço dorme |
+| [`pesquisa-precos.yml`](../../.github/workflows/pesquisa-precos.yml) | Toda segunda às 08:00 UTC chama `POST /api/cron/pesquisar-precos/` (header `X-Cron-Token`). Manual com opção `forcar` |
+| [`relatorio-acessos.yml`](../../.github/workflows/relatorio-acessos.yml) | Sob demanda: busca `/api/acessos/resumo/?dias=N` (header `X-Cron-Token`) e publica no resumo da execução. Use para revisar as horas do keep-alive |
 
-# Criar 3 usuários
-usuarios = UsuarioFactory.create_batch(3)
+Configuração no GitHub (**Settings → Secrets and variables → Actions**):
 
-# Criar 2 grupos
-grupo1 = GrupoFactory.create(nome="Família")
-grupo2 = GrupoFactory.create(nome="Amigos")
+- Secret `CRON_TOKEN`: **mesmo valor** do `CRON_TOKEN` do Render (sem ele o endpoint responde 503; com valor diferente, 403).
+- Variável `RENDER_URL` (opcional): URL base do app; padrão `https://lista-presentes-im4b.onrender.com`.
 
-# Adicionar membros aos grupos
-GrupoMembroFactory.create(usuario=usuarios[0], grupo=grupo1, e_mantenedor=True)
-GrupoMembroFactory.create(usuario=usuarios[1], grupo=grupo1)
-
-# Criar 10 presentes para o grupo1
-presentes = PresenteFactory.create_batch(10, usuario=usuarios[0], grupo=grupo1)
-
-# Criar 3 compras
-CompraFactory.create(presente=presentes[0], comprador=usuarios[1])
-CompraFactory.create(presente=presentes[1], comprador=usuarios[2])
-
-print(f"✅ Criados {Usuario.objects.count()} usuários")
-print(f"✅ Criados {Grupo.objects.count()} grupos")
-print(f"✅ Criados {Presente.objects.count()} presentes")
-print(f"✅ Criadas {Compra.objects.count()} compras")
-```
-
-### Via Script Python
-
-```bash
-# Criar script populate_data.py
-cat > populate_data.py <<'EOF'
-import os
-import django
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'lista_presentes.settings')
-django.setup()
-
-from presentes.tests.factories import *
-
-# Sua lógica aqui...
-EOF
-
-# Executar no Render Shell
-python populate_data.py
-```
+> ⚠️ Em repositório público, o GitHub desativa workflows agendados após 60 dias sem atividade no repositório. Se o keep-alive ou a pesquisa de preços pararem, reative em **Actions → workflow → Enable workflow** (ou Disable/Enable).
 
 ---
 
-## 🆘 Troubleshooting
+## 🆘 Solução de problemas
 
-### Deploy Failing
+| Sintoma no log | Causa e solução |
+|----------------|-----------------|
+| `Using SQLite instead of PostgreSQL!` | `DATABASE_URL` ausente. Adicione em Environment e refaça o deploy |
+| `Network is unreachable` | Host direto do Supabase (IPv6). Use o Connection Pooler (`*.pooler.supabase.com`) |
+| `password authentication failed` | Senha com caracteres especiais sem URL encoding (`@` → `%40`, `#` → `%23`, `!` → `%21`) |
+| `InconsistentMigrationHistory` | O `build.sh` tenta corrigir sozinho. Se persistir, veja [migrations.md](../database/migrations.md) |
+| CSS/JS desatualizado ou 404 em estáticos | Confira no log do build a compilação do Tailwind e o `collectstatic`; não defina `STATICFILES_STORAGE` |
+| E-mail não chega | Confira `BREVO_API_KEY` e se o remetente de `DEFAULT_FROM_EMAIL` está verificado na Brevo. SMTP não funciona no Free |
+| Workflows de cron falham com 403/503 | `CRON_TOKEN` diferente entre Render e GitHub, ou ausente no Render |
+| Primeiro acesso lento | Serviço dormindo (fora das horas do keep-alive). Normal no Free |
+| Out of memory | Mantenha `WEB_CONCURRENCY=1` |
 
-#### Erro: "InconsistentMigrationHistory"
-
-**Causa:** Histórico de migrações inconsistente
-
-**Solução (Automática):**
-```bash
-⚠️  InconsistentMigrationHistory detected!
-🔧 Auto-fixing migration history...
-✅ Fixed with --fake-initial
-```
-
-O `build.sh` corrige automaticamente. Se falhar:
-
-```bash
-# Render Shell
-python manage.py fix_migration_history --reset
-python manage.py migrate --fake-initial
-```
-
-#### Erro: "Network is unreachable"
-
-**Causa:** Usando database host errado
-
-**Solução:** Verificar DATABASE_URL usa Connection Pooler:
-```
-aws-1-us-east-2.pooler.supabase.com:6543  (não db.YOUR_PROJECT_ID:5432)
-```
-
-#### Erro: "Using SQLite instead of PostgreSQL"
-
-**Causa:** DATABASE_URL não configurada
-
-**Solução:**
-1. Dashboard > Environment
-2. Adicionar DATABASE_URL
-3. Save Changes
-4. Redeploy
-
-### Cold Start (Aplicação Lenta)
-
-**Causa:** Free Tier desliga após 15min de inatividade
-
-**Solução:**
-1. Aguardar 30-60s no primeiro acesso
-2. Usar serviço keep-alive (opcional): `KEEP_ALIVE.md`
-3. Upgrade para Starter+ ($7/mês) para manter sempre ativo
-
-### Build Timeout
-
-**Causa:** Build demora mais de 15 minutos
-
-**Solução:**
-```bash
-# build.sh - adicionar flag
-pip install --no-cache-dir -r requirements.txt
-```
-
-### Out of Memory
-
-**Causa:** Gunicorn usando mais de 512 MB
-
-**Solução:** Verificar `gunicorn.conf.py`:
-```python
-workers = 1  # NÃO aumentar no Free Tier
-threads = 2  # OK aumentar até 4
-```
-
-### Static Files Não Carregam
-
-**Causa:** `collectstatic` não executou
-
-**Solução:** Verificar `build.sh` tem:
-```bash
-python manage.py collectstatic --noinput
-```
-
-E `settings.py` tem:
-```python
-STATIC_ROOT = BASE_DIR / 'staticfiles'
-STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
-```
+Para diagnosticar o banco localmente com a URL de produção: `DATABASE_URL=... python scripts/check_database_config.py`. Erros 500: [DEBUG_500_ERRORS.md](../development/DEBUG_500_ERRORS.md).
 
 ---
 
-## ✅ Checklist de Deploy
+## ✅ Checklist pós-deploy
 
-### Antes do Deploy
-
-- [ ] Variáveis de ambiente configuradas no Render Dashboard
-- [ ] DATABASE_URL com Supabase Connection Pooler e schema isolado
-- [ ] SUPABASE_URL e SUPABASE_KEY configurados (opcional)
-- [ ] GITHUB_TOKEN configurado
-- [ ] SECRET_KEY gerado (automático)
-- [ ] ALLOWED_HOSTS configurado
-
-### Após Deploy
-
-- [ ] Build completou com sucesso
-- [ ] Migrações aplicadas (verificar logs)
-- [ ] Admin user criado/atualizado
-- [ ] Site acessível via HTTPS
-- [ ] Login funcionando
-- [ ] Static files carregando
-- [ ] Database conectado (Supabase com schema lista_presentes)
-
-### Verificação Completa
-
-```bash
-# 1. Verificar deployment
-https://your-app-name.onrender.com/
-
-# 2. Verificar admin
-https://your-app-name.onrender.com/admin/
-
-# 3. Verificar logs
-https://dashboard.render.com/web/lista-presentes/logs
-
-# 4. Verificar environment
-https://dashboard.render.com/web/lista-presentes/environment
-
-# 5. Testar funcionalidades
-- [ ] Login com Google
-- [ ] Criar presente
-- [ ] Ver lista de presentes
-- [ ] Trocar de grupo
-- [ ] Tema (Purple/Green)
-```
+- [ ] Build concluído, com `Database connection successful` e migrações aplicadas
+- [ ] `/health/` responde 200
+- [ ] Login (e-mail e, se configurado, Google) e acesso ao `/admin/`
+- [ ] CSS carregando com o tema padrão (`emerald_light`)
+- [ ] Secret `CRON_TOKEN` igual no GitHub e no Render; workflows agendados habilitados
 
 ---
 
-## 🔧 Comandos Úteis
+## 🔗 Links
 
-### Render Dashboard > Shell
-
-```bash
-# Acessar Django shell
-python manage.py shell
-
-# Ver migrações
-python manage.py showmigrations
-
-# Aplicar migrações manualmente
-python manage.py migrate
-
-# Criar superuser
-python manage.py createsuperuser
-
-# Verificar database
-python scripts/check_database_config.py
-
-# Coletar static files
-python manage.py collectstatic --noinput
-
-# Ver logs em tempo real
-# (usar a interface web: Dashboard > Logs)
-```
-
-### Git (Local)
-
-```bash
-# Forçar redeploy (commit vazio)
-git commit --allow-empty -m "chore: Force redeploy"
-git push origin main
-
-# Ver status do deploy
-# (usar a interface web: Dashboard > Events)
-```
-
----
-
-## 📊 Monitoramento
-
-### Logs
-
-```bash
-# Acessar logs
-https://dashboard.render.com/web/lista-presentes/logs
-
-# Filtrar erros
-Ctrl+F: "ERROR"
-Ctrl+F: "❌"
-Ctrl+F: "Traceback"
-```
-
-### Métricas (apenas Starter+)
-
-- CPU Usage
-- Memory Usage
-- Request Count
-- Response Time
-
-**Free Tier:** Métricas não disponíveis
-
----
-
-## 💰 Upgrade
-
-### Quando Fazer Upgrade?
-
-**Considere Starter+ ($7/mês) se:**
-- Cold start incomoda usuários (>30s)
-- Aplicação fica inativa frequentemente
-- Precisa de métricas e monitoramento
-- Quer mais RAM (até 2 GB)
-- Quer CPU dedicada
-
-### Como Fazer Upgrade
-
-1. Dashboard > Settings
-2. Instance Type: Free → Starter
-3. Confirm
-4. Atualizar `gunicorn.conf.py`:
-   ```python
-   workers = 4  # Pode aumentar com mais RAM
-   ```
-
----
-
-## 🔗 Links Úteis
-
-- **Site**: https://your-app-name.onrender.com
-- **Dashboard**: https://dashboard.render.com/web/lista-presentes
-- **Logs**: https://dashboard.render.com/web/lista-presentes/logs
-- **Environment**: https://dashboard.render.com/web/lista-presentes/environment
-- **Render Docs**: https://render.com/docs
-- **Render Status**: https://status.render.com
-
----
-
-**Última atualização:** 2026-02-07
-**Versão:** 1.1.31
+- Dashboard: https://dashboard.render.com/
+- Docs do Render: https://render.com/docs · Free: https://render.com/docs/free
+- Status: https://status.render.com

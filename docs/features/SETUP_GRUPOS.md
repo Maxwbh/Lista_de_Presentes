@@ -1,281 +1,86 @@
-# Setup do Sistema de Grupos
+# 👥 Grupos: Primeiros Passos e Funcionalidades
 
-Este guia explica como configurar o grupo padrão **"Natal Família Cruz e Credos 2025"** e migrar dados existentes.
-
-## 🚀 Setup Rápido (Recomendado)
-
-Execute o script automatizado que faz tudo:
-
-```bash
-./setup_grupo_padrao.sh
-```
-
-Este script irá:
-1. ✅ Criar migrations
-2. ✅ Aplicar migrations ao banco de dados
-3. ✅ Criar o grupo padrão
-4. ✅ Adicionar todos os usuários ao grupo
-5. ✅ Tornar administradores em mantenedores
-6. ✅ Migrar todos os dados existentes para o grupo
+Os presentes, compras, notificações e sugestões pertencem a um **grupo**. Cada usuário pode participar de vários grupos e trabalha sempre no seu **grupo ativo**.
 
 ---
 
-## 📋 Setup Manual (Passo a Passo)
+## 🧭 Funcionalidades
 
-Se preferir executar manualmente:
+Todas as telas abaixo exigem login.
 
-### 1. Criar e Aplicar Migrations
+| URL | O que faz | Quem pode |
+|-----|-----------|-----------|
+| `/grupos/` | Lista os grupos ativos do usuário e permite trocar o grupo ativo (sem grupos, redireciona para criar um) | Membro |
+| `/grupos/criar/` | Cria um grupo; o criador vira mantenedor e o grupo vira o ativo | Qualquer usuário |
+| `/grupos/editar/<id>/` | Edita o grupo | Mantenedor |
+| `/grupos/ativar/<id>/` | Define o grupo ativo (aceita `?next=` para voltar à página atual) | Membro |
+| `/grupos/<id>/membros/` | Gerencia membros e mostra o link de convite | Mantenedor |
+| `/grupos/<id>/membros/adicionar/` | Adiciona por e-mail um usuário já cadastrado (ele recebe uma notificação) | Mantenedor |
+| `/grupos/<id>/membros/remover/<user_id>/` | Remove um membro (não remove a si mesmo) | Mantenedor |
+| `/grupos/<id>/membros/toggle-mantenedor/<user_id>/` | Promove ou rebaixa mantenedor | Mantenedor |
+| `/grupos/<id>/toggle-ativo/` | Ativa ou desativa o grupo | Mantenedor |
+| `/grupos/<id>/sair/` | Sai do grupo (o último mantenedor precisa promover outro antes) | Membro |
+| `/grupos/entrar/` | Entra informando o código de convite (aceita também o link completo) | Qualquer usuário |
+| `/grupos/convite/<codigo>/` | Aceita o convite: entra no grupo e o define como ativo | Qualquer usuário |
 
-```bash
-python manage.py makemigrations
-python manage.py migrate
-```
+O seletor de grupo ativo também fica no menu superior (context processor `presentes/context_processors.py`).
 
-### 2. Criar Grupo Padrão e Adicionar Usuários
+### 🔗 Convite
+
+- O link de convite exibido na tela de membros é montado com o domínio da requisição atual.
+- Quem abre o link sem conta é levado ao login e pode se cadastrar; o `?next=` é preservado, e ao concluir o cadastro a pessoa volta ao convite e entra no grupo.
+- Grupos desativados não aceitam convite nem podem ser ativados.
+
+---
+
+## 🚀 Primeiro grupo e convites
+
+1. **Cadastre-se** em `/registro/` (ou entre pelo login social) e faça login.
+2. Sem nenhum grupo, o sistema leva a **`/grupos/criar/`**. Informe o nome (e, se quiser, a descrição e a URL de uma imagem) e salve: você vira **mantenedor** e o grupo passa a ser o ativo.
+3. Em **`/grupos/<id>/membros/`** copie o **link de convite** (ou o código) e envie para as pessoas.
+4. Quem recebe o link:
+   - já com conta: abre o link e entra no grupo;
+   - sem conta: abre o link, cadastra-se e volta automaticamente ao convite;
+   - ou informa o código em `/grupos/` (formulário "entrar com código", que chama `/grupos/entrar/`).
+5. Quem já tem conta também pode ser adicionado pelo e-mail na tela de membros.
+6. Promova outros membros a mantenedor se quiser dividir a administração.
+
+---
+
+## 🔧 Dados antigos sem grupo (legado)
+
+Bancos criados antes da existência de grupos podem ter presentes, compras, notificações e sugestões sem grupo. Para esses casos existem dois comandos:
 
 ```bash
 python manage.py criar_grupo_padrao
+python manage.py migrar_dados_para_grupo [--grupo-nome "Nome do Grupo"]
 ```
 
-**O que este comando faz:**
-- ✅ Cria o grupo "Natal Família Cruz e Credos 2025"
-- ✅ Adiciona TODOS os usuários existentes ao grupo
-- ✅ Torna usuários `is_superuser=True` em **mantenedores** do grupo
-- ✅ Define o grupo como **grupo ativo** para usuários que não têm um
-- ✅ Exibe o código e link de convite
+- **`criar_grupo_padrao`** cria um grupo com nome fixo definido no próprio comando (pode ser repetido sem duplicar), adiciona todos os usuários (superusuários como **mantenedores**), define o grupo como ativo para quem não tem um e mostra o código e o link de convite (o link usa `SITE_URL`).
+- **`migrar_dados_para_grupo`** vincula ao grupo os **Presentes**, **Compras**, **Notificações** e **Sugestões de Compra** sem grupo. Sem `--grupo-nome`, usa o grupo criado por `criar_grupo_padrao`.
 
-**Saída esperada:**
-```
-✓ Grupo "Natal Família Cruz e Credos 2025" criado com sucesso!
-  Código de convite: abc123xyz...
+Com Docker: `docker compose exec web python manage.py <comando>`.
 
-📊 Encontrados 5 usuários
-  ✓ admin@example.com adicionado como MANTENEDOR
-  + user1@example.com adicionado como membro
-  + user2@example.com adicionado como membro
-  ...
+### Interface web: `/setup/`
 
-✅ OPERAÇÃO CONCLUÍDA COM SUCESSO!
+Para plataformas sem shell (ex.: Render Free), a rota `/setup/` (`setup_grupos_view`) mostra o status (usuários, grupos, presentes, presentes sem grupo e se o grupo padrão existe) e tem botões para:
 
-📋 Resumo:
-  • Grupo: Natal Família Cruz e Credos 2025
-  • Total de usuários: 5
-  • Novos membros adicionados: 5
-  • Mantenedores (admins): 1
-```
+- **Setup completo**: `makemigrations`, `migrate`, `criar_grupo_padrao` e `migrar_dados_para_grupo`;
+- cada etapa separada: **Migrations**, **Criar Grupo** e **Migrar Dados**.
 
-### 3. Migrar Dados Existentes para o Grupo
+O resultado aparece em mensagens no topo da página.
 
-```bash
-python manage.py migrar_dados_para_grupo
-```
-
-**O que este comando faz:**
-- ✅ Migra todos os **Presentes** sem grupo para o grupo padrão
-- ✅ Migra todas as **Compras** sem grupo
-- ✅ Migra todas as **Notificações** sem grupo
-- ✅ Migra todas as **Sugestões de Compra** sem grupo
-
-**Saída esperada:**
-```
-✓ Grupo encontrado: Natal Família Cruz e Credos 2025
-✓ 15 presentes migrados para o grupo
-✓ 3 compras migradas para o grupo
-✓ 8 notificações migradas para o grupo
-✓ 12 sugestões migradas para o grupo
-
-✅ MIGRAÇÃO CONCLUÍDA COM SUCESSO!
-
-📋 Resumo:
-  • Presentes migrados: 15
-  • Compras migradas: 3
-  • Notificações migradas: 8
-  • Sugestões migradas: 12
-  • TOTAL: 38 registros
-```
-
----
-
-## 🔧 Opções Avançadas
-
-### Criar Grupo com Nome Personalizado
-
-Edite o comando `criar_grupo_padrao.py` e altere a linha:
-
-```python
-nome='Natal Família Cruz e Credos 2025',
-```
-
-### Migrar para Grupo Específico
-
-```bash
-python manage.py migrar_dados_para_grupo --grupo-nome "Meu Grupo Customizado"
-```
-
----
-
-## 📝 Comandos de Gerenciamento Disponíveis
-
-| Comando | Descrição |
-|---------|-----------|
-| `criar_grupo_padrao` | Cria grupo padrão e adiciona todos os usuários |
-| `migrar_dados_para_grupo` | Migra dados existentes para um grupo |
-| `populate_test_data` | Gera dados de teste (já existia) |
-
----
-
-## 🐳 Docker
-
-Se estiver usando Docker:
-
-```bash
-docker compose exec web python manage.py criar_grupo_padrao
-docker compose exec web python manage.py migrar_dados_para_grupo
-```
-
-Ou execute o script dentro do container:
-
-```bash
-docker compose exec web ./setup_grupo_padrao.sh
-```
+> ⚠️ **Segurança:** no código atual a view **não exige login nem superusuário** (acesso público, como registrado no CHANGELOG 1.1.4, para o Render sem SSH). Qualquer pessoa com a URL pode disparar migrations e os comandos acima. Considere restringir o acesso depois do setup inicial.
 
 ---
 
 ## ✅ Verificação
 
-Após executar os comandos, verifique:
+- **Admin:** `/admin/presentes/grupo/` e `/admin/presentes/grupomembro/` (mantenedores com `e_mantenedor = True`).
+- **App:** `/grupos/` mostra o grupo como ativo e `/dashboard/` abre sem pedir grupo.
+- **Shell:**
 
-1. **Django Admin**: http://localhost:8000/admin/presentes/grupo/
-   - Deve mostrar o grupo "Natal Família Cruz e Credos 2025"
-   - Clique no grupo para ver todos os membros
-
-2. **Django Admin - Membros**: http://localhost:8000/admin/presentes/grupomembro/
-   - Deve mostrar todos os usuários como membros
-   - Administradores devem ter `e_mantenedor = True`
-
-3. **Interface de Grupos**: http://localhost:8000/grupos/
-   - Usuários verão o grupo na lista
-   - Grupo deve estar marcado como ativo
-
-4. **Dashboard**: http://localhost:8000/dashboard/
-   - Deve funcionar normalmente (sem erro de grupo ativo)
-   - Estatísticas devem refletir dados do grupo
-
----
-
-## 🔗 Link de Convite
-
-Para adicionar novos usuários ao grupo, compartilhe o link de convite gerado:
-
+```python
+from presentes.models import Presente
+Presente.objects.filter(grupo__isnull=True).count()  # deve ser 0 depois de migrar_dados_para_grupo
 ```
-http://localhost:8000/grupos/convite/{CODIGO_DO_CONVITE}/
-```
-
-O código é exibido ao executar `criar_grupo_padrao`.
-
----
-
-## 🆘 Troubleshooting
-
-### Erro: "Grupo já existia"
-
-Se o comando `criar_grupo_padrao` for executado novamente, ele não duplicará o grupo. Apenas adicionará novos usuários que ainda não são membros.
-
-### Erro: "No module named 'django'"
-
-Ative o ambiente virtual antes:
-
-```bash
-source venv/bin/activate  # Linux/Mac
-venv\Scripts\activate     # Windows
-```
-
-### Dados não aparecem após migração
-
-Verifique se o grupo foi definido corretamente:
-
-```bash
-python manage.py shell
->>> from presentes.models import Presente, Grupo
->>> grupo = Grupo.objects.get(nome='Natal Família Cruz e Credos 2025')
->>> Presente.objects.filter(grupo=grupo).count()
-```
-
----
-
-**Desenvolvido por**: Maxwell Oliveira (@maxwbh)
-**Empresa**: M&S do Brasil LTDA
-**Email**: maxwbh@gmail.com
-
----
-
-## 🌐 Setup via Interface Web (RENDER / Plataformas sem SSH)
-
-Para ambientes como **Render.com** onde não há acesso SSH direto, use a interface web:
-
-### 1. Acesse a página de setup
-
-```
-https://seu-app.onrender.com/setup/
-```
-
-Ou localmente:
-```
-http://localhost:8000/setup/
-```
-
-### 2. Faça login como administrador
-
-Você precisa estar logado com uma conta de **superusuário** (`is_superuser=True`).
-
-### 3. Execute o Setup Completo
-
-Na página de setup, clique em:
-
-**🎯 Executar Setup Completo**
-
-Este botão irá:
-1. ✅ Criar migrations
-2. ✅ Aplicar migrations
-3. ✅ Criar grupo padrão
-4. ✅ Adicionar todos os usuários
-5. ✅ Tornar admins em mantenedores
-6. ✅ Migrar todos os dados
-
-### 4. Ou execute passo a passo
-
-Se preferir controle individual, use os botões:
-- **1️⃣ Executar Migrations** - Cria tabelas
-- **2️⃣ Criar Grupo Padrão** - Cria grupo e adiciona usuários
-- **3️⃣ Migrar Dados** - Vincula dados ao grupo
-
-### Status do Sistema
-
-A página mostra em tempo real:
-- Total de usuários
-- Total de grupos
-- Total de presentes
-- Dados sem grupo (que precisam ser migrados)
-- Status do grupo padrão
-
----
-
-## 🔐 Segurança
-
-A página `/setup/` é protegida:
-- ✅ Requer login
-- ✅ Apenas **superusuários** podem acessar
-- ✅ Tentativas não autorizadas são redirecionadas ao dashboard com erro
-
----
-
-## 📊 Monitoramento
-
-Após executar o setup, você verá mensagens de sucesso/erro detalhadas no topo da página, incluindo:
-- ✓ Quantos usuários foram adicionados
-- ✓ Quantos dados foram migrados
-- ✓ Código de convite do grupo
-- ⚠ Avisos de dados já existentes
-- ❌ Erros, se houver
-
----

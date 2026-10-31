@@ -5,6 +5,45 @@ Todas as mudanças notáveis neste projeto serão documentadas neste arquivo.
 O formato é baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/),
 e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
+## [1.1.45] - 2026-10-31
+
+Versão atual (arquivo `VERSION`). Resume as mudanças registradas no histórico do Git de 2026-07-04 (importação do repositório) a 2026-10-31; as versões intermediárias (1.1.10 a 1.1.44) não têm registro separado neste arquivo.
+
+### Adicionado
+- ✨ Adicionar presente compartilhando um link pelo celular (Web Share Target em `/compartilhar/`), com expansão de links curtos do Mercado Livre
+- ✨ Notificações push (Web Push) de toda notificação criada, com rotas `/api/push/*`, chaves VAPID e comandos `gerar_chaves_vapid` e `testar_push`
+- ✨ Mercado Livre pela API oficial, com dados do catálogo (`/products`); anúncios fora do catálogo explicam por que vêm sem preço e foto
+- ✨ Scraper específico para a Decathlon (JSON-LD)
+- ✨ Scraper genérico lê o preço do JSON-LD e de ofertas schema.org embutidas na página (ex.: Farm Rio); links `amzn.to` e `a.co` usam o scraper da Amazon
+- ✨ Admin de Presentes: botão "Buscar imagens que faltam", ação, filtro "Por imagem" e coluna "Última busca de imagem"
+- ✨ Issues automáticas para leitura incompleta (site não mapeado e site mapeado), com o erro e o "Log da Extração"
+- ✨ Registro de despertares do servidor e de acessos por hora, com `/api/acessos/resumo/` e comando `analisar_acessos`
+- ✨ Workflow sob demanda "Relatorio de Acessos" (`relatorio-acessos.yml`), autenticado por `CRON_TOKEN`
+- ✨ API `/api/compras/` e endpoint `/api/cron/pesquisar-precos/` com o workflow semanal `pesquisa-precos.yml`
+- ✨ E-mails pela API da Brevo (redefinição de senha, boas-vindas e presente comprado) e ação no admin para gerar link de redefinição
+- ✨ Comando `limpar_historico_precos` para remover do histórico preços muito distantes da referência
+- 📝 README de apresentação com prints, guia técnico em `docs/development/INSTALACAO.md` e arquivo LICENSE
+
+### Alterado
+- ⚡ Keep-alive só nas horas que tiveram acesso, por dia da semana (~200h/mês, dentro do limite de 750h do Render Free)
+- 🔧 Conversão de preço unificada em `presentes/precos.py`, com validação do separador decimal; preço em outra moeda usa o valor em reais da página
+- 🔧 Parâmetros de rastreamento (`utm_*`, `gclid`, `fbclid`...) removidos dos links antes da leitura
+- 🔧 Sem issue para limite conhecido da loja; issue aberta com o mesmo título recebe comentário "Nova ocorrência" em vez de duplicata
+- 🔒 Senha com validação apenas do tamanho mínimo (4 caracteres)
+- 🎨 Tela de adicionar presente: busca com outro link, campo de link com colar/limpar e busca ao colar
+- 🎨 Emerald como tema padrão, inclusive nas páginas de erro e offline; o tema salvo é aplicado no início da página
+- 🎨 Dashboard mostra a imagem e o nome do grupo ativo
+- 🔧 WhiteNoise com manifest via `STORAGES` (CSS com hash no nome a cada deploy)
+- 🔧 Login do allauth com `ACCOUNT_LOGIN_METHODS`
+
+### Corrigido
+- 🐛 Bloqueio anti-robô e páginas de captcha tratados como bloqueio, sem abrir issue
+- 🐛 Convite de grupo levava à tela de criar grupo para quem ainda não tinha conta; cadastro respeita `?next=`
+- 🐛 Busca de preço aceitava produto errado: resultados conferidos pelo título
+- 🐛 Card de presente comprado ainda oferecia "Comprar"; cards e imagens da lista de usuários deformavam a grade
+- 🐛 URLs antigas do Render substituídas por `lista-presentes-im4b.onrender.com`
+- 🐛 Modelo `PushSubscription` restaurado
+
 ## [1.1.9] - 2026-02-03
 
 ### Adicionado - Login Social e Melhorias no Scraper Amazon
@@ -726,7 +765,7 @@ Todas as views principais foram atualizadas para filtrar por grupo ativo:
 - ♿ Acessibilidade (ARIA labels, navegação por teclado)
 
 ### Tecnologias Utilizadas
-- **Backend**: Django 5.0, Python 3.11+
+- **Backend**: Django 5.1, Python 3.11+
 - **Banco de Dados**: PostgreSQL 15+ / SQLite (dev)
 - **Frontend**: Bootstrap 5.3, JavaScript ES6+
 - **APIs**: Anthropic Claude AI, OpenAI ChatGPT, Google Gemini
@@ -739,7 +778,7 @@ Todas as views principais foram atualizadas para filtrar por grupo ativo:
 
 ## Como Contribuir
 
-Leia nosso [CONTRIBUTING.md](CONTRIBUTING.md) para saber como contribuir com este projeto.
+Leia nosso [CONTRIBUTING.md](docs/development/CONTRIBUTING.md) para saber como contribuir com este projeto.
 
 ## Versionamento
 
