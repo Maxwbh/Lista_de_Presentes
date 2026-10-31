@@ -6,7 +6,7 @@
 
 Cada pessoa monta a sua lista colando o link do produto. Os outros veem o que falta comprar, marcam o que compraram, e quem ganha não descobre o que vem.
 
-[![Experimente agora](https://img.shields.io/badge/Experimente%20agora-lista--presentes-e11d48?style=for-the-badge&logo=googlechrome&logoColor=white)](https://lista-presentes-im4b.onrender.com)
+[![Experimente agora](https://img.shields.io/badge/Experimente%20agora-lista--presentes-059669?style=for-the-badge&logo=googlechrome&logoColor=white)](https://lista-presentes-im4b.onrender.com)
 
 ![Tests](https://github.com/Maxwbh/Lista_de_Presentes/actions/workflows/tests.yml/badge.svg)
 ![Python](https://img.shields.io/badge/python-3.11%20%7C%203.12-blue.svg)
