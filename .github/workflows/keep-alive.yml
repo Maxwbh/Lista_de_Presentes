@@ -1,33 +1,43 @@
 # GitHub Actions: Keep Render Free Tier Alive
 # Evita que o serviço desligue por inatividade (15 min) nos horários de uso.
 #
-# O Render Free tem limite de 750 horas de instância por mês; acordado 24h
-# o serviço gastaria ~744h. Por isso o ping roda só nos horários de uso
-# (Brasília, UTC-3), ~310h/mês:
-#   - segunda a sexta: 07h-10h e 18h-23h
-#   - sábado e domingo: 07h-22h
-# Fora dessas faixas o servidor dorme e o primeiro acesso o acorda (~50s).
+# O Render Free tem limite de 750 horas de instância por mês. O ping roda
+# só nas horas que tiveram acesso no relatório de 31/10/2026 (últimos 30
+# dias), ~200h/mês. Horas em Brasília (UTC-3):
+#   seg: 09-11h, 14h, 17h, 23h
+#   ter: 09h, 11h
+#   qua: 08-10h, 12-13h, 16-18h, 22h
+#   qui: 00h, 07-08h, 15h, 18-20h, 23h
+#   sex: 05h, 07h, 22h
+#   sab: 00h, 08-09h, 13-14h, 16h, 19h, 21-23h
+#   dom: 15h
+# Fora dessas horas o servidor dorme e o primeiro acesso o acorda (~50s).
 #
-# Para ajustar as faixas aos horários reais de uso, veja o resumo em
-# /api/acessos/resumo/ (campos acessos_por_dia_semana e cron_keep_alive_utc).
+# Para revisar as horas, rode o workflow "Relatorio de Acessos"
+# (relatorio-acessos.yml), que traz os acessos por hora e dia da semana.
+# Próxima revisão combinada: ~30/11/2026.
 
 name: Keep Render Alive
 
 on:
   schedule:
-    # A cada 14 minutos. GitHub Actions usa UTC (Brasília + 3h), então parte
-    # da noite de Brasília cai no dia seguinte em UTC.
-    # Formato: minuto hora dia mês dia-da-semana (0 = domingo)
-    # Seg-sex 07h-09h59 Brasília = 10h-12h UTC
-    - cron: '*/14 10-12 * * 1-5'
-    # Seg-sex 18h-20h59 Brasília = 21h-23h UTC
-    - cron: '*/14 21-23 * * 1-5'
-    # Seg-sex 21h-22h59 Brasília = 00h-01h UTC de ter-sáb
-    - cron: '*/14 0-1 * * 2-6'
-    # Sáb e dom 07h-20h59 Brasília = 10h-23h UTC
-    - cron: '*/14 10-23 * * 0,6'
-    # Sáb e dom 21h-21h59 Brasília = 00h UTC de dom e seg
-    - cron: '*/14 0 * * 0,1'
+    # A cada 14 minutos dentro de cada hora listada. GitHub Actions usa UTC
+    # (Brasília + 3h): as horas de Brasília a partir das 21h caem no dia
+    # seguinte em UTC. Formato: minuto hora dia mês dia-da-semana (0 = domingo)
+    # Seg (UTC 12-14,17,20) = seg 09-11h, 14h, 17h Brasília
+    - cron: '*/14 12-14,17,20 * * 1'
+    # Ter (UTC 2,12,14) = seg 23h e ter 09h, 11h Brasília
+    - cron: '*/14 2,12,14 * * 2'
+    # Qua (UTC 11-13,15-16,19-21) = qua 08-10h, 12-13h, 16-18h Brasília
+    - cron: '*/14 11-13,15-16,19-21 * * 3'
+    # Qui (UTC 1,3,10-11,18,21-23) = qua 22h e qui 00h, 07-08h, 15h, 18-20h Brasília
+    - cron: '*/14 1,3,10-11,18,21-23 * * 4'
+    # Sex (UTC 2,8,10) = qui 23h e sex 05h, 07h Brasília
+    - cron: '*/14 2,8,10 * * 5'
+    # Sab (UTC 1,3,11-12,16-17,19,22) = sex 22h e sab 00h, 08-09h, 13-14h, 16h, 19h Brasília
+    - cron: '*/14 1,3,11-12,16-17,19,22 * * 6'
+    # Dom (UTC 0-2,18) = sab 21-23h e dom 15h Brasília
+    - cron: '*/14 0-2,18 * * 0'
 
   # Permite executar manualmente
   workflow_dispatch:
