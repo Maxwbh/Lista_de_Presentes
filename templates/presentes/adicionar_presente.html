@@ -169,7 +169,7 @@
         placeholder.style.display = 'flex';
     }
 
-    // Valores preenchidos pela ultima busca de informacoes (para trocar ao buscar outro link)
+    // Link e valores preenchidos pela ultima busca de informacoes
     const valoresDaBusca = {};
 
     imageInput.addEventListener('change', function(e) {
@@ -378,32 +378,31 @@
                 throw new Error(data.error || 'Erro ao buscar informações');
             }
 
-            // Preencher campos. Um campo e substituido se estiver vazio ou se
-            // ainda tiver o valor da busca anterior (o usuario trocou o link
-            // e buscou de novo); o que o usuario digitou nao e apagado.
-            // No compartilhamento a descricao veio do texto compartilhado: o titulo da loja e melhor
+            // Preencher campos. Link novo (diferente da ultima busca): limpa
+            // descricao, preco e imagem e usa so os dados do novo produto,
+            // mesmo que algo tenha sido digitado. Mesmo link buscado de novo:
+            // so preenche o que estiver vazio ou ainda vier da busca anterior.
+            const linkNovo = url !== valoresDaBusca.link;
+            valoresDaBusca.link = url;
             const preencher = (campo, chave, valor) => {
-                const anterior = valoresDaBusca[chave];
-                const podeTrocar = !campo.value || campo.value === anterior;
+                const podeTrocar = linkNovo || !campo.value || campo.value === valoresDaBusca[chave];
                 if (!podeTrocar) return false;
                 campo.value = valor || '';
                 valoresDaBusca[chave] = campo.value;
                 return true;
             };
 
-            if (data.titulo) {
-                if ({{ buscar_automaticamente|yesno:"true,false" }} && !('descricao' in valoresDaBusca)) {
-                    valoresDaBusca.descricao = descricaoInput.value;
-                }
-                if (preencher(descricaoInput, 'descricao', data.titulo)) {
-                    charCount.textContent = descricaoInput.value.length;
-                }
-            }
+            preencher(descricaoInput, 'descricao', data.titulo);
+            charCount.textContent = descricaoInput.value.length;
 
             // Campo numerico (type=number): o valor precisa do ponto decimal;
             // com virgula o navegador descarta o valor
             preencher(precoInput, 'preco', data.preco ? Number(data.preco).toFixed(2) : '');
 
+            if (linkNovo) {
+                // A imagem enviada por arquivo era do produto anterior
+                imageInput.value = '';
+            }
             if (!imageInput.files.length && preencher(urlImagemInput, 'imagem', data.imagem_url)) {
                 if (data.imagem_url) {
                     showImagePreview(data.imagem_url);
