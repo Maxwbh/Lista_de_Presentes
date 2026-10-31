@@ -7,6 +7,7 @@ from urllib.parse import quote_plus
 from bs4 import BeautifulSoup
 from django.conf import settings
 from .models import SugestaoCompra
+from .precos import converter_preco, converter_preco_decimal
 from .relevancia import resultado_relevante
 
 logger = logging.getLogger(__name__)
@@ -106,10 +107,8 @@ class IAService:
                         preco_text = preco_elem.text.strip()
                         logger.debug(f"Zoom: Preço encontrado: {preco_text}")
                         # Remover "R$" e converter para float
-                        preco_text = preco_text.replace('R$', '').replace('.', '').replace(',', '.').strip()
-                        try:
-                            preco = float(preco_text)
-                        except ValueError:
+                        preco = converter_preco(preco_text)
+                        if preco is None:
                             logger.warning(f"Zoom: Não foi possível converter preço: {preco_text}")
                             continue
                     else:
@@ -239,12 +238,8 @@ class IAService:
                         preco_text = preco_elem.text.strip()
                         logger.debug(f"Buscapé: Preço encontrado: {preco_text}")
                         # Remover "R$" e converter para float
-                        preco_text = preco_text.replace('R$', '').replace('.', '').replace(',', '.').strip()
-                        # Remover espaços e outros caracteres não numéricos
-                        preco_text = ''.join(c for c in preco_text if c.isdigit() or c == '.')
-                        try:
-                            preco = float(preco_text)
-                        except ValueError:
+                        preco = converter_preco(preco_text)
+                        if preco is None:
                             logger.warning(f"Buscapé: Não foi possível converter preço: {preco_text}")
                             continue
                     else:
@@ -402,7 +397,7 @@ class IAService:
 
                 loja_nome = IAService._limpar_nome_loja(produto.get('loja', ''))
                 url = produto.get('url', '').strip()
-                preco = produto.get('preco') if produto.get('preco', 0) > 0 else None
+                preco = converter_preco_decimal(produto.get('preco'))
 
                 # Validar dados antes de salvar
                 if not loja_nome:
@@ -630,7 +625,6 @@ class IAService:
 
         try:
             import base64
-            from decimal import Decimal
             from .scrapers import ScraperFactory
 
             resultado = ScraperFactory.extract_product_info(presente.url) or {}
@@ -640,8 +634,9 @@ class IAService:
             if resultado.get('success'):
                 imagem_url = resultado.get('imagem_url')
                 # Aproveita a leitura para preencher o preco que faltava
-                if presente.preco is None and resultado.get('preco'):
-                    presente.preco = Decimal(str(resultado['preco'])).quantize(Decimal('0.01'))
+                preco_site = converter_preco_decimal(resultado.get('preco'))
+                if presente.preco is None and preco_site:
+                    presente.preco = preco_site
                     campos.append('preco')
                     preco_preenchido = True
             else:
@@ -760,7 +755,8 @@ class IAService:
         for sug in sugestoes:
             loja = IAService._limpar_nome_loja(sug.get('loja', ''))
             url = sug.get('url', '').strip()
-            preco = sug.get('preco')
+            # A IA pode devolver o preco como texto ('R$ 1.371,60', '1371.60')
+            preco = converter_preco_decimal(sug.get('preco'))
             titulo = (sug.get('produto') or sug.get('titulo') or '').strip()
 
             # Validar dados antes de salvar

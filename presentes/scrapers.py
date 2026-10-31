@@ -11,6 +11,8 @@ import threading
 from contextlib import contextmanager
 from urllib.parse import urlparse
 
+from .precos import converter_preco
+
 logger = logging.getLogger(__name__)
 
 # Loggers cujas mensagens entram nas issues automaticas, para a issue mostrar
@@ -182,20 +184,8 @@ class BaseScraper:
         return soup
 
     def clean_price(self, price_str):
-        """Limpa e converte string de preço para float"""
-        if not price_str:
-            return None
-
-        # Remove tudo exceto números, vírgula e ponto
-        price_str = re.sub(r'[^\d,.]', '', price_str)
-
-        # Substitui vírgula por ponto
-        price_str = price_str.replace('.', '').replace(',', '.')
-
-        try:
-            return float(price_str)
-        except:
-            return None
+        """Converte o texto do preço para float (ver presentes.precos.converter_preco)"""
+        return converter_preco(price_str)
 
     def preco_de_meta(self, valor):
         """
@@ -203,10 +193,7 @@ class BaseScraper:
         ponto como separador decimal ('254.00', '1371.6'). Se vier formatado
         para leitura ('R$ 1.371,60'), usa clean_price.
         """
-        valor = str(valor or '').strip()
-        if re.fullmatch(r'\d+(\.\d+)?', valor):
-            return float(valor)
-        return self.clean_price(valor)
+        return converter_preco(valor)
 
     @staticmethod
     def moeda_da_pagina(soup):

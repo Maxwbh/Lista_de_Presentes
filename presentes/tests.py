@@ -1652,3 +1652,47 @@ class PrecoMetaTagTest(TestCase):
             '<meta property="product:price:currency" content="USD"></head>'
             '<body><span class="price">Por 254,00</span></body></html>')
         self.assertIsNone(resultado['preco'])
+
+
+class ConverterPrecoTest(TestCase):
+    """Separador decimal em todas as leituras de preco (sites, meta tags, APIs e IA)."""
+
+    def test_formatos(self):
+        from .precos import converter_preco
+
+        casos = {
+            'R$ 1.371,60': 1371.60,   # brasileiro
+            '1.371,60': 1371.60,
+            '254,00': 254.00,
+            '254,9': 254.90,
+            'R$ 1.371': 1371.00,      # milhar sem centavos
+            '1.371.600': 1371600.00,
+            '254.00': 254.00,         # formato de maquina (meta tag / JSON)
+            '254.0': 254.00,          # antes virava 2540
+            '309.90': 309.90,         # antes virava 30990
+            '1371.6': 1371.60,
+            '1,371.60': 1371.60,      # formato americano
+            '1,371': 1371.00,
+            'US$ 254,00': 254.00,
+            ' R$\xa049,90 ': 49.90,
+            254: 254.00,
+            1371.6: 1371.60,
+        }
+        for entrada, esperado in casos.items():
+            with self.subTest(entrada=entrada):
+                self.assertAlmostEqual(converter_preco(entrada), esperado)
+
+    def test_invalidos(self):
+        from .precos import converter_preco
+
+        for entrada in (None, '', 'Grátis', 'R$', '0,00', 0, -5, True, '.'):
+            with self.subTest(entrada=entrada):
+                self.assertIsNone(converter_preco(entrada))
+
+    def test_decimal_com_duas_casas(self):
+        from decimal import Decimal
+        from .precos import converter_preco_decimal
+
+        self.assertEqual(converter_preco_decimal('R$ 1.371,60'), Decimal('1371.60'))
+        self.assertEqual(converter_preco_decimal('254.0'), Decimal('254.00'))
+        self.assertIsNone(converter_preco_decimal('sem preço'))

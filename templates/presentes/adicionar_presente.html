@@ -379,7 +379,9 @@
             }
 
             if (data.preco && !precoInput.value) {
-                precoInput.value = data.preco.toString().replace('.', ',');
+                // Campo numerico (type=number): o valor precisa do ponto decimal;
+                // com virgula o navegador descarta o valor
+                precoInput.value = Number(data.preco).toFixed(2);
             }
 
             if (data.imagem_url && !urlImagemInput.value && !imageInput.files.length) {
