@@ -218,8 +218,21 @@ STATICFILES_DIRS = [
 TAILWIND_APP_NAME = 'theme'
 INTERNAL_IPS = ['127.0.0.1']
 
-# WhiteNoise para servir arquivos estáticos em produção
-STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+# WhiteNoise para servir arquivos estáticos em produção.
+# O Django 5.1 ignora o antigo STATICFILES_STORAGE: sem o STORAGES abaixo os
+# arquivos saiam sem hash no nome (ex.: styles.css) e o navegador seguia
+# usando o CSS antigo depois do deploy. Com o manifest, cada versão ganha um
+# nome novo (styles.<hash>.css). Nos testes não ha collectstatic, entao usa o
+# storage simples.
+STORAGES = {
+    'default': {'BACKEND': 'django.core.files.storage.FileSystemStorage'},
+    'staticfiles': {
+        'BACKEND': (
+            'django.contrib.staticfiles.storage.StaticFilesStorage' if TESTING
+            else 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+        ),
+    },
+}
 
 # Arquivos de mídia (uploads)
 MEDIA_URL = '/media/'
