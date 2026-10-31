@@ -163,6 +163,15 @@
         placeholder.style.display = 'none';
     }
 
+    function hideImagePreview() {
+        imagePreview.style.display = 'none';
+        previewContainer.style.display = 'none';
+        placeholder.style.display = 'flex';
+    }
+
+    // Valores preenchidos pela ultima busca de informacoes (para trocar ao buscar outro link)
+    const valoresDaBusca = {};
+
     imageInput.addEventListener('change', function(e) {
         const file = e.target.files[0];
         if (file) {
@@ -314,9 +323,7 @@
     function removeImage() {
         imageInput.value = '';
         urlImagemInput.value = '';
-        imagePreview.style.display = 'none';
-        previewContainer.style.display = 'none';
-        placeholder.style.display = 'flex';
+        hideImagePreview();
     }
 
     // Contador de caracteres
@@ -371,23 +378,38 @@
                 throw new Error(data.error || 'Erro ao buscar informações');
             }
 
-            // Preencher campos
+            // Preencher campos. Um campo e substituido se estiver vazio ou se
+            // ainda tiver o valor da busca anterior (o usuario trocou o link
+            // e buscou de novo); o que o usuario digitou nao e apagado.
             // No compartilhamento a descricao veio do texto compartilhado: o titulo da loja e melhor
-            if (data.titulo && (!descricaoInput.value || {{ buscar_automaticamente|yesno:"true,false" }})) {
-                descricaoInput.value = data.titulo;
-                charCount.textContent = data.titulo.length;
+            const preencher = (campo, chave, valor) => {
+                const anterior = valoresDaBusca[chave];
+                const podeTrocar = !campo.value || campo.value === anterior;
+                if (!podeTrocar) return false;
+                campo.value = valor || '';
+                valoresDaBusca[chave] = campo.value;
+                return true;
+            };
+
+            if (data.titulo) {
+                if ({{ buscar_automaticamente|yesno:"true,false" }} && !('descricao' in valoresDaBusca)) {
+                    valoresDaBusca.descricao = descricaoInput.value;
+                }
+                if (preencher(descricaoInput, 'descricao', data.titulo)) {
+                    charCount.textContent = descricaoInput.value.length;
+                }
             }
 
-            if (data.preco && !precoInput.value) {
-                // Campo numerico (type=number): o valor precisa do ponto decimal;
-                // com virgula o navegador descarta o valor
-                precoInput.value = Number(data.preco).toFixed(2);
-            }
+            // Campo numerico (type=number): o valor precisa do ponto decimal;
+            // com virgula o navegador descarta o valor
+            preencher(precoInput, 'preco', data.preco ? Number(data.preco).toFixed(2) : '');
 
-            if (data.imagem_url && !urlImagemInput.value && !imageInput.files.length) {
-                urlImagemInput.value = data.imagem_url;
-                // Mostrar preview da imagem
-                showImagePreview(data.imagem_url);
+            if (!imageInput.files.length && preencher(urlImagemInput, 'imagem', data.imagem_url)) {
+                if (data.imagem_url) {
+                    showImagePreview(data.imagem_url);
+                } else {
+                    hideImagePreview();
+                }
             }
 
             // Mostrar mensagem de sucesso
