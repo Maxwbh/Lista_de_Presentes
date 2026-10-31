@@ -5,6 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Lista de Presentes{% endblock %}</title>
 
+    <!-- Aplica o tema salvo antes de desenhar a pagina (sem isso ela abria no
+         tema padrao e trocava de cor ao terminar de carregar) -->
+    <script>
+        try {
+            var temaSalvo = localStorage.getItem('daisy-theme');
+            if (temaSalvo) document.documentElement.setAttribute('data-theme', temaSalvo);
+        } catch (e) {}
+    </script>
+
     <!-- Tailwind CSS + daisyUI -->
     {% load static avatar_tags %}
     <link rel="stylesheet" href="{% static 'css/dist/styles.css' %}">
@@ -209,7 +218,8 @@
     <!-- JS: Tema -->
     <script>
         (function() {
-            const saved = localStorage.getItem('daisy-theme') || 'lpii_light';
+            let saved = 'lpii_light';
+            try { saved = localStorage.getItem('daisy-theme') || saved; } catch (e) {}
             document.documentElement.setAttribute('data-theme', saved);
             markActiveTheme(saved);
         })();
