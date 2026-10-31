@@ -1616,3 +1616,83 @@ class BuscarImagensAdminTest(TestCase):
         with mock.patch('presentes.admin._buscar_imagens') as buscar:
             self.client.get(self.url_botao)
         buscar.assert_not_called()
+
+
+class PrecoMetaTagTest(TestCase):
+    """Preco das meta tags: formato de maquina (ponto decimal) e moeda estrangeira."""
+
+    def _extrair(self, html, url='https://www.loja-nova.com.br/produto/1'):
+        resposta = mock.Mock(url=url, content=html.encode(), status_code=200)
+        resposta.raise_for_status.return_value = None
+        with mock.patch('presentes.scrapers.requests.get', return_value=resposta), \
+                mock.patch('presentes.github_helper.criar_issue_erro_geral'):
+            return ScraperFactory.extract_product_info(url)
+
+    def test_ponto_decimal_da_meta_tag(self):
+        # Antes '309.90' virava 30990 (o ponto era lido como separador de milhar)
+        resultado = self._extrair(
+            '<html><head><meta property="og:title" content="Shampoo">'
+            '<meta property="product:price:amount" content="309.90"></head></html>')
+        self.assertEqual(resultado['preco'], 309.90)
+
+    def test_preco_em_dolar_usa_o_valor_em_reais_da_pagina(self):
+        # Compras Paraguai: 'US$ 254,00 (R$ 1.371,60)', meta em USD
+        resultado = self._extrair(
+            '<html><head><meta property="og:title" content="SSD WD Green 2TB">'
+            '<meta itemprop="price" content="254.00"><meta itemprop="priceCurrency" content="USD">'
+            '</head><body><div class="cotacao">Dólar hoje: R$ 5,40</div>'
+            '<div class="price"><span>US$ 254,00</span> <span>(R$ 1.371,60)</span></div></body></html>',
+            url='https://www.comprasparaguai.com.br/ssd_54489/')
+        self.assertEqual(resultado['preco'], 1371.60)
+
+    def test_preco_em_dolar_sem_valor_em_reais_fica_vazio(self):
+        resultado = self._extrair(
+            '<html><head><meta property="og:title" content="SSD WD Green 2TB">'
+            '<meta property="product:price:amount" content="254.00">'
+            '<meta property="product:price:currency" content="USD"></head>'
+            '<body><span class="price">Por 254,00</span></body></html>')
+        self.assertIsNone(resultado['preco'])
+
+
+class ConverterPrecoTest(TestCase):
+    """Separador decimal em todas as leituras de preco (sites, meta tags, APIs e IA)."""
+
+    def test_formatos(self):
+        from .precos import converter_preco
+
+        casos = {
+            'R$ 1.371,60': 1371.60,   # brasileiro
+            '1.371,60': 1371.60,
+            '254,00': 254.00,
+            '254,9': 254.90,
+            'R$ 1.371': 1371.00,      # milhar sem centavos
+            '1.371.600': 1371600.00,
+            '254.00': 254.00,         # formato de maquina (meta tag / JSON)
+            '254.0': 254.00,          # antes virava 2540
+            '309.90': 309.90,         # antes virava 30990
+            '1371.6': 1371.60,
+            '1,371.60': 1371.60,      # formato americano
+            '1,371': 1371.00,
+            'US$ 254,00': 254.00,
+            ' R$\xa049,90 ': 49.90,
+            254: 254.00,
+            1371.6: 1371.60,
+        }
+        for entrada, esperado in casos.items():
+            with self.subTest(entrada=entrada):
+                self.assertAlmostEqual(converter_preco(entrada), esperado)
+
+    def test_invalidos(self):
+        from .precos import converter_preco
+
+        for entrada in (None, '', 'Grátis', 'R$', '0,00', 0, -5, True, '.'):
+            with self.subTest(entrada=entrada):
+                self.assertIsNone(converter_preco(entrada))
+
+    def test_decimal_com_duas_casas(self):
+        from decimal import Decimal
+        from .precos import converter_preco_decimal
+
+        self.assertEqual(converter_preco_decimal('R$ 1.371,60'), Decimal('1371.60'))
+        self.assertEqual(converter_preco_decimal('254.0'), Decimal('254.00'))
+        self.assertIsNone(converter_preco_decimal('sem preço'))
