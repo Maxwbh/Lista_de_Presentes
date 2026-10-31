@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="pt-BR" data-theme="lpii_light">
+<html lang="pt-BR" data-theme="emerald_light">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -23,7 +23,7 @@
 
     <!-- PWA Meta Tags -->
     <link rel="manifest" href="{% static 'manifest.json' %}">
-    <meta name="theme-color" content="#e11d48">
+    <meta name="theme-color" content="#059669">
     <meta name="description" content="Organize sua lista de Natal e veja os presentes que seus amigos desejam ganhar!">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -218,7 +218,7 @@
     <!-- JS: Tema -->
     <script>
         (function() {
-            let saved = 'lpii_light';
+            let saved = 'emerald_light';
             try { saved = localStorage.getItem('daisy-theme') || saved; } catch (e) {}
             document.documentElement.setAttribute('data-theme', saved);
             markActiveTheme(saved);

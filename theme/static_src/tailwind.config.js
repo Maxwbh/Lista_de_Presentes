@@ -49,7 +49,7 @@ module.exports = {
   daisyui: {
     themes: [
       {
-        // LPII Light - Design principal (rose + emerald, fundo slate claro)
+        // LPII Light (Rose) - rose + emerald, fundo slate claro
         lpii_light: {
           'primary':          '#e11d48',
           'primary-content':  '#ffffff',
@@ -93,7 +93,7 @@ module.exports = {
         },
       },
       {
-        // Emerald Light - Verde natural (mantido como alternativa)
+        // Emerald Light - Verde natural (tema padrao)
         emerald_light: {
           'primary':          '#059669',
           'primary-content':  '#ffffff',
