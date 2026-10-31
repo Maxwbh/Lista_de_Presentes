@@ -10,12 +10,9 @@
 
 name: Relatorio de Acessos
 
+# Somente sob demanda (Actions > Relatorio de Acessos > Run workflow, ou
+# disparado pelo Claude quando for pedida a revisao dos horarios)
 on:
-  schedule:
-    # Segunda-feira 12:30 UTC (09:30 em Brasilia), dentro da faixa do
-    # keep-alive, para nao acordar o servidor fora de hora
-    - cron: '30 12 * * 1'
-
   workflow_dispatch:
     inputs:
       dias:
