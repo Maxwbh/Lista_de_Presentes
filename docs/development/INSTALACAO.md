@@ -1,6 +1,6 @@
 # 🛠️ Instalação, configuração e operação
 
-Guia técnico da **Lista de Presentes**: instalação local, configuração, testes, comandos de manutenção e solução de problemas. Para conhecer o projeto, veja o [README](../../README.md). Deploy: [RENDER.md](../deployment/RENDER.md) · Docker: [DOCKER.md](../deployment/DOCKER.md) · Banco: [SUPABASE.md](../database/SUPABASE.md).
+Guia técnico da **Lista de Presentes**: instalação local, configuração, testes, comandos de manutenção e solução de problemas. Para conhecer o projeto, veja o [README](../../README.md); para entender como o código está organizado, a [arquitetura](ARQUITETURA.md). Deploy: [RENDER.md](../deployment/RENDER.md) · Docker: [DOCKER.md](../deployment/DOCKER.md) · Banco: [SUPABASE.md](../database/SUPABASE.md).
 
 ---
 

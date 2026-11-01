@@ -1,7 +1,7 @@
 {
-  "name": "Lista de Presentes de Natal",
+  "name": "Lista de Presentes",
   "short_name": "Lista Presentes",
-  "description": "Organize sua lista de Natal e veja os presentes que seus amigos desejam ganhar!",
+  "description": "Monte sua lista de presentes, veja o que falta comprar para a família e os amigos e mantenha a surpresa.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#2D5016",

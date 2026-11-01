@@ -125,6 +125,7 @@ O GitHub Actions roda os testes (Python 3.11 e 3.12), o lint e a verificação d
 | Banco de dados (Supabase) | [SUPABASE.md](docs/database/SUPABASE.md) |
 | Login social | [SOCIAL_LOGIN_CONFIG.md](docs/features/SOCIAL_LOGIN_CONFIG.md) |
 | Grupos | [SETUP_GRUPOS.md](docs/features/SETUP_GRUPOS.md) |
+| Temas (cores) | [TEMAS.md](docs/features/TEMAS.md) |
 | Keep-alive no Render Free | [KEEP_ALIVE.md](docs/features/KEEP_ALIVE.md) |
 | Logs de leitura dos sites e issues automáticas | [SCRAPING_LOGS.md](docs/features/SCRAPING_LOGS.md) |
 | Versionamento | [VERSIONAMENTO.md](docs/development/VERSIONAMENTO.md) |

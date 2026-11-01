@@ -1,5 +1,5 @@
 """
-Setup configuration for Lista de Presentes de Natal
+Setup configuration for Lista de Presentes
 """
 import os
 from pathlib import Path
