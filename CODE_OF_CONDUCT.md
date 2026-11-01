@@ -1,7 +1,6 @@
 # Código de Conduta
 
-- Seja respeitoso e gentil com todos.
-- Critique ideias, não pessoas.
-- Sem assédio, ofensas ou discriminação.
+- Contribua com o código e faça o seu melhor.
+- Não sabe programar, mas viu algo errado no sistema? Avise a gente: abra uma [issue](https://github.com/Maxwbh/Lista_de_Presentes/issues).
 
-Problemas? Escreva para [maxwbh@gmail.com](mailto:maxwbh@gmail.com).
+Dúvidas? Escreva para [maxwbh@gmail.com](mailto:maxwbh@gmail.com).

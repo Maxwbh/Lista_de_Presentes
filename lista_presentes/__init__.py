@@ -1,8 +1,8 @@
 """
-Lista de Presentes de Natal
+Lista de Presentes
 ============================
 
-Aplicacao web Django para gerenciar listas de presentes de Natal em familia.
+Aplicacao web Django para listas de presentes em familia e entre amigos.
 
 Autor: Maxwell da Silva Oliveira
 Empresa: M&S do Brasil LTDA

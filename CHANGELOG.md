@@ -5,9 +5,11 @@ Todas as mudanças notáveis neste projeto serão documentadas neste arquivo.
 O formato é baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/),
 e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
+> ⚠️ **Lacuna no histórico:** não há registro das versões **1.1.10 a 1.1.44**. Elas foram feitas antes da importação do repositório para o GitHub atual (04/07/2026), e o histórico do Git começa nessa data, com o arquivo `VERSION` já em 1.1.45. A seção 1.1.45 abaixo resume tudo o que mudou desde a importação. Para o detalhe de cada mudança, veja o [histórico de commits](https://github.com/Maxwbh/Lista_de_Presentes/commits/main) e os [pull requests](https://github.com/Maxwbh/Lista_de_Presentes/pulls?q=is%3Apr+is%3Amerged).
+
 ## [1.1.45] - 2026-10-31
 
-Versão atual (arquivo `VERSION`). Resume as mudanças registradas no histórico do Git de 2026-07-04 (importação do repositório) a 2026-10-31; as versões intermediárias (1.1.10 a 1.1.44) não têm registro separado neste arquivo.
+Versão atual (arquivo `VERSION`). Resume as mudanças de 2026-07-04 (importação do repositório) a 2026-10-31.
 
 ### Adicionado
 - ✨ Adicionar presente compartilhando um link pelo celular (Web Share Target em `/compartilhar/`), com expansão de links curtos do Mercado Livre

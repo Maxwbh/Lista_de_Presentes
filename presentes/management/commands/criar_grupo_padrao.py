@@ -15,7 +15,7 @@ class Command(BaseCommand):
                 grupo, criado = Grupo.objects.get_or_create(
                     nome='Natal Família Cruz e Credos 2025',
                     defaults={
-                        'descricao': 'Grupo padrão para organizar os presentes de Natal da família',
+                        'descricao': 'Grupo padrão para organizar os presentes da família',
                         'ativo': True,
                     }
                 )
