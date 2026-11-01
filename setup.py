@@ -21,9 +21,9 @@ with open(REQUIREMENTS_FILE, 'r', encoding='utf-8') as f:
     requirements = [line.strip() for line in f if line.strip() and not line.startswith('#')]
 
 setup(
-    name='lista-presentes-natal',
+    name='lista-presentes',
     version=version,
-    description='Aplicação web Django para gerenciar listas de presentes de Natal em família',
+    description='Lista de presentes para família e amigos: sem presente repetido e sem estragar a surpresa',
     long_description=long_description,
     long_description_content_type='text/markdown',
     author='Maxwell da Silva Oliveira',
@@ -45,7 +45,7 @@ setup(
         'Development Status :: 5 - Production/Stable',
         'Environment :: Web Environment',
         'Framework :: Django',
-        'Framework :: Django :: 5.0',
+        'Framework :: Django :: 5.1',
         'Intended Audience :: End Users/Desktop',
         'Intended Audience :: Developers',
         'License :: OSI Approved :: MIT License',

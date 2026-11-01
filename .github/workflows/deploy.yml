@@ -2,7 +2,7 @@ name: Deploy to Render
 
 on:
   push:
-    branches: [ master ]
+    branches: [ main ]
   workflow_dispatch:
 
 jobs:
@@ -23,7 +23,7 @@ jobs:
 
       - name: Trigger Render deployment
         run: |
-          echo "📡 Render fará deploy automático ao detectar push no branch master"
+          echo "📡 Render fará deploy automático ao detectar push no branch main"
           echo "✅ Push detectado, aguarde o build no Render Dashboard"
           echo "🔗 https://dashboard.render.com/"
 

@@ -33,6 +33,8 @@ Cada pessoa monta a sua lista colando o link do produto. Os outros veem o que fa
 
 ## 🚀 Como funciona
 
+> Guia completo para quem vai usar: **[docs/USUARIO.md](docs/USUARIO.md)**
+
 1. **Crie um grupo** e convide a família pelo link ou pelo WhatsApp.
 2. **Monte a sua lista**: cole o link do produto (ou compartilhe do app da loja) e pronto.
 3. **Escolha quem presentear**: veja as listas dos outros, compre e marque como comprado.
@@ -115,6 +117,8 @@ O GitHub Actions roda os testes (Python 3.11 e 3.12), o lint e a verificação d
 
 | Assunto | Documento |
 |---|---|
+| Como usar o app (guia e perguntas frequentes) | [USUARIO.md](docs/USUARIO.md) |
+| Arquitetura, modelos e endpoints internos | [ARQUITETURA.md](docs/development/ARQUITETURA.md) |
 | Instalação, deploy, testes e manutenção | [INSTALACAO.md](docs/development/INSTALACAO.md) |
 | Deploy no Render | [RENDER.md](docs/deployment/RENDER.md) |
 | Docker | [DOCKER.md](docs/deployment/DOCKER.md) |
@@ -124,6 +128,7 @@ O GitHub Actions roda os testes (Python 3.11 e 3.12), o lint e a verificação d
 | Keep-alive no Render Free | [KEEP_ALIVE.md](docs/features/KEEP_ALIVE.md) |
 | Logs de leitura dos sites e issues automáticas | [SCRAPING_LOGS.md](docs/features/SCRAPING_LOGS.md) |
 | Versionamento | [VERSIONAMENTO.md](docs/development/VERSIONAMENTO.md) |
+| Como contribuir | [CONTRIBUTING.md](docs/development/CONTRIBUTING.md) |
 | Histórico de mudanças | [CHANGELOG.md](CHANGELOG.md) |
 
 ---

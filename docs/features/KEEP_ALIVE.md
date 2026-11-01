@@ -1,350 +1,118 @@
-# 🔥 Keep Render Alive - Guia Completo
+# 🔥 Keep-Alive do Render
 
-Este documento explica como manter seu app no Render.com ativo nos horários de uso, evitando que ele entre em modo "sleep" após 15 minutos de inatividade.
+No plano gratuito do Render o serviço dorme depois de **15 minutos sem tráfego** e o primeiro acesso seguinte leva ~50 s para acordá-lo. O workflow `keep-alive.yml` faz um ping periódico para manter o servidor acordado **apenas nas horas em que o sistema é usado**.
 
-> ⚠️ **Limite do Render Free:** 750 horas de instância por mês, somando todos os serviços da conta. Acordado 24h, este serviço gastaria ~744h. Por isso o ping do GitHub Actions roda só nos horários de uso (Brasília), ~310h/mês: **segunda a sexta das 07h às 10h e das 18h às 23h; sábado e domingo das 07h às 22h**. Para ajustar a faixa aos horários reais de uso, consulte `/api/acessos/resumo/` (logado como administrador) e copie o campo `cron_keep_alive_utc` para `.github/workflows/keep-alive.yml`.
-
----
-
-## 📊 Status Atual
-
-✅ **Endpoint de Health Check**: `/health/` já configurado
-✅ **GitHub Action**: Ping automático a cada 14 minutos nos horários de uso (seg-sex 07h-10h e 18h-23h; sáb-dom 07h-22h, Brasília)
-✅ **URL do app**: https://lista-presentes-im4b.onrender.com
+> ⚠️ **Limite do Render Free:** 750 horas de instância por mês, somadas entre todos os serviços da conta. Acordado 24h, este serviço gastaria ~744h. Por isso o ping roda só nas horas de uso (~200h/mês).
 
 ---
 
-## 🤖 Solução 1: GitHub Actions (Recomendada) ✅ ATIVA
+## 🤖 Workflow `keep-alive.yml`
 
-### ✅ Já está configurado!
+Arquivo: [`.github/workflows/keep-alive.yml`](../../.github/workflows/keep-alive.yml)
 
-O arquivo `.github/workflows/keep-alive.yml` já está criado e faz:
-- 🏓 Ping no `/health/` a cada 14 minutos nos horários de uso (seg-sex 07h-10h e 18h-23h; sáb-dom 07h-22h, Brasília)
-- 📊 Mede latência do servidor
-- ✅ Verifica se resposta é 200 OK
-- 📈 Logs detalhados de cada execução
+- Faz `GET /health/` (responde `OK`, HTTP 200) **a cada 14 minutos**, só nas horas listadas para cada dia da semana.
+- A URL vem da variável de repositório `RENDER_URL` (Settings → Secrets and variables → Actions → Variables); sem ela, usa `https://lista-presentes-im4b.onrender.com`.
+- Também pode ser executado manualmente (`workflow_dispatch`): Actions → **Keep Render Alive** → **Run workflow**.
 
-### Como verificar se está funcionando:
+### 🕐 Horas cobertas (Brasília)
 
-1. Acesse: https://github.com/Maxwbh/Lista_de_Presentes/actions
-2. Veja a aba "Keep Render Alive"
-3. Cada execução aparecerá com timestamp
+Escolhidas a partir do relatório de acessos de 31/10/2026 (últimos 30 dias). Próxima revisão combinada: ~30/11/2026.
 
-### Testar manualmente:
+| Dia | Horas |
+|-----|-------|
+| Segunda | 09-11h, 14h, 17h, 23h |
+| Terça | 09h, 11h |
+| Quarta | 08-10h, 12-13h, 16-18h, 22h |
+| Quinta | 00h, 07-08h, 15h, 18-20h, 23h |
+| Sexta | 05h, 07h, 22h |
+| Sábado | 00h, 08-09h, 13-14h, 16h, 19h, 21-23h |
+| Domingo | 15h |
 
-1. Vá em: https://github.com/Maxwbh/Lista_de_Presentes/actions
-2. Clique em "Keep Render Alive"
-3. Clique em "Run workflow" → "Run workflow"
-4. Aguarde ~30 segundos e veja o resultado
+Fora dessas horas o servidor dorme e o primeiro acesso o acorda.
 
-### Vantagens:
-- ✅ **Totalmente grátis** - GitHub Actions tem 2.000 minutos/mês grátis
-- ✅ **Automático** - não precisa manutenção
-- ✅ **Confiável** - infraestrutura do GitHub
-- ✅ **Logs detalhados** - veja cada ping
-- ✅ **Sem cadastro adicional** - usa seu GitHub
-
-### Desvantagens:
-- ⚠️ Se o repositório ficar 60 dias sem commits, o cron para (basta fazer 1 commit)
+O GitHub Actions usa **UTC** (Brasília + 3h): as horas de Brasília a partir das 21h caem no dia seguinte em UTC. Por isso cada linha `cron` do arquivo traz um comentário com a conversão. Ao alterar as horas, mantenha essa correspondência.
 
 ---
 
-## 🌐 Solução 2: UptimeRobot (Backup Recomendado)
+## 📊 Registro de acessos
 
-**Website**: https://uptimerobot.com
-**Plano Grátis**: 50 monitores, check a cada 5 minutos
+Os horários são escolhidos com base em dados reais coletados pelo próprio sistema ([`presentes/acessos.py`](../../presentes/acessos.py)):
 
-### Como configurar:
+- **`RegistroAcessoMiddleware`** (registrado em `settings.MIDDLEWARE`):
+  - **`DespertarServidor`**: grava cada vez que o servidor sobe (ao acordar), com a primeira requisição, o caminho e a origem (`USUARIO` ou `MONITOR`).
+  - **`AcessoHora`**: conta os acessos de pessoas por data e hora (horário local). Ignora pings de monitoramento (user agents como `github`, `curl/`, `uptimerobot`, bots) e caminhos como `/static/`, `/health/`, `/api/notificacoes/`, `/api/push/` e `/api/cron/`.
+- Os dois modelos aparecem no Django Admin.
 
-1. **Criar conta**: https://uptimerobot.com/signUp
-2. **Adicionar monitor**:
-   - Clique em "+ Add New Monitor"
-   - Monitor Type: `HTTP(s)`
-   - Friendly Name: `Lista de Presentes`
-   - URL: `https://lista-presentes-im4b.onrender.com/health/`
-   - Monitoring Interval: `5 minutes` (plano grátis)
-   - Monitor Timeout: `30 seconds`
-   - HTTP Method: `GET`
-   - Expected Status Code: `200`
-3. **Salvar** e pronto!
+### Resumo: `/api/acessos/resumo/`
 
-### Vantagens:
-- ✅ **Check a cada 5 minutos** (mais frequente que GitHub)
-- ✅ **Dashboard visual** com uptime history
-- ✅ **Alertas por email** se o site cair
-- ✅ **Status page pública** (opcional)
-- ✅ **50 monitores grátis** (pode monitorar outros sites)
+Retorna JSON com acessos por hora, por dia da semana, horas de pico, faixas sugeridas, uma sugestão de `cron` (`cron_keep_alive_utc`, uma linha única para todos os dias) e o total de despertares (por usuário e por monitor).
 
-### Configuração de alertas:
-1. Settings → Alert Contacts
-2. Adicione seu email
-3. Receba notificação se o site ficar offline > 5 min
+- **Acesso:** superusuário logado **ou** header `X-Cron-Token` com o valor de `CRON_TOKEN`.
+- **Parâmetros:** `?dias=30` (1 a 365) e `?limite=5` (percentual mínimo de acessos para a hora ser pico).
+- Pelo terminal: `python manage.py analisar_acessos [--dias 30] [--limite 5]`.
 
----
+### Workflow `relatorio-acessos.yml`
 
-## 🕐 Solução 3: Cron-job.org
+Arquivo: [`.github/workflows/relatorio-acessos.yml`](../../.github/workflows/relatorio-acessos.yml)
 
-**Website**: https://cron-job.org
-**Plano Grátis**: Ilimitado, check a cada 1 minuto (!)
+- **Somente sob demanda** (`workflow_dispatch`): Actions → **Relatorio de Acessos** → **Run workflow** (entrada opcional `dias`, padrão 30).
+- Acorda o servidor, chama `/api/acessos/resumo/` com o header `X-Cron-Token` e mostra o JSON no log e no resumo da execução; também guarda o arquivo `resumo-acessos.json` como artefato (90 dias).
+- O resumo só tem contagens, nenhum dado pessoal.
 
-### Como configurar:
+### 🔑 `CRON_TOKEN`
 
-1. **Criar conta**: https://console.cron-job.org/signup
-2. **Verificar email** e fazer login
-3. **Criar cron job**:
-   - Menu → Cronjobs → Create cronjob
-   - Title: `Keep Render Alive - Lista Presentes`
-   - Address: `https://lista-presentes-im4b.onrender.com/health/`
-   - Schedule:
-     - Every: `10 minutes` (recomendado)
-     - ou Every: `5 minutes` (mais agressivo)
-   - Request method: `GET`
-   - Save cronjob
+Precisa ter **o mesmo valor** em dois lugares:
 
-### Vantagens:
-- ✅ **Checks muito frequentes** (até 1 minuto!)
-- ✅ **Logs de execução** (últimas 100 execuções)
-- ✅ **Notificações por email** em caso de falha
-- ✅ **Interface simples** e fácil de usar
+1. **Render** → Environment → `CRON_TOKEN`
+2. **GitHub** → Settings → Secrets and variables → Actions → Secrets → `CRON_TOKEN`
 
-### Desvantagens:
-- ⚠️ Requer criar conta separada
-- ⚠️ Logs expiram após 100 execuções
+O mesmo token protege `/api/cron/pesquisar-precos/` (workflow `pesquisa-precos.yml`).
+
+### Como revisar as horas
+
+1. Rode o workflow **Relatorio de Acessos**.
+2. Veja `acessos_por_dia_semana` (listas de 24 posições, uma por hora, de `seg` a `dom`).
+3. Atualize as linhas `cron` e os comentários de `keep-alive.yml`, convertendo para UTC.
 
 ---
 
-## 🔧 Solução 4: Script Python Local (Avançado)
-
-Se você tem um servidor próprio ou Raspberry Pi sempre ligado:
-
-```python
-#!/usr/bin/env python3
-"""
-keep_alive.py - Mantém o Render acordado
-Uso: python3 keep_alive.py
-"""
-
-import requests
-import time
-from datetime import datetime
-
-URL = "https://lista-presentes-im4b.onrender.com/health/"
-INTERVAL = 600  # 10 minutos em segundos
-
-def ping():
-    try:
-        start = time.time()
-        response = requests.get(URL, timeout=30)
-        latency = int((time.time() - start) * 1000)
-
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-        if response.status_code == 200:
-            print(f"✅ [{timestamp}] OK - {latency}ms")
-        else:
-            print(f"⚠️ [{timestamp}] Status {response.status_code} - {latency}ms")
-
-    except Exception as e:
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        print(f"❌ [{timestamp}] Erro: {e}")
-
-if __name__ == "__main__":
-    print(f"🚀 Iniciando keep-alive para {URL}")
-    print(f"⏰ Intervalo: {INTERVAL}s ({INTERVAL//60} minutos)")
-    print("-" * 60)
-
-    while True:
-        ping()
-        time.sleep(INTERVAL)
-```
-
-### Executar em background (Linux/Mac):
+## 🔍 Como testar
 
 ```bash
-# Instalar requests
-pip3 install requests
-
-# Executar em background
-nohup python3 keep_alive.py &
-
-# Ver logs
-tail -f nohup.out
-
-# Parar
-pkill -f keep_alive.py
-```
-
----
-
-## 📊 Comparação de Soluções
-
-| Solução | Custo | Frequência | Confiabilidade | Setup |
-|---------|-------|------------|----------------|-------|
-| **GitHub Actions** | Grátis | 10 min | ⭐⭐⭐⭐⭐ | ✅ Feito |
-| **UptimeRobot** | Grátis | 5 min | ⭐⭐⭐⭐⭐ | 5 min |
-| **Cron-job.org** | Grátis | 1-10 min | ⭐⭐⭐⭐ | 5 min |
-| **Script Python** | Grátis* | Customizável | ⭐⭐⭐ | 15 min |
-
-\* Requer servidor próprio 24/7
-
----
-
-## 🎯 Recomendação Final
-
-### Setup Ideal (Redundância):
-
-1. **GitHub Actions** (principal) - ✅ **Já configurado**
-2. **UptimeRobot** (backup) - Configure em 5 minutos
-3. **Cron-job.org** (redundância extra) - Opcional
-
-Com essa configuração tripla, seu app **nunca** vai dormir!
-
-### Setup Mínimo (Suficiente):
-
-- **GitHub Actions apenas** - ✅ **Já está ativo**
-
----
-
-## 🔍 Como Testar
-
-### 1. Testar Health Check Manualmente:
-
-```bash
-curl -i https://lista-presentes-im4b.onrender.com/health/
-```
-
-Resposta esperada:
-```
-HTTP/2 200
-content-type: text/html; charset=utf-8
-...
-
-OK
-```
-
-### 2. Verificar GitHub Action:
-
-```bash
-# Acesse
-https://github.com/Maxwbh/Lista_de_Presentes/actions
-
-# Ou via CLI (se tiver gh instalado)
-gh workflow list
-gh run list --workflow="Keep Render Alive"
-```
-
-### 3. Verificar Logs do Render:
-
-```bash
-# Dashboard do Render
-https://dashboard.render.com/
-
-# Veja "Events" e "Logs" - deverá ver:
-# [GET] /health/ 200 - ... ms
+curl -i https://lista-presentes-im4b.onrender.com/health/   # esperado: HTTP 200, corpo "OK"
+gh run list --workflow="Keep Render Alive"                 # últimas execuções
 ```
 
 ---
 
 ## ⚠️ Troubleshooting
 
-### GitHub Action não está rodando?
+### O agendamento parou de rodar
 
-**Motivo 1**: Repositório sem atividade por 60 dias
-- **Solução**: Faça 1 commit qualquer
+Em repositórios públicos, o GitHub **desativa os workflows agendados depois de 60 dias sem atividade no repositório**. Para reativar: Actions → **Keep Render Alive** → menu `...` → **Disable workflow** e depois **Enable workflow** (ou apenas **Enable workflow**, se já estiver desativado).
 
-**Motivo 2**: Actions desabilitadas
-- **Solução**: Settings → Actions → "Allow all actions"
+Lembre também que o GitHub não garante o horário exato: execuções agendadas podem atrasar ou ser puladas em horários de pico.
 
-**Motivo 3**: Falta de permissões
-- **Solução**: Settings → Actions → Workflow permissions → "Read and write"
+### Relatório de acessos falha
 
-### Render ainda está dormindo?
+- `Secret CRON_TOKEN nao configurado`: crie o secret no GitHub.
+- `resumo: HTTP 403`: o valor do secret é diferente do `CRON_TOKEN` do Render.
 
-**Sintoma**: Primeiro request demora 30-60s
-- **Diagnóstico**: Render está iniciando (cold start)
-- **Solução**:
-  - Verifique se o ping está funcionando
-  - Reduza intervalo (GitHub: 5min, UptimeRobot: 5min, Cron-job: 5min)
-  - Configure múltiplos serviços (redundância)
+### Servidor ainda demora a responder
 
-### Health check retorna 500?
+- Fora das horas listadas isso é esperado.
+- Dentro delas, confira as execuções em Actions e os logs do Render.
 
-- Verifique se há erro no Django
-- Rode: `python manage.py check`
-- Veja logs no Render Dashboard
+### Health check retorna erro
+
+Veja os logs no Render e rode `python manage.py check`.
 
 ---
 
-## 💡 Dicas Extras
+## 💡 Alternativas externas
 
-### 1. Adicionar Logs Detalhados
-
-Edite `presentes/views.py` se quiser ver quem está pingando:
-
-```python
-def health_check(request):
-    """Health check endpoint para Render.com e outros serviços"""
-    user_agent = request.META.get('HTTP_USER_AGENT', 'Unknown')
-    logger.info(f"Health check recebido de: {user_agent}")
-    return HttpResponse("OK", status=200)
-```
-
-### 2. Criar Status Page Pública
-
-Use UptimeRobot para criar uma página pública de status:
-1. UptimeRobot → Add Status Page
-2. URL pública: `https://stats.uptimerobot.com/XXXXX`
-3. Adicione ao README.md
-
-### 3. Monitorar Múltiplos Endpoints
-
-Além de `/health/`, monitore:
-- `/` (home)
-- `/login/` (autenticação)
-- `/api/notificacoes/` (API)
+Serviços como [UptimeRobot](https://uptimerobot.com) ou [cron-job.org](https://cron-job.org) também podem pingar `/health/`. Eles não estão configurados no projeto. Se usar algum, restrinja os horários para não passar do limite de 750h/mês.
 
 ---
 
-## 📈 Monitoramento Avançado (Opcional)
-
-Se quiser estatísticas detalhadas, use **Better Stack** (ex-Logtail):
-
-1. **Website**: https://betterstack.com/uptime
-2. **Plano grátis**: 10 monitores, 3 min interval
-3. **Features**:
-   - Status page automática
-   - SSL monitoring
-   - Alertas via Slack, Discord, Telegram
-   - Grafana dashboard integrado
-
----
-
-## 🚀 Status: TUDO CONFIGURADO!
-
-✅ Health check endpoint: `https://lista-presentes-im4b.onrender.com/health/`
-✅ GitHub Action: Ping a cada 10 minutos
-✅ Logs: https://github.com/Maxwbh/Lista_de_Presentes/actions
-
-**Próximo passo**: Configure UptimeRobot como backup (leva 5 minutos)
-
----
-
-## 📞 Suporte
-
-### Documentação Oficial:
-- **GitHub Actions Docs**: https://docs.github.com/en/actions
-- **Render Docs**: https://render.com/docs/free#free-web-services
-- **UptimeRobot Docs**: https://blog.uptimerobot.com/what-is-monitoring-interval/
-
-### Contato do Desenvolvedor:
-- **Desenvolvedor**: Maxwell da Silva Oliveira
-- **Email**: [maxwbh@gmail.com](mailto:maxwbh@gmail.com)
-- **GitHub**: [@Maxwbh](https://github.com/Maxwbh/)
-- **LinkedIn**: [linkedin.com/in/maxwbh](https://www.linkedin.com/in/maxwbh/)
-- **Empresa**: M&S do Brasil LTDA
-- **Site**: [msbrasil.inf.br](http://msbrasil.inf.br)
-
----
-
-**Desenvolvido por**: Maxwell da Silva Oliveira - M&S do Brasil LTDA
-**Última atualização**: 2025-11-21
+**Referências:** [Render Free](https://render.com/docs/free) · [GitHub Actions: desativar e ativar workflows](https://docs.github.com/pt/actions/managing-workflow-runs-and-deployments/managing-workflow-runs/disabling-and-enabling-a-workflow)

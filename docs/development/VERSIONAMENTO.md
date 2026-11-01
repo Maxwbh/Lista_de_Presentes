@@ -1,109 +1,45 @@
-# Sistema de Versionamento Automático
+# 🏷️ Versionamento
 
-Este projeto utiliza um sistema de versionamento automático que incrementa a versão a cada commit.
+A versão segue o [SemVer](https://semver.org/lang/pt-BR/) (`MAJOR.MINOR.PATCH`) e aparece no rodapé de todas as páginas.
 
-## Arquivos de Versão
+## 📄 Arquivos de versão
 
-### VERSION
-Arquivo de texto simples contendo a versão no formato `MAJOR.MINOR.PATCH`
-- Exemplo: `1.1.10`
+| Arquivo | Conteúdo | Quem lê |
+|---------|----------|---------|
+| `VERSION` | Só a versão, ex.: `1.1.45` | `setup.py`, `lista_presentes/__init__.py` (`__version__`), workflow `deploy.yml` |
+| `version.py` | `__version__`, `__build__` (contador) e `__commit__` (hash curto) | Rodapé, via context processor |
 
-### version.py
-Arquivo Python com informações detalhadas sobre a versão:
-```python
-__version__ = "1.1.10"  # Versão semântica
-__build__ = 2           # Número do build (incrementa a cada commit)
-__commit__ = "7e5f7dc"  # Hash curto do commit
+O context processor `app_version` (`presentes/context_processors.py`) disponibiliza `{{ app_version }}`, `{{ app_build }}` e `{{ app_commit }}`. O rodapé de `templates/base.html` mostra, por exemplo:
+
+```
+v1.1.45 · Build 52 · c656292
 ```
 
-## Como Funciona
+> ⚠️ O rodapé lê o `version.py`, não o `VERSION`. Mantenha os dois com a mesma versão. O `pyproject.toml` tem um número próprio (desatualizado) e não é usado pelo app.
 
-### Hook Pre-Commit
-O arquivo `.git/hooks/pre-commit` é executado automaticamente antes de cada commit e:
-1. Executa o script `scripts/increment_version.py`
-2. Incrementa automaticamente o número PATCH da versão
-3. Incrementa o número do BUILD
-4. Atualiza o hash do commit
-5. Adiciona os arquivos VERSION e version.py ao commit
+## 🔄 Como incrementar
 
-### Script increment_version.py
-Script Python que gerencia o incremento da versão:
-- Lê a versão atual do arquivo `VERSION`
-- Incrementa o patch (+1)
-- Incrementa o build (+1)
-- Obtém o hash do commit atual
-- Atualiza ambos os arquivos `VERSION` e `version.py`
-- Adiciona os arquivos ao staging do git
+Há duas ferramentas no repositório; nenhuma vem ativada por padrão.
 
-## Versionamento Semântico
+### `scripts/increment_version.py` (recomendado)
 
-O projeto segue o padrão Semantic Versioning (SemVer):
-
-- **MAJOR** (1.x.x): Mudanças incompatíveis na API
-- **MINOR** (x.1.x): Novas funcionalidades compatíveis
-- **PATCH** (x.x.1): Correções de bugs e melhorias
-
-### Quando Incrementar Manualmente
-
-O sistema incrementa automaticamente o PATCH. Você deve editar manualmente o arquivo `VERSION` quando:
-
-1. **Incrementar MAJOR**: Mudanças que quebram compatibilidade
-   ```bash
-   echo "2.0.0" > VERSION
-   ```
-
-2. **Incrementar MINOR**: Novas funcionalidades
-   ```bash
-   echo "1.2.0" > VERSION
-   ```
-
-Depois do próximo commit, o sistema continuará incrementando o PATCH automaticamente a partir dessa nova base.
-
-## Exibição da Versão
-
-A versão é exibida automaticamente no footer de todas as páginas da aplicação:
-```
-Lista de Presentes v1.1.10 | Build 2 | 7e5f7dc
-```
-
-### Context Processor
-O arquivo `presentes/context_processors.py` disponibiliza as variáveis em todos os templates:
-- `{{ app_version }}` - Versão (ex: 1.1.10)
-- `{{ app_build }}` - Número do build (ex: 2)
-- `{{ app_commit }}` - Hash do commit (ex: 7e5f7dc)
-
-## Desabilitar o Versionamento Automático
-
-Se precisar desabilitar temporariamente:
-```bash
-# Renomear o hook
-mv .git/hooks/pre-commit .git/hooks/pre-commit.disabled
-
-# Para reativar
-mv .git/hooks/pre-commit.disabled .git/hooks/pre-commit
-```
-
-## Exemplo de Fluxo
+Atualiza os **dois** arquivos de uma vez: PATCH +1 no `VERSION`, `__build__` +1 e `__commit__` com o hash do `HEAD` atual (o commit anterior) no `version.py`, e faz `git add` dos dois.
 
 ```bash
-# Estado atual: VERSION = "1.1.9", build = 1
-
-# Fazer mudanças no código
-git add .
-git commit -m "feat: Adicionar nova funcionalidade"
-
-# O hook pre-commit é executado automaticamente:
-# ✓ VERSION atualizado: 1.1.10
-# ✓ version.py atualizado: 1.1.10 (build 2, commit abc1234)
-# ✓ Arquivos adicionados ao commit
-
-# Resultado: VERSION = "1.1.10", build = 2, commit = "abc1234"
+python scripts/increment_version.py
+git commit -m "Descrição da mudança"
 ```
 
-## Benefícios
+### Hook `.githooks/pre-commit`
 
-1. **Rastreabilidade**: Cada versão está vinculada a um commit específico
-2. **Automação**: Não é necessário lembrar de incrementar a versão manualmente
-3. **Consistência**: A versão sempre reflete o estado atual do código
-4. **Transparência**: Usuários podem ver a versão na interface
-5. **Deploy**: Facilita identificar qual versão está em produção
+Incrementa o PATCH do `VERSION` a cada commit (a menos que o `VERSION` já esteja no stage). **Não** atualiza o `version.py`. Para ativar e desativar:
+
+```bash
+git config core.hooksPath .githooks      # ativar
+git config --unset core.hooksPath        # desativar
+git commit --no-verify ...               # pular em um commit
+```
+
+## ✋ MAJOR e MINOR
+
+Os incrementos automáticos só mexem no PATCH. Para MAJOR (mudança incompatível) ou MINOR (nova funcionalidade), edite o `VERSION` e o `__version__` do `version.py` à mão, por exemplo `1.2.0`. Os próximos incrementos continuam a partir daí.
