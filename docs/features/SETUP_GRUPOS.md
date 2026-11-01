@@ -70,7 +70,7 @@ Para plataformas sem shell (ex.: Render Free), a rota `/setup/` (`setup_grupos_v
 
 O resultado aparece em mensagens no topo da página.
 
-> ⚠️ **Segurança:** no código atual a view **não exige login nem superusuário** (acesso público, como registrado no CHANGELOG 1.1.4, para o Render sem SSH). Qualquer pessoa com a URL pode disparar migrations e os comandos acima. Considere restringir o acesso depois do setup inicial.
+> 🔒 **Acesso:** somente **superusuários** (sem login, vai para a tela de login; outros usuários recebem 403). A rota `/gerar-dados-teste/`, que cria usuários de teste com senha conhecida, tem a mesma restrição.
 
 ---
 

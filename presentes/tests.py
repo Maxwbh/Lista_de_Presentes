@@ -1752,3 +1752,78 @@ class DadosEstruturadosTest(TestCase):
                 scraper, generico = ScraperFactory.get_scraper(url)
                 self.assertIsInstance(scraper, AmazonScraper)
                 self.assertFalse(generico)
+
+
+class PaginasDeAdministracaoTest(TestCase):
+    """/setup/ e /gerar-dados-teste/ alteram o banco: somente superusuarios."""
+
+    def setUp(self):
+        self.comum = Usuario.objects.create_user(
+            email='comum-adm@exemplo.com', username='comum-adm', password='1234')
+        self.admin = Usuario.objects.create_superuser(
+            email='super-adm@exemplo.com', username='super-adm', password='SenhaForte!2026')
+
+    def test_sem_login_vai_para_o_login(self):
+        for nome in ('setup_grupos', 'gerar_dados_teste'):
+            with self.subTest(pagina=nome):
+                resposta = self.client.get(reverse(nome))
+                self.assertEqual(resposta.status_code, 302)
+                self.assertIn('/login/', resposta['Location'])
+
+    def test_post_sem_login_nao_executa_nada(self):
+        with mock.patch('django.core.management.call_command') as comando:
+            self.client.post(reverse('gerar_dados_teste'))
+            self.client.post(reverse('setup_grupos'), {'acao': 'migrations'})
+        comando.assert_not_called()
+        self.assertFalse(Usuario.objects.filter(email__endswith='@example.com').exists())
+
+    def test_usuario_comum_recebe_403(self):
+        self.client.force_login(self.comum)
+        for nome in ('setup_grupos', 'gerar_dados_teste'):
+            with self.subTest(pagina=nome):
+                self.assertEqual(self.client.get(reverse(nome)).status_code, 403)
+
+    def test_superusuario_acessa(self):
+        self.client.force_login(self.admin)
+        for nome in ('setup_grupos', 'gerar_dados_teste'):
+            with self.subTest(pagina=nome):
+                self.assertEqual(self.client.get(reverse(nome)).status_code, 200)
+
+
+class ValidacaoAppleTest(TestCase):
+    """Login com Apple: Team ID em 'key', Key ID em 'secret' e a chave em settings."""
+
+    CHAVE = '-----BEGIN PRIVATE KEY-----\nabc\n-----END PRIVATE KEY-----'
+
+    def _validar(self, app):
+        from .social_validation import validar_formato
+        return validar_formato('apple', app)
+
+    def test_configuracao_completa(self):
+        ok, _ = self._validar({'client_id': 'br.com.lista', 'key': 'TEAM123', 'secret': 'KEY456',
+                               'settings': {'certificate_key': self.CHAVE}})
+        self.assertTrue(ok)
+
+    def test_sem_team_id_ou_sem_key_id(self):
+        ok, msg = self._validar({'client_id': 'br.com.lista', 'key': '', 'secret': 'KEY456',
+                                 'settings': {'certificate_key': self.CHAVE}})
+        self.assertFalse(ok)
+        self.assertIn('APPLE_TEAM_ID', msg)
+        ok, msg = self._validar({'client_id': 'br.com.lista', 'key': 'TEAM123', 'secret': '',
+                                 'settings': {'certificate_key': self.CHAVE}})
+        self.assertFalse(ok)
+        self.assertIn('APPLE_KEY_ID', msg)
+
+    def test_nomes_novos_e_antigos_das_variaveis(self):
+        import importlib
+        from lista_presentes import settings as modulo
+        novos = {'APPLE_TEAM_ID': 'TEAM123', 'APPLE_KEY_ID': 'KEY456', 'APPLE_CLIENT_SECRET': ''}
+        antigos = {'APPLE_TEAM_ID': '', 'APPLE_KEY_ID': 'TEAM123', 'APPLE_CLIENT_SECRET': 'KEY456'}
+        try:
+            for nome, ambiente in (('novos', novos), ('antigos', antigos)):
+                with self.subTest(nomes=nome), mock.patch.dict('os.environ', ambiente):
+                    app = importlib.reload(modulo).SOCIALACCOUNT_PROVIDERS['apple']['APP']
+                    self.assertEqual(app['key'], 'TEAM123')
+                    self.assertEqual(app['secret'], 'KEY456')
+        finally:
+            importlib.reload(modulo)

@@ -124,7 +124,7 @@ Todas são lidas em `lista_presentes/settings.py` (o `.env` é carregado com `py
 | `MERCADOLIVRE_CLIENT_ID`, `MERCADOLIVRE_CLIENT_SECRET` | API do Mercado Livre. Redirect URI do app: `{SITE_URL}/integracoes/mercadolivre/callback/` |
 | `GITHUB_TOKEN`, `GITHUB_REPO_OWNER`, `GITHUB_REPO_NAME`, `GITHUB_AUTO_CREATE_ISSUES` | Criação automática de issues para falhas de download de imagem |
 | `CRON_TOKEN` | Protege `/api/cron/pesquisar-precos/` e `/api/acessos/resumo/` (header `X-Cron-Token`). Mesmo valor no servidor e no secret do GitHub |
-| `GOOGLE_CLIENT_ID/SECRET`, `FACEBOOK_APP_ID/SECRET`, `LINKEDIN_CLIENT_ID/SECRET`, `APPLE_CLIENT_ID`, `APPLE_CLIENT_SECRET`, `APPLE_KEY_ID`, `APPLE_PRIVATE_KEY` | Login social ([SOCIAL_LOGIN_CONFIG.md](../features/SOCIAL_LOGIN_CONFIG.md)) |
+| `GOOGLE_CLIENT_ID/SECRET`, `FACEBOOK_APP_ID/SECRET`, `LINKEDIN_CLIENT_ID/SECRET`, `APPLE_CLIENT_ID`, `APPLE_TEAM_ID`, `APPLE_KEY_ID`, `APPLE_PRIVATE_KEY` | Login social ([SOCIAL_LOGIN_CONFIG.md](../features/SOCIAL_LOGIN_CONFIG.md)) |
 
 ### Admin automático e servidor
 

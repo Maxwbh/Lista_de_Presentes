@@ -5,7 +5,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.contrib import messages
 from django.db.models import Count, Prefetch, Q
 from django.db import transaction
-from django.http import JsonResponse, HttpResponse
+from django.http import JsonResponse, HttpResponse, HttpResponseForbidden
 from django.urls import reverse
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.conf import settings
@@ -25,6 +25,22 @@ from urllib.parse import urlparse
 from functools import wraps
 
 logger = logging.getLogger(__name__)
+
+def requer_superusuario(view_func):
+    """
+    Restringe a view a superusuarios. Sem login vai para a tela de login;
+    logado sem ser superusuario recebe 403.
+    """
+    @wraps(view_func)
+    def _wrapped(request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            from django.contrib.auth.views import redirect_to_login
+            return redirect_to_login(request.get_full_path())
+        if not request.user.is_superuser:
+            return HttpResponseForbidden('Apenas administradores.')
+        return view_func(request, *args, **kwargs)
+    return _wrapped
+
 
 def requer_grupo_ativo(view_func):
     """
@@ -1256,10 +1272,11 @@ def extrair_info_produto_view(request):
             'details': str(e)
         }, status=500)
 
+@requer_superusuario
 def gerar_dados_teste_view(request):
     """
-    View para gerar dados de teste.
-    IMPORTANTE: Acesso público permitido (útil para Render Free sem SSH).
+    View para gerar dados de teste (Render Free nao tem shell).
+    Somente superusuarios: o comando cria usuarios com senha conhecida.
     Acesso via: /gerar-dados-teste/
     """
     if request.method == 'POST':
@@ -1318,11 +1335,12 @@ def gerar_dados_teste_view(request):
 # VIEW DE SETUP (PARA RENDER E OUTRAS PLATAFORMAS SEM SHELL)
 # =====================================================================
 
+@requer_superusuario
 def setup_grupos_view(request):
     """
     Interface web para executar setup do grupo padrao.
     Util para plataformas como Render onde nao ha acesso SSH.
-    IMPORTANTE: Acesso público permitido (útil para Render Free sem SSH).
+    Somente superusuarios: executa makemigrations/migrate e altera dados.
     """
     if request.method == 'POST':
         acao = request.POST.get('acao')

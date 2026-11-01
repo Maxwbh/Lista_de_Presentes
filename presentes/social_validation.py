@@ -50,9 +50,11 @@ def validar_formato(provider, app=None):
         if not secret:
             return False, 'LINKEDIN_CLIENT_SECRET não configurado'
     elif provider == 'apple':
-        key = (app.get('key') or '').strip()
-        cert = (app.get('certificate_key') or '').strip()
-        if not key:
+        team_id = (app.get('key') or '').strip()
+        cert = ((app.get('settings') or {}).get('certificate_key') or app.get('certificate_key') or '').strip()
+        if not team_id:
+            return False, 'APPLE_TEAM_ID não configurado'
+        if not secret:
             return False, 'APPLE_KEY_ID não configurado'
         if 'PRIVATE KEY' not in cert:
             return False, 'APPLE_PRIVATE_KEY deve conter a chave PEM (BEGIN PRIVATE KEY)'

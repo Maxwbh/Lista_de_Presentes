@@ -454,6 +454,17 @@ SOCIALACCOUNT_LOGIN_ON_GET = True
 SOCIALACCOUNT_ADAPTER = 'presentes.adapters.SocialAdapter'
 
 # Provider specific settings
+# Apple: APPLE_TEAM_ID (Team ID) e APPLE_KEY_ID (Key ID da chave .p8).
+# Compatibilidade com os nomes antigos, que estavam trocados: sem
+# APPLE_TEAM_ID, vale o esquema antigo (APPLE_KEY_ID guardava o Team ID e
+# APPLE_CLIENT_SECRET guardava o Key ID).
+if os.getenv('APPLE_TEAM_ID'):
+    APPLE_TEAM_ID = os.getenv('APPLE_TEAM_ID', '')
+    APPLE_KEY_ID = os.getenv('APPLE_KEY_ID', '')
+else:
+    APPLE_TEAM_ID = os.getenv('APPLE_KEY_ID', '')
+    APPLE_KEY_ID = os.getenv('APPLE_CLIENT_SECRET', '')
+
 SOCIALACCOUNT_PROVIDERS = {
     'google': {
         'SCOPE': [
@@ -507,9 +518,11 @@ SOCIALACCOUNT_PROVIDERS = {
     'apple': {
         'APP': {
             'client_id': os.getenv('APPLE_CLIENT_ID', ''),
-            'secret': os.getenv('APPLE_CLIENT_SECRET', ''),
-            'key': os.getenv('APPLE_KEY_ID', ''),
-            'certificate_key': os.getenv('APPLE_PRIVATE_KEY', ''),
+            # No allauth, 'secret' vai no cabecalho do JWT como Key ID (kid) e
+            # 'key' vai como emissor (iss), que e o Team ID
+            'secret': APPLE_KEY_ID,
+            'key': APPLE_TEAM_ID,
+            'settings': {'certificate_key': os.getenv('APPLE_PRIVATE_KEY', '')},
         },
         'SCOPE': ['name', 'email'],
     }

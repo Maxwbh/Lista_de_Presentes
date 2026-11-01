@@ -7,7 +7,7 @@ O login por redes sociais usa **django-allauth 65.4.1**. Provedores habilitados 
 | Google | `google` | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` |
 | Facebook | `facebook` | `FACEBOOK_APP_ID`, `FACEBOOK_APP_SECRET` |
 | LinkedIn | `linkedin_oauth2` | `LINKEDIN_CLIENT_ID`, `LINKEDIN_CLIENT_SECRET` |
-| Apple | `apple` | `APPLE_CLIENT_ID`, `APPLE_CLIENT_SECRET`, `APPLE_KEY_ID`, `APPLE_PRIVATE_KEY` |
+| Apple | `apple` | `APPLE_CLIENT_ID`, `APPLE_TEAM_ID`, `APPLE_KEY_ID`, `APPLE_PRIVATE_KEY` |
 
 As credenciais ficam em `SOCIALACCOUNT_PROVIDERS` (lidas do ambiente). **Não é preciso cadastrar "Social applications" no admin.**
 
@@ -40,16 +40,15 @@ No Render (Environment) ou no `.env` local, defina as variáveis do(s) provedor(
 
 **Apple** ([Apple Developer](https://developer.apple.com/account/) → Certificates, Identifiers & Profiles)
 - Crie um *Services ID* com Sign in with Apple e uma chave privada (`.p8`).
-- Pelo modo como o allauth monta o JWT da Apple, os campos são usados assim:
 
-| Variável | Valor esperado |
-|----------|----------------|
+| Variável | Valor |
+|----------|-------|
 | `APPLE_CLIENT_ID` | Services ID (ex.: `br.com.exemplo.lista`) |
-| `APPLE_CLIENT_SECRET` | **Key ID** da chave `.p8` (o allauth o usa como `kid`) |
-| `APPLE_KEY_ID` | **Team ID** (o allauth o usa como `iss`) |
+| `APPLE_TEAM_ID` | **Team ID** da conta de desenvolvedor |
+| `APPLE_KEY_ID` | **Key ID** da chave `.p8` |
 | `APPLE_PRIVATE_KEY` | Conteúdo do `.p8`, com `-----BEGIN PRIVATE KEY-----` |
 
-> Os nomes `APPLE_CLIENT_SECRET` e `APPLE_KEY_ID` não correspondem ao conteúdo esperado; siga a tabela acima.
+> **Compatibilidade:** sem `APPLE_TEAM_ID`, vale o esquema antigo, em que os nomes estavam trocados: `APPLE_KEY_ID` guardava o Team ID e `APPLE_CLIENT_SECRET` guardava o Key ID. Para migrar, crie `APPLE_TEAM_ID` com o Team ID, coloque o Key ID em `APPLE_KEY_ID` e apague `APPLE_CLIENT_SECRET`.
 
 ### 2. URLs de callback
 
