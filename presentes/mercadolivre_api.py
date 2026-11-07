@@ -8,6 +8,7 @@ da consulta de anuncios (/items) e produtos de catalogo (/products).
 """
 import logging
 import re
+import time
 from datetime import timedelta
 from urllib.parse import urlencode, urlparse, parse_qs, unquote
 
@@ -30,6 +31,15 @@ ID_RE = re.compile(r'\b(ML[A-Z])-?(\d{6,})\b', re.IGNORECASE)
 class MercadoLivreAPIError(Exception):
     """Falha ao consultar a API do Mercado Livre"""
     pass
+
+
+class LimiteDeConsultasError(MercadoLivreAPIError):
+    """A API respondeu HTTP 429 (limite de consultas) mesmo depois de novas tentativas"""
+    pass
+
+
+# HTTP 429: novas tentativas com espera crescente (segundos)
+ESPERAS_LIMITE = (1, 2)
 
 
 def credenciais_configuradas():
@@ -194,15 +204,25 @@ def extrair_ids(url):
 
 
 def _get(caminho, access_token):
-    try:
-        response = requests.get(
-            f"{API_BASE_URL}{caminho}",
-            headers={'Authorization': f'Bearer {access_token}', 'Accept': 'application/json'},
-            timeout=10,
-        )
-    except requests.exceptions.RequestException as e:
-        raise MercadoLivreAPIError(f"Erro de rede ao consultar {caminho}: {e}")
+    for tentativa in range(len(ESPERAS_LIMITE) + 1):
+        try:
+            response = requests.get(
+                f"{API_BASE_URL}{caminho}",
+                headers={'Authorization': f'Bearer {access_token}', 'Accept': 'application/json'},
+                timeout=10,
+            )
+        except requests.exceptions.RequestException as e:
+            raise MercadoLivreAPIError(f"Erro de rede ao consultar {caminho}: {e}")
+        if response.status_code != 429 or tentativa == len(ESPERAS_LIMITE):
+            break
+        espera = ESPERAS_LIMITE[tentativa]
+        logger.info(f"API: limite de consultas em {caminho} (HTTP 429); nova tentativa em {espera}s")
+        time.sleep(espera)
 
+    if response.status_code == 429:
+        raise LimiteDeConsultasError(
+            f"Limite de consultas da API em {caminho} (HTTP 429): {response.text[:300]}"
+        )
     if response.status_code != 200:
         raise MercadoLivreAPIError(
             f"Falha ao consultar {caminho} (HTTP {response.status_code}): {response.text[:300]}"
@@ -290,7 +310,7 @@ def _produto_do_anuncio(titulo, item_id, access_token, limite=5):
     return None
 
 
-def buscar_produto(url):
+def buscar_produto(url, avisos=None):
     """
     Busca titulo, preco e imagem pela API oficial.
 
@@ -298,7 +318,8 @@ def buscar_produto(url):
     o catalogo: /products/{id} (nome e fotos) e /products/{id}/items (precos).
 
     Retorna (titulo, preco, imagem_url), ou None se a API nao estiver
-    configurada ou a URL nao tiver ID reconhecivel.
+    configurada ou a URL nao tiver ID reconhecivel. Se o preco faltar por
+    limite de consultas (HTTP 429), acrescenta 'limite' em avisos.
     Lanca MercadoLivreAPIError se a API responder com erro.
     """
     item_id, produto_id = extrair_ids(url)
@@ -335,6 +356,10 @@ def buscar_produto(url):
     if preco is None:
         try:
             preco, _ = _preco_do_anuncio(produto_id, item_id, access_token)
+        except LimiteDeConsultasError as e:
+            logger.warning(f"Sem preco para o produto {produto_id}: {e}")
+            if avisos is not None:
+                avisos.append('limite')
         except MercadoLivreAPIError:
             logger.warning(f"Sem preco para o produto {produto_id}", exc_info=True)
     if preco is None:
