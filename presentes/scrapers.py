@@ -449,6 +449,12 @@ AVISO_ML_FORA_DO_CATALOGO = (
 )
 
 
+AVISO_ML_LIMITE_DE_CONSULTAS = (
+    'A API do Mercado Livre atingiu o limite de consultas e não informou o preço agora. '
+    'Tente buscar de novo em alguns minutos ou preencha o preço manualmente.'
+)
+
+
 class MercadoLivreScraper(BaseScraper):
     """Scraper específico para Mercado Livre"""
 
@@ -462,11 +468,15 @@ class MercadoLivreScraper(BaseScraper):
         # A API oficial e o caminho preferido: o site bloqueia consultas
         # automaticas com uma pagina de verificacao anti-robo
         from .mercadolivre_api import buscar_produto, MercadoLivreAPIError
+        avisos = []
         try:
-            resultado = buscar_produto(url)
+            resultado = buscar_produto(url, avisos=avisos)
             if resultado and resultado[0]:
                 logger.info(f"Mercado Livre (API) - Título: True, Preço: {resultado[1]}, Imagem: {bool(resultado[2])}")
-                if not resultado[1] and not resultado[2]:
+                if not resultado[1] and 'limite' in avisos:
+                    # Limite temporario da API, nao defeito do leitor
+                    self.aviso = AVISO_ML_LIMITE_DE_CONSULTAS
+                elif not resultado[1] and not resultado[2]:
                     self.aviso = AVISO_ML_FORA_DO_CATALOGO
                 return resultado
         except MercadoLivreAPIError as e:

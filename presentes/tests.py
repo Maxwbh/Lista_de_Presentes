@@ -777,6 +777,43 @@ class MercadoLivreAPITest(TestCase):
         # MLB999 nao contem o anuncio: so o produto que contem e usado
         self.assertEqual(resultado, ('Paquímetro Manual 150 mm', 33.47, 'https://http2.mlstatic.com/cat.jpg'))
 
+    def test_limite_de_consultas_tenta_de_novo(self):
+        # Issue #43: HTTP 429 (local_rate_limited) passageiro
+        self._token(timezone.now() + timedelta(hours=1))
+        respostas_429 = iter([self._resposta(429, {'status': 429, 'message': 'local_rate_limited'})])
+        precos = self.ROTAS_CATALOGO['/products/MLB2070594105/items'][1]
+
+        def get(url, **kwargs):
+            if '/products/MLB2070594105/items' in url:
+                return next(respostas_429, None) or self._resposta(200, precos)
+            for trecho, (status, dados) in self.ROTAS_CATALOGO.items():
+                if trecho in url:
+                    return self._resposta(status, dados)
+            return self._resposta(404, {})
+
+        with mock.patch('presentes.mercadolivre_api.requests.get', side_effect=get), \
+                mock.patch('presentes.mercadolivre_api.time.sleep') as espera:
+            resultado = buscar_produto(self.URL)
+        self.assertEqual(resultado[1], 33.47)
+        espera.assert_called_once()
+
+    def test_limite_de_consultas_persistente_nao_abre_issue(self):
+        self._token(timezone.now() + timedelta(hours=1))
+        rotas = dict(self.ROTAS_CATALOGO)
+        rotas['/products/MLB2070594105/items'] = (429, {'status': 429, 'message': 'local_rate_limited'})
+        rotas = {'/products/MLB2070594105/items': rotas.pop('/products/MLB2070594105/items'), **rotas}
+
+        with self._api_falsa(rotas), \
+                mock.patch('presentes.mercadolivre_api.time.sleep'), \
+                mock.patch('presentes.github_helper.criar_issue_erro_geral') as criar_issue:
+            resultado = ScraperFactory.extract_product_info(self.URL)
+
+        self.assertTrue(resultado['success'])
+        self.assertIsNone(resultado['preco'])
+        self.assertEqual(resultado['imagem_url'], 'https://http2.mlstatic.com/cat.jpg')
+        self.assertIn('limite de consultas', resultado['aviso'])
+        criar_issue.assert_not_called()
+
     def test_link_de_anuncio_fora_do_catalogo_traz_so_titulo(self):
         self._token(timezone.now() + timedelta(hours=1))
         rotas = {'/products/search': (200, {'results': []}), '/items/': (403, {})}
