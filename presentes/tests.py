@@ -1911,3 +1911,29 @@ class ValidacaoAppleTest(TestCase):
                     self.assertEqual(app['secret'], 'KEY456')
         finally:
             importlib.reload(modulo)
+
+
+class PresenteObrigatoriosTest(TestCase):
+    """Descricao e preco obrigatorios; imagem e link opcionais."""
+
+    def _form(self, **dados):
+        from .forms import PresenteForm
+        return PresenteForm(data={'descricao': 'Kit 3 tesouras', 'preco': '89.90', 'url': '', **dados})
+
+    def test_aceita_sem_imagem_e_sem_link(self):
+        self.assertTrue(self._form().is_valid())
+
+    def test_recusa_sem_preco(self):
+        form = self._form(preco='')
+        self.assertFalse(form.is_valid())
+        self.assertIn('preco', form.errors)
+
+    def test_recusa_preco_zero(self):
+        form = self._form(preco='0')
+        self.assertFalse(form.is_valid())
+        self.assertIn('maior que zero', form.errors['preco'][0])
+
+    def test_recusa_sem_descricao(self):
+        form = self._form(descricao='   ')
+        self.assertFalse(form.is_valid())
+        self.assertIn('descricao', form.errors)

@@ -127,8 +127,23 @@ class PresenteForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         # Garantir que URL não seja obrigatória
         self.fields['url'].required = False
+        # Descricao e preco sao obrigatorios; a imagem e opcional. Se a busca
+        # pelo link nao trouxer os dados, a pessoa preenche a mao.
+        self.fields['descricao'].required = True
+        self.fields['descricao'].error_messages['required'] = 'Informe a descrição do presente.'
+        self.fields['preco'].required = True
+        self.fields['preco'].error_messages['required'] = (
+            'Informe o preço. Se a busca pelo link não trouxe, digite um valor aproximado.'
+        )
+        self.fields['preco'].widget.attrs.update({'min': '0.01', 'required': True})
         # Reordenar campos
         self.order_fields(['descricao', 'url_imagem', 'imagem', 'url', 'preco'])
+
+    def clean_preco(self):
+        preco = self.cleaned_data.get('preco')
+        if preco is not None and preco <= 0:
+            raise forms.ValidationError('O preço deve ser maior que zero.')
+        return preco
 
 
 class GrupoForm(forms.ModelForm):
