@@ -605,86 +605,134 @@ class IAService:
             return False, f"Erro ao buscar sugestões: {str(e)}"
     
     @staticmethod
-    def buscar_imagem_para_presente(presente):
+    def descricao_generica(texto):
+        """Descricao vazia ou so chamada de venda (ex.: 'Pronta Entrega!')"""
+        import re
+        from .mercadolivre_api import CHAMADA_DE_VENDA_RE
+        texto = (texto or '').strip()
+        if not texto:
+            return True
+        return bool(CHAMADA_DE_VENDA_RE.search(texto)) and len(re.findall(r'\w+', texto)) < 6
+
+    @staticmethod
+    def precisa_completar(presente):
+        """Presente com link e sem foto, sem preco ou com descricao vazia/generica"""
+        return bool(presente.url) and (
+            not presente.tem_imagem() or presente.preco is None
+            or IAService.descricao_generica(presente.descricao)
+        )
+
+    @staticmethod
+    def completar_pelo_site(presente):
         """
-        Baixa a foto do produto para presentes sem imagem, usando o scraper
-        da loja (URL original do presente). Se o presente estiver sem preço,
-        preenche também o preço lido no site. Chamado na atualização de
-        preços e pelo botão do admin.
+        Le o site do link original e preenche o que falta no presente: foto
+        (se nao tiver), preco (se vazio) e descricao (se vazia ou generica e o
+        site trouxer um titulo melhor). Nao altera o que ja esta preenchido.
+        Chamado na atualizacao de precos e pelo botao do admin.
 
         Grava em busca_imagem_resultado o que aconteceu (para o admin mostrar).
+        Retorna o conjunto de campos preenchidos ('imagem', 'preco', 'descricao').
         """
-        if presente.tem_imagem() or not presente.url:
-            return False
+        if not IAService.precisa_completar(presente):
+            return set()
+        from django.utils import timezone
+        from .mercadolivre_api import _serve_de_titulo
 
-        def registrar(resultado, campos=()):
-            from django.utils import timezone
-            presente.busca_imagem_em = timezone.now()
-            presente.busca_imagem_resultado = resultado[:300]
-            presente.save(update_fields=['busca_imagem_em', 'busca_imagem_resultado', *campos])
+        faltando = []
+        if not presente.tem_imagem():
+            faltando.append('imagem')
+        if presente.preco is None:
+            faltando.append('preco')
+        if IAService.descricao_generica(presente.descricao):
+            faltando.append('descricao')
+        preenchidos = set()
+        campos = []
+        motivo = None
+        motivo_imagem = None
 
         try:
-            import base64
             from .scrapers import ScraperFactory
-
             resultado = ScraperFactory.extract_product_info(presente.url) or {}
-            campos = []
-            preco_preenchido = False
+            dados = resultado if resultado.get('success') else (resultado.get('partial_data') or {})
 
             if resultado.get('success'):
-                imagem_url = resultado.get('imagem_url')
-                # Aproveita a leitura para preencher o preco que faltava
-                preco_site = converter_preco_decimal(resultado.get('preco'))
-                if presente.preco is None and preco_site:
-                    presente.preco = preco_site
-                    campos.append('preco')
-                    preco_preenchido = True
+                motivo = resultado.get('aviso') or 'O site não informou.'
+            elif resultado.get('error_type') == 'blocked':
+                motivo = 'O site bloqueou a consulta automática.'
             else:
-                imagem_url = (resultado.get('partial_data') or {}).get('imagem_url')
+                motivo = f"Erro ao ler o site: {resultado.get('error_message') or 'desconhecido'}"
 
-            def com_preco(texto):
-                return texto + (' Preço preenchido.' if preco_preenchido else '')
+            preco_site = converter_preco_decimal(dados.get('preco'))
+            if 'preco' in faltando and preco_site:
+                presente.preco = preco_site
+                campos.append('preco')
+                preenchidos.add('preco')
 
-            if not imagem_url:
-                if resultado.get('success'):
-                    motivo = resultado.get('aviso') or 'O site não informou a foto do produto.'
-                elif resultado.get('error_type') == 'blocked':
-                    motivo = 'O site bloqueou a consulta automática.'
-                else:
-                    motivo = f"Erro ao ler o site: {resultado.get('error_message') or 'desconhecido'}"
-                logger.info(f"Sem imagem disponível para presente {presente.id}: {motivo}")
-                registrar(com_preco(motivo), campos)
-                if preco_preenchido:
-                    presente.registrar_preco(presente.preco, fonte='site')
-                return False
+            titulo = (dados.get('titulo') or '').strip()
+            if 'descricao' in faltando and titulo and _serve_de_titulo(titulo):
+                presente.descricao = titulo
+                campos.append('descricao')
+                preenchidos.add('descricao')
 
+            imagem_url = dados.get('imagem_url')
+            if 'imagem' in faltando and imagem_url:
+                motivo_imagem = IAService._baixar_foto(presente, imagem_url)
+                if motivo_imagem is None:
+                    campos += ['imagem_base64', 'imagem_nome', 'imagem_tipo']
+                    preenchidos.add('imagem')
+        except Exception as e:
+            logger.warning(f"Falha ao completar o presente {presente.id} pelo site: {str(e)}")
+            motivo = f'Erro ao ler o site: {e}'
+
+        nomes = {'imagem': 'foto', 'preco': 'preço', 'descricao': 'descrição'}
+        mensagens = []
+        if 'imagem' in preenchidos:
+            mensagens.append('Foto encontrada.')
+        if 'preco' in preenchidos:
+            mensagens.append('Preço preenchido.')
+        if 'descricao' in preenchidos:
+            mensagens.append('Descrição atualizada.')
+        if 'imagem' in faltando and 'imagem' not in preenchidos and motivo_imagem:
+            mensagens.append(motivo_imagem)
+        sem = [nomes[c] for c in faltando if c not in preenchidos and not (c == 'imagem' and motivo_imagem)]
+        if sem:
+            mensagens.append(f"Sem {' e '.join(sem)}: {motivo or 'erro desconhecido'}")
+
+        try:
+            presente.busca_imagem_em = timezone.now()
+            presente.busca_imagem_resultado = ' '.join(mensagens)[:300]
+            presente.save(update_fields=['busca_imagem_em', 'busca_imagem_resultado', *campos])
+            if 'preco' in preenchidos:
+                presente.registrar_preco(presente.preco, fonte='site')
+        except Exception:
+            logger.exception("Falha ao registrar o resultado da busca no site")
+        logger.info(f"Presente {presente.id} completado pelo site: {sorted(preenchidos) or 'nada'} "
+                    f"({presente.busca_imagem_resultado})")
+        return preenchidos
+
+    @staticmethod
+    def _baixar_foto(presente, imagem_url):
+        """Baixa a foto para o presente (sem salvar). Retorna None ou o motivo da falha."""
+        import base64
+        try:
             resp = requests.get(imagem_url, headers=IAService.HEADERS, timeout=15)
             resp.raise_for_status()
-
-            content_type = resp.headers.get('content-type', '').split(';')[0].strip()
-            if not content_type.startswith('image/'):
-                registrar(com_preco(f'O endereço da foto não devolveu uma imagem ({content_type or "sem tipo"}).'), campos)
-                return False
-            if len(resp.content) > 5 * 1024 * 1024:
-                registrar(com_preco('A foto do site tem mais de 5 MB.'), campos)
-                return False
-
-            presente.imagem_base64 = base64.b64encode(resp.content).decode('utf-8')
-            presente.imagem_nome = imagem_url.split('/')[-1].split('?')[0][:255] or 'produto.jpg'
-            presente.imagem_tipo = content_type
-            registrar(com_preco('Foto encontrada.'), ['imagem_base64', 'imagem_nome', 'imagem_tipo', *campos])
-            if preco_preenchido:
-                presente.registrar_preco(presente.preco, fonte='site')
-                logger.info(f"Preço preenchido pelo site para presente {presente.id}: {presente.preco}")
-            logger.info(f"Imagem baixada para presente {presente.id} ({content_type})")
-            return True
         except Exception as e:
-            logger.warning(f"Falha ao buscar imagem do presente {presente.id}: {str(e)}")
-            try:
-                registrar(f'Erro ao buscar a foto: {e}')
-            except Exception:
-                logger.exception("Falha ao registrar o resultado da busca de imagem")
-            return False
+            return f'Erro ao baixar a foto: {e}'
+        content_type = resp.headers.get('content-type', '').split(';')[0].strip()
+        if not content_type.startswith('image/'):
+            return f'O endereço da foto não devolveu uma imagem ({content_type or "sem tipo"}).'
+        if len(resp.content) > 5 * 1024 * 1024:
+            return 'A foto do site tem mais de 5 MB.'
+        presente.imagem_base64 = base64.b64encode(resp.content).decode('utf-8')
+        presente.imagem_nome = imagem_url.split('/')[-1].split('?')[0][:255] or 'produto.jpg'
+        presente.imagem_tipo = content_type
+        return None
+
+    @staticmethod
+    def buscar_imagem_para_presente(presente):
+        """Compatibilidade: completa o presente pelo site; True se ganhou foto"""
+        return 'imagem' in IAService.completar_pelo_site(presente)
 
     @staticmethod
     def _registrar_historico(presente, fonte='sugestao'):
