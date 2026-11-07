@@ -1989,3 +1989,80 @@ class PresenteObrigatoriosTest(TestCase):
         form = self._form(descricao='   ')
         self.assertFalse(form.is_valid())
         self.assertIn('descricao', form.errors)
+
+
+class SugestaoDaLojaDoLinkTest(TestCase):
+    """A loja do link do presente entra na comparacao; descricao generica nao busca em outras lojas."""
+
+    def setUp(self):
+        self.grupo = Grupo.objects.create(nome='Familia')
+        self.dono = Usuario.objects.create_user(email='mel@exemplo.com', username='mel', password='x')
+
+    def _presente(self, descricao, url='https://www.mercadolivre.com.br/up/MLBU1979771151', preco=None):
+        return Presente.objects.create(grupo=self.grupo, usuario=self.dono, descricao=descricao,
+                                       url=url, preco=preco, imagem_base64='aGVsbG8=')
+
+    def _leitura(self, titulo, preco):
+        return {'success': True, 'titulo': titulo, 'preco': preco, 'imagem_url': None}
+
+    def test_nome_da_loja_pelo_link(self):
+        casos = {
+            'https://www.mercadolivre.com.br/p/MLB1': 'Mercado Livre',
+            'https://produto.mercadolivre.com.br/MLB-1': 'Mercado Livre',
+            'https://www.amazon.com.br/dp/B0': 'Amazon',
+            'https://spaceorbit.com.br/produtos/x/': 'Spaceorbit',
+        }
+        for url, loja in casos.items():
+            with self.subTest(url=url):
+                self.assertEqual(IAService.nome_loja_do_link(url), loja)
+
+    def test_descricao_generica_so_traz_a_loja_do_link(self):
+        presente = self._presente('Pronta Entrega!')
+        with mock.patch('presentes.scrapers.ScraperFactory.extract_product_info',
+                        return_value=self._leitura('Pronta Entrega', 162.75)), \
+                mock.patch.object(IAService, 'buscar_preco_zoom') as zoom, \
+                mock.patch.object(IAService, 'buscar_sugestoes_gemini') as gemini:
+            sucesso, mensagem = IAService.buscar_sugestoes_reais(presente)
+        zoom.assert_not_called()
+        gemini.assert_not_called()
+        self.assertTrue(sucesso)
+        self.assertIn('genérica', mensagem)
+        sugestoes = list(SugestaoCompra.objects.filter(presente=presente))
+        self.assertEqual([(s.local_compra, float(s.preco_sugerido)) for s in sugestoes], [('Mercado Livre', 162.75)])
+        self.assertEqual(sugestoes[0].url_compra, presente.url)
+
+    def test_loja_do_link_entra_com_o_preco_atual_junto_das_outras(self):
+        presente = self._presente('Mata Formigas Formicel Gel 10g', url='https://www.loja-x.com.br/formicel', preco=30)
+        zoom = [{'loja': 'Amazon', 'titulo': 'Mata Formigas Formicel Gel 10g 2 unidades',
+                 'url': 'https://amazon.com.br/f', 'preco': 28.0, 'fonte': 'Zoom'}]
+        with mock.patch('presentes.scrapers.ScraperFactory.extract_product_info',
+                        return_value=self._leitura('Mata Formigas Formicel Gel 10g', 31.5)), \
+                mock.patch.object(IAService, 'buscar_preco_zoom', return_value=zoom), \
+                mock.patch.object(IAService, 'buscar_preco_buscape', return_value=[]), \
+                mock.patch.object(IAService, 'buscar_sugestoes_gemini', return_value=(False, 'sem chave')):
+            sucesso, _ = IAService.buscar_sugestoes_reais(presente)
+        self.assertTrue(sucesso)
+        lojas = {s.local_compra: float(s.preco_sugerido) for s in SugestaoCompra.objects.filter(presente=presente)}
+        self.assertEqual(lojas, {'Amazon': 28.0, 'Loja-x': 31.5})
+        presente.refresh_from_db()
+        self.assertEqual(float(presente.preco), 30)  # preco cadastrado nao muda
+
+    def test_migracao_limpa_sugestoes_e_historico_de_descricao_generica(self):
+        import importlib
+        from django.apps import apps
+        migracao = importlib.import_module('presentes.migrations.0012_limpa_sugestoes_descricao_generica')
+        generico = self._presente('Pronta Entrega!')
+        normal = self._presente('Acessórios De Jogos 10 Em 1 Para Nintendo Switch')
+        for p in (generico, normal):
+            SugestaoCompra.objects.create(presente=p, local_compra='Magazine Luiza',
+                                          url_compra='https://magalu.com/b', preco_sugerido=131.92)
+            PrecoHistorico.objects.create(presente=p, preco=459.08, fonte='sugestao')
+        PrecoHistorico.objects.create(presente=generico, preco=162.75, fonte='site')
+
+        migracao.limpar(apps, None)
+
+        self.assertFalse(SugestaoCompra.objects.filter(presente=generico).exists())
+        self.assertEqual(list(PrecoHistorico.objects.filter(presente=generico).values_list('fonte', flat=True)),
+                         ['site'])
+        self.assertEqual(SugestaoCompra.objects.filter(presente=normal).count(), 1)
+        self.assertEqual(PrecoHistorico.objects.filter(presente=normal).count(), 1)
