@@ -1,4 +1,5 @@
 import contextlib
+import json
 import re
 from datetime import timedelta
 from io import StringIO
@@ -1744,6 +1745,52 @@ class DadosEstruturadosTest(TestCase):
                 mock.patch('presentes.github_helper.criar_issue_erro_geral'):
             resultado = ScraperFactory.extract_product_info('https://loja.com.br/tenis')
         self.assertEqual(resultado['preco'], 199.90)
+
+    def _extrair_html(self, html, url='https://loja.com.br/produtos/onibus-espacial/'):
+        resposta = mock.Mock(url=url, content=html.encode(), status_code=200)
+        resposta.raise_for_status.return_value = None
+        with mock.patch('presentes.scrapers.requests.get', return_value=resposta), \
+                mock.patch('presentes.github_helper.criar_issue_erro_geral'), \
+                mock.patch('presentes.github_helper.criar_issue_falha_scraping'):
+            return ScraperFactory.extract_product_info(url)
+
+    @staticmethod
+    def _produto_ld(nome, preco, url=None):
+        produto = {'@type': 'Product', 'name': nome,
+                   'offers': {'@type': 'Offer', 'price': preco, 'priceCurrency': 'BRL'}}
+        if url:
+            produto['url'] = url
+        return f'<script type="application/ld+json">{json.dumps(produto)}</script>'
+
+    def test_nuvemshop_usa_o_preco_da_meta_e_nao_o_do_produto_relacionado(self):
+        # Space Orbit (Nuvemshop): o JSON-LD so traz produtos relacionados
+        html = ('<html><head><meta property="og:title" content="Miniatura Ônibus Espacial NASA – Completo">'
+                '<meta property="nuvemshop:price" content="499" /></head><body>'
+                + self._produto_ld('Miniatura Foguete SLS NASA', '599.9')
+                + self._produto_ld('Miniatura Telescópio Hubble NASA', '99.9')
+                + '</body></html>')
+        self.assertEqual(self._extrair_html(html)['preco'], 499.0)
+
+    def test_json_ld_so_com_produtos_relacionados_nao_da_preco(self):
+        html = ('<html><head><meta property="og:title" content="Miniatura Ônibus Espacial NASA"></head><body>'
+                + self._produto_ld('Miniatura Foguete SLS NASA', '599.9')
+                + self._produto_ld('Miniatura Telescópio Hubble NASA', '99.9')
+                + '</body></html>')
+        self.assertIsNone(self._extrair_html(html)['preco'])
+
+    def test_json_ld_com_varios_produtos_usa_o_da_pagina(self):
+        html = ('<html><head><meta property="og:title" content="Miniatura Onibus Espacial NASA"></head><body>'
+                + self._produto_ld('Miniatura Foguete SLS NASA', '599.9')
+                + self._produto_ld('Miniatura Ônibus Espacial NASA', '499.00')
+                + '</body></html>')
+        self.assertEqual(self._extrair_html(html)['preco'], 499.0)
+
+    def test_json_ld_com_varios_produtos_usa_o_do_link(self):
+        html = ('<html><head><meta property="og:title" content="Outro nome"></head><body>'
+                + self._produto_ld('Foguete', '599.9', 'https://loja.com.br/produtos/foguete/')
+                + self._produto_ld('Nave', '450', 'https://loja.com.br/produtos/onibus-espacial/')
+                + '</body></html>')
+        self.assertEqual(self._extrair_html(html)['preco'], 450.0)
 
     def test_link_curto_da_amazon_usa_o_scraper_da_amazon(self):
         from .scrapers import AmazonScraper
