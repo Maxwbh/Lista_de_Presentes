@@ -1498,6 +1498,18 @@ class IssueSiteNaoMapeadoTest(TestCase):
         criar_issue.assert_called_once()
         self.assertIn('bug', criar_issue.call_args[1]['labels'])
 
+    def test_chamada_de_venda_nao_vira_titulo(self):
+        # Varios presentes ficaram com o titulo 'Pronta Entrega!'
+        texto = 'Pronta Entrega!\n\nAcessórios De Jogos 10 Em 1 Esportivos Para Nintendo Switch\nItens...'
+        with mock.patch('presentes.mercadolivre_api._get', return_value={'plain_text': texto}):
+            self.assertEqual(_titulo_da_descricao('MLB123', 'token'),
+                             'Acessórios De Jogos 10 Em 1 Esportivos Para Nintendo Switch')
+
+    def test_descricao_so_com_chamadas_de_venda_nao_da_titulo(self):
+        texto = 'Pronta Entrega!\nEnvio imediato\nProduto novo e original\n'
+        with mock.patch('presentes.mercadolivre_api._get', return_value={'plain_text': texto}):
+            self.assertIsNone(_titulo_da_descricao('MLB123', 'token'))
+
     def test_descricao_so_com_separador_nao_vira_titulo(self):
         texto = '________________________________________________\nLuva de treino roxa tamanho M\n'
         with mock.patch('presentes.mercadolivre_api._get', return_value={'plain_text': texto}):

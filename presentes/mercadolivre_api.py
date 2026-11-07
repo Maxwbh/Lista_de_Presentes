@@ -256,6 +256,24 @@ def _parece_titulo(linha):
     return alfanumericos >= 3 and (len(visiveis) - alfanumericos) <= 0.2 * len(visiveis)
 
 
+# Chamadas de venda que abrem muitas descricoes e nao dizem o que e o produto
+# (ex.: 'Pronta Entrega!', 'Envio imediato', 'Produto novo e original')
+CHAMADA_DE_VENDA_RE = re.compile(
+    r'pronta\s+entrega|envio\s+(imediato|r[aá]pido|no\s+mesmo\s+dia)|frete\s+gr[aá]tis|aten[cç][aã]o|'
+    r'promo[cç][aã]o|oferta|lan[cç]amento|produto\s+novo|novo\s+e\s+original|original|garantia|'
+    r'nota\s+fiscal|estoque|leia\s+(a\s+)?descri[cç][aã]o|aproveite|imperd[ií]vel',
+    re.IGNORECASE,
+)
+
+
+def _serve_de_titulo(linha):
+    """Linha que descreve o produto: 3 palavras ou mais e nao so chamada de venda"""
+    palavras = re.findall(r'\w+', linha)
+    if len(palavras) < 3 or not 10 <= len(linha) <= 150:
+        return False
+    return not (CHAMADA_DE_VENDA_RE.search(linha) and len(palavras) < 6)
+
+
 def _titulo_da_descricao(item_id, access_token):
     """
     Primeira linha da descricao do anuncio, que costuma repetir o titulo.
@@ -269,9 +287,12 @@ def _titulo_da_descricao(item_id, access_token):
         return None
     # Linhas de separador ou de aviso cercado de simbolos (ex.: '______',
     # '*****ATENCAO FRETE GRATIS*****') nao servem de titulo
+    # Chamadas de venda curtas (ex.: 'Pronta Entrega!') tambem nao: procura
+    # a primeira linha que descreve o produto, nas primeiras linhas do texto
     linhas = [linha.strip() for linha in texto.splitlines() if _parece_titulo(linha)]
-    if linhas and 10 <= len(linhas[0]) <= 150:
-        return linhas[0]
+    for linha in linhas[:8]:
+        if _serve_de_titulo(linha):
+            return linha
     logger.info(f"Descrição do anúncio {item_id} sem linha que sirva de título")
     return None
 
