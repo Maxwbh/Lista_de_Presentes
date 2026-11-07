@@ -246,7 +246,39 @@ class BaseScraper:
         precos = [p for p in (self._preco_oferta(v) for v in variantes) if p]
         return min(precos) if precos else None
 
-    def preco_dados_estruturados(self, soup, sku_id=None):
+    @staticmethod
+    def _normalizar_nome(texto):
+        """Nome sem acentos, caixa e pontuacao, para comparar titulos"""
+        import unicodedata
+        texto = unicodedata.normalize('NFKD', str(texto or '')).encode('ascii', 'ignore').decode()
+        return ' '.join(re.findall(r'[a-z0-9]+', texto.lower()))
+
+    def _produto_da_pagina(self, produtos, titulo=None, url=None):
+        """
+        Produto do JSON-LD que corresponde a pagina. Com um so produto, e ele.
+        Com varios (lojas que publicam os produtos relacionados, ex.:
+        Nuvemshop), escolhe pelo link ou pelo nome; se nenhum bater, None:
+        o primeiro seria um produto relacionado, com outro preco.
+        """
+        if len(produtos) == 1:
+            return produtos[0]
+        if url:
+            caminho = urlparse(url).path.rstrip('/')
+            for produto in produtos:
+                ofertas = produto.get('offers') or {}
+                oferta = ofertas[0] if isinstance(ofertas, list) and ofertas else ofertas
+                link = produto.get('url') or (oferta.get('url') if isinstance(oferta, dict) else None)
+                if caminho and link and urlparse(str(link)).path.rstrip('/') == caminho:
+                    return produto
+        nome_pagina = self._normalizar_nome(titulo)
+        if nome_pagina:
+            for produto in produtos:
+                nome = self._normalizar_nome(produto.get('name'))
+                if nome and (nome == nome_pagina or nome in nome_pagina or nome_pagina in nome):
+                    return produto
+        return None
+
+    def preco_dados_estruturados(self, soup, sku_id=None, titulo=None, url=None):
         """
         Preco dos dados estruturados (schema.org) da pagina: primeiro o
         JSON-LD; senao, ofertas embutidas em scripts/atributos (lojas VTEX e
@@ -255,7 +287,13 @@ class BaseScraper:
         """
         produtos = self._produtos_json_ld(soup)
         if produtos:
-            preco = self._preco(produtos[0], sku_id)
+            produto = self._produto_da_pagina(produtos, titulo, url)
+            if produto is None:
+                # So ha produtos relacionados nos dados estruturados: as
+                # ofertas embutidas seriam deles tambem
+                logger.info(f"JSON-LD com {len(produtos)} produtos e nenhum é o da página; preço ignorado")
+                return None
+            preco = self._preco(produto, sku_id)
             if preco:
                 return preco
 
@@ -653,12 +691,18 @@ class GenericScraper(BaseScraper):
             if em_reais:
                 preco = self.clean_price(em_reais.group(1))
         else:
-            price_meta = soup.find('meta', property='product:price:amount') or soup.find('meta', attrs={'itemprop': 'price'})
-            if price_meta and price_meta.get('content'):
-                preco = self.preco_de_meta(price_meta.get('content'))
+            # nuvemshop:price: lojas Nuvemshop (ex.: Space Orbit), preco atual
+            # do produto, ja com a promocao
+            for atributos in ({'property': 'product:price:amount'}, {'property': 'og:price:amount'},
+                              {'property': 'nuvemshop:price'}, {'itemprop': 'price'}):
+                price_meta = soup.find('meta', attrs=atributos)
+                if price_meta and price_meta.get('content'):
+                    preco = self.preco_de_meta(price_meta.get('content'))
+                    if preco:
+                        break
 
         if not preco and (not moeda or moeda == 'BRL'):
-            preco = self.preco_dados_estruturados(soup)
+            preco = self.preco_dados_estruturados(soup, titulo=titulo, url=url)
 
         # Com moeda estrangeira, so o valor em reais da pagina serve: os
         # textos de preco estariam em outra moeda
