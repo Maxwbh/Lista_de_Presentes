@@ -292,10 +292,20 @@ class IAService:
     def buscar_sugestoes_reais(presente):
         """Busca sugestões combinando IA + Zoom + Buscapé"""
         try:
-            query = presente.descricao
-            logger.info(f"Buscando preços com IA + Zoom + Buscapé para: {query}")
+            # Le o site do link do presente: completa o que falta (foto, preco,
+            # descricao generica) e traz o preco atual da loja para a comparacao
+            oferta_link = IAService._oferta_do_link(presente)
 
+            query = presente.descricao
             todos_produtos = []
+            if IAService.descricao_generica(query):
+                # Buscar 'Pronta Entrega!' trazia produtos sem relacao (ex.: barbeador)
+                logger.warning(f"Descrição genérica, sem busca em outras lojas: '{query}'")
+                return IAService._gravar_sugestoes(presente, [], oferta_link, (
+                    "A descrição do presente é genérica. Edite o presente com o nome do produto "
+                    "para comparar preços em outras lojas."
+                ))
+            logger.info(f"Buscando preços com IA + Zoom + Buscapé para: {query}")
 
             # 1. Buscar com IA Gemini (free tier - principal)
             try:
@@ -340,7 +350,8 @@ class IAService:
 
             if not todos_produtos:
                 logger.warning("Nenhum produto encontrado em nenhuma fonte")
-                return False, "Não foram encontrados produtos nas fontes de busca."
+                return IAService._gravar_sugestoes(presente, [], oferta_link,
+                                                   "Não foram encontrados produtos nas fontes de busca.")
 
             # Descartar o que nao e o produto procurado. A pagina de resultados
             # dos buscadores tambem traz recomendacoes e produtos soltos, e sem
@@ -360,10 +371,10 @@ class IAService:
 
             if not relevantes:
                 logger.warning(f"Nenhum resultado correspondeu ao presente: {query}")
-                return False, (
+                return IAService._gravar_sugestoes(presente, [], oferta_link, (
                     "Nenhum resultado da busca corresponde a este presente. "
                     "Tente uma descrição mais específica."
-                )
+                ))
 
             todos_produtos = relevantes
 
@@ -385,60 +396,105 @@ class IAService:
                 todos_produtos_sem_preco = [p for p in todos_produtos if p.get('preco', 0) == 0]
                 todos_produtos = todos_produtos_com_preco + todos_produtos_sem_preco
 
-            # Limpar sugestões antigas e salvar novas (se não foram salvas pela IA)
-            SugestaoCompra.objects.filter(presente=presente).delete()
-
-            # Salvar até 10 melhores sugestões (uma por loja, a mais barata)
-            sugestoes_salvas = 0
-            lojas_salvas = set()
-            for produto in todos_produtos:
-                if sugestoes_salvas >= 10:
-                    break
-
-                loja_nome = IAService._limpar_nome_loja(produto.get('loja', ''))
-                url = produto.get('url', '').strip()
-                preco = converter_preco_decimal(produto.get('preco'))
-
-                # Validar dados antes de salvar
-                if not loja_nome:
-                    logger.warning(f"Ignorando sugestão sem nome de loja: {produto}")
-                    continue
-
-                if not url:
-                    logger.warning(f"Ignorando sugestão sem URL: {produto}")
-                    continue
-
-                # Deduplicar por loja: como a lista está ordenada por preço,
-                # a primeira ocorrência de cada loja já é a mais barata
-                chave_loja = loja_nome.lower()
-                if chave_loja in lojas_salvas:
-                    continue
-                lojas_salvas.add(chave_loja)
-
-                logger.info(f"Salvando sugestão: loja='{loja_nome}', url='{url}', preco={preco}")
-
-                SugestaoCompra.objects.create(
-                    grupo=presente.grupo,
-                    presente=presente,
-                    local_compra=loja_nome,
-                    titulo_produto=(produto.get('titulo') or '')[:300],
-                    url_compra=url,
-                    preco_sugerido=preco
-                )
-                sugestoes_salvas += 1
-
-            IAService._registrar_historico(presente)
-
-            # Aproveitar a atualização para baixar a foto de produtos sem imagem
-            IAService.buscar_imagem_para_presente(presente)
-
-            return True, f"Encontradas {sugestoes_salvas} sugestões válidas de IA + Zoom + Buscapé!"
+            return IAService._gravar_sugestoes(presente, todos_produtos, oferta_link,
+                                               "Não foram encontrados produtos nas fontes de busca.")
 
         except Exception as e:
             logger.error(f"Erro ao buscar sugestões: {str(e)}")
             import traceback
             logger.error(traceback.format_exc())
             return False, f"Erro ao buscar preços: {str(e)}"
+
+    LOJAS_CONHECIDAS = {
+        'mercadolivre': 'Mercado Livre', 'mercadolibre': 'Mercado Livre', 'meli': 'Mercado Livre',
+        'amazon': 'Amazon', 'amzn': 'Amazon', 'magazineluiza': 'Magazine Luiza', 'magalu': 'Magazine Luiza',
+        'kabum': 'KaBuM!', 'decathlon': 'Decathlon', 'shopee': 'Shopee', 'americanas': 'Americanas',
+        'casasbahia': 'Casas Bahia', 'pontofrio': 'Ponto', 'aliexpress': 'AliExpress', 'shein': 'Shein',
+        'netshoes': 'Netshoes', 'centauro': 'Centauro', 'submarino': 'Submarino',
+    }
+
+    @staticmethod
+    def nome_loja_do_link(url):
+        """Nome da loja a partir do dominio (ex.: www.mercadolivre.com.br -> 'Mercado Livre')"""
+        from urllib.parse import urlparse
+        dominio = urlparse(url or '').netloc.lower().split(':')[0]
+        partes = [p for p in dominio.split('.') if p not in ('www', 'm', 'produto', 'lista', 'loja')]
+        for parte in partes:
+            if parte in IAService.LOJAS_CONHECIDAS:
+                return IAService.LOJAS_CONHECIDAS[parte]
+        return partes[0].capitalize() if partes else 'Loja do link'
+
+    @staticmethod
+    def _oferta_do_link(presente):
+        """
+        Le o site do link do presente: completa o que falta no presente e
+        devolve a oferta da propria loja ({'loja', 'url', 'preco', 'titulo'})
+        com o preco atual do site (ou o preco cadastrado), ou None.
+        """
+        if not presente.url:
+            return None
+        from .scrapers import ScraperFactory
+        try:
+            leitura = ScraperFactory.extract_product_info(presente.url) or {}
+        except Exception as e:
+            logger.warning(f"Falha ao ler o link do presente {presente.id}: {e}")
+            leitura = {}
+        IAService.completar_pelo_site(presente, leitura=leitura)
+        preco = converter_preco_decimal(leitura.get('preco')) if leitura.get('success') else None
+        preco = preco or presente.preco
+        if not preco:
+            return None
+        return {
+            'loja': IAService.nome_loja_do_link(presente.url),
+            'url': presente.url,
+            'preco': float(preco),
+            'titulo': (leitura.get('titulo') or presente.descricao or '')[:300],
+        }
+
+    @staticmethod
+    def _gravar_sugestoes(presente, produtos, oferta_link, mensagem_vazia):
+        """
+        Substitui as sugestoes do presente: a loja do link do presente (sempre,
+        com o preco atual) e ate 10 lojas encontradas, uma por loja, a mais barata.
+        """
+        if not produtos and not oferta_link:
+            return False, mensagem_vazia
+
+        SugestaoCompra.objects.filter(presente=presente).delete()
+        lojas_salvas = set()
+        sugestoes_salvas = 0
+        if oferta_link:
+            produtos = [oferta_link] + list(produtos)
+        for produto in produtos:
+            if sugestoes_salvas >= 10:
+                break
+            loja_nome = IAService._limpar_nome_loja(produto.get('loja', ''))
+            url = (produto.get('url') or '').strip()
+            preco = converter_preco_decimal(produto.get('preco'))
+            if not loja_nome or not url:
+                logger.warning(f"Ignorando sugestão sem loja ou URL: {produto}")
+                continue
+            # Uma por loja: a do link do presente vem primeiro; nas demais, a
+            # lista ja esta ordenada por preco
+            if loja_nome.lower() in lojas_salvas:
+                continue
+            lojas_salvas.add(loja_nome.lower())
+            logger.info(f"Salvando sugestão: loja='{loja_nome}', url='{url}', preco={preco}")
+            SugestaoCompra.objects.create(
+                grupo=presente.grupo,
+                presente=presente,
+                local_compra=loja_nome,
+                titulo_produto=(produto.get('titulo') or '')[:300],
+                url_compra=url,
+                preco_sugerido=preco,
+            )
+            sugestoes_salvas += 1
+
+        IAService._registrar_historico(presente)
+        outras = sugestoes_salvas - (1 if oferta_link else 0)
+        if outras <= 0:
+            return True, f"Só a loja do link do presente. {mensagem_vazia}"
+        return True, f"Encontradas {sugestoes_salvas} sugestões (loja do link + IA, Zoom e Buscapé)!"
 
     @staticmethod
     def buscar_sugestoes_claude(presente):
@@ -605,86 +661,137 @@ class IAService:
             return False, f"Erro ao buscar sugestões: {str(e)}"
     
     @staticmethod
-    def buscar_imagem_para_presente(presente):
+    def descricao_generica(texto):
+        """Descricao vazia ou so chamada de venda (ex.: 'Pronta Entrega!')"""
+        import re
+        from .mercadolivre_api import CHAMADA_DE_VENDA_RE
+        texto = (texto or '').strip()
+        if not texto:
+            return True
+        return bool(CHAMADA_DE_VENDA_RE.search(texto)) and len(re.findall(r'\w+', texto)) < 6
+
+    @staticmethod
+    def precisa_completar(presente):
+        """Presente com link e sem foto, sem preco ou com descricao vazia/generica"""
+        return bool(presente.url) and (
+            not presente.tem_imagem() or presente.preco is None
+            or IAService.descricao_generica(presente.descricao)
+        )
+
+    @staticmethod
+    def completar_pelo_site(presente, leitura=None):
         """
-        Baixa a foto do produto para presentes sem imagem, usando o scraper
-        da loja (URL original do presente). Se o presente estiver sem preço,
-        preenche também o preço lido no site. Chamado na atualização de
-        preços e pelo botão do admin.
+        Le o site do link original e preenche o que falta no presente: foto
+        (se nao tiver), preco (se vazio) e descricao (se vazia ou generica e o
+        site trouxer um titulo melhor). Nao altera o que ja esta preenchido.
+        Chamado na atualizacao de precos e pelo botao do admin.
 
         Grava em busca_imagem_resultado o que aconteceu (para o admin mostrar).
+        Retorna o conjunto de campos preenchidos ('imagem', 'preco', 'descricao').
         """
-        if presente.tem_imagem() or not presente.url:
-            return False
+        if not IAService.precisa_completar(presente):
+            return set()
+        from django.utils import timezone
+        from .mercadolivre_api import _serve_de_titulo
 
-        def registrar(resultado, campos=()):
-            from django.utils import timezone
-            presente.busca_imagem_em = timezone.now()
-            presente.busca_imagem_resultado = resultado[:300]
-            presente.save(update_fields=['busca_imagem_em', 'busca_imagem_resultado', *campos])
+        faltando = []
+        if not presente.tem_imagem():
+            faltando.append('imagem')
+        if presente.preco is None:
+            faltando.append('preco')
+        if IAService.descricao_generica(presente.descricao):
+            faltando.append('descricao')
+        preenchidos = set()
+        campos = []
+        motivo = None
+        motivo_imagem = None
 
         try:
-            import base64
-            from .scrapers import ScraperFactory
-
-            resultado = ScraperFactory.extract_product_info(presente.url) or {}
-            campos = []
-            preco_preenchido = False
+            if leitura:
+                resultado = leitura
+            else:
+                from .scrapers import ScraperFactory
+                resultado = ScraperFactory.extract_product_info(presente.url) or {}
+            dados = resultado if resultado.get('success') else (resultado.get('partial_data') or {})
 
             if resultado.get('success'):
-                imagem_url = resultado.get('imagem_url')
-                # Aproveita a leitura para preencher o preco que faltava
-                preco_site = converter_preco_decimal(resultado.get('preco'))
-                if presente.preco is None and preco_site:
-                    presente.preco = preco_site
-                    campos.append('preco')
-                    preco_preenchido = True
+                motivo = resultado.get('aviso') or 'O site não informou.'
+            elif resultado.get('error_type') == 'blocked':
+                motivo = 'O site bloqueou a consulta automática.'
             else:
-                imagem_url = (resultado.get('partial_data') or {}).get('imagem_url')
+                motivo = f"Erro ao ler o site: {resultado.get('error_message') or 'desconhecido'}"
 
-            def com_preco(texto):
-                return texto + (' Preço preenchido.' if preco_preenchido else '')
+            preco_site = converter_preco_decimal(dados.get('preco'))
+            if 'preco' in faltando and preco_site:
+                presente.preco = preco_site
+                campos.append('preco')
+                preenchidos.add('preco')
 
-            if not imagem_url:
-                if resultado.get('success'):
-                    motivo = resultado.get('aviso') or 'O site não informou a foto do produto.'
-                elif resultado.get('error_type') == 'blocked':
-                    motivo = 'O site bloqueou a consulta automática.'
-                else:
-                    motivo = f"Erro ao ler o site: {resultado.get('error_message') or 'desconhecido'}"
-                logger.info(f"Sem imagem disponível para presente {presente.id}: {motivo}")
-                registrar(com_preco(motivo), campos)
-                if preco_preenchido:
-                    presente.registrar_preco(presente.preco, fonte='site')
-                return False
+            titulo = (dados.get('titulo') or '').strip()
+            if 'descricao' in faltando and titulo and _serve_de_titulo(titulo):
+                presente.descricao = titulo
+                campos.append('descricao')
+                preenchidos.add('descricao')
 
+            imagem_url = dados.get('imagem_url')
+            if 'imagem' in faltando and imagem_url:
+                motivo_imagem = IAService._baixar_foto(presente, imagem_url)
+                if motivo_imagem is None:
+                    campos += ['imagem_base64', 'imagem_nome', 'imagem_tipo']
+                    preenchidos.add('imagem')
+        except Exception as e:
+            logger.warning(f"Falha ao completar o presente {presente.id} pelo site: {str(e)}")
+            motivo = f'Erro ao ler o site: {e}'
+
+        nomes = {'imagem': 'foto', 'preco': 'preço', 'descricao': 'descrição'}
+        mensagens = []
+        if 'imagem' in preenchidos:
+            mensagens.append('Foto encontrada.')
+        if 'preco' in preenchidos:
+            mensagens.append('Preço preenchido.')
+        if 'descricao' in preenchidos:
+            mensagens.append('Descrição atualizada.')
+        if 'imagem' in faltando and 'imagem' not in preenchidos and motivo_imagem:
+            mensagens.append(motivo_imagem)
+        sem = [nomes[c] for c in faltando if c not in preenchidos and not (c == 'imagem' and motivo_imagem)]
+        if sem:
+            mensagens.append(f"Sem {' e '.join(sem)}: {motivo or 'erro desconhecido'}")
+
+        try:
+            presente.busca_imagem_em = timezone.now()
+            presente.busca_imagem_resultado = ' '.join(mensagens)[:300]
+            presente.save(update_fields=['busca_imagem_em', 'busca_imagem_resultado', *campos])
+            if 'preco' in preenchidos:
+                presente.registrar_preco(presente.preco, fonte='site')
+        except Exception:
+            logger.exception("Falha ao registrar o resultado da busca no site")
+        logger.info(f"Presente {presente.id} completado pelo site: {sorted(preenchidos) or 'nada'} "
+                    f"({presente.busca_imagem_resultado})")
+        return preenchidos
+
+    @staticmethod
+    def _baixar_foto(presente, imagem_url):
+        """Baixa a foto para o presente (sem salvar). Retorna None ou o motivo da falha."""
+        import base64
+        try:
             resp = requests.get(imagem_url, headers=IAService.HEADERS, timeout=15)
             resp.raise_for_status()
-
-            content_type = resp.headers.get('content-type', '').split(';')[0].strip()
-            if not content_type.startswith('image/'):
-                registrar(com_preco(f'O endereço da foto não devolveu uma imagem ({content_type or "sem tipo"}).'), campos)
-                return False
-            if len(resp.content) > 5 * 1024 * 1024:
-                registrar(com_preco('A foto do site tem mais de 5 MB.'), campos)
-                return False
-
-            presente.imagem_base64 = base64.b64encode(resp.content).decode('utf-8')
-            presente.imagem_nome = imagem_url.split('/')[-1].split('?')[0][:255] or 'produto.jpg'
-            presente.imagem_tipo = content_type
-            registrar(com_preco('Foto encontrada.'), ['imagem_base64', 'imagem_nome', 'imagem_tipo', *campos])
-            if preco_preenchido:
-                presente.registrar_preco(presente.preco, fonte='site')
-                logger.info(f"Preço preenchido pelo site para presente {presente.id}: {presente.preco}")
-            logger.info(f"Imagem baixada para presente {presente.id} ({content_type})")
-            return True
         except Exception as e:
-            logger.warning(f"Falha ao buscar imagem do presente {presente.id}: {str(e)}")
-            try:
-                registrar(f'Erro ao buscar a foto: {e}')
-            except Exception:
-                logger.exception("Falha ao registrar o resultado da busca de imagem")
-            return False
+            return f'Erro ao baixar a foto: {e}'
+        content_type = resp.headers.get('content-type', '').split(';')[0].strip()
+        if not content_type.startswith('image/'):
+            return f'O endereço da foto não devolveu uma imagem ({content_type or "sem tipo"}).'
+        if len(resp.content) > 5 * 1024 * 1024:
+            return 'A foto do site tem mais de 5 MB.'
+        presente.imagem_base64 = base64.b64encode(resp.content).decode('utf-8')
+        presente.imagem_nome = imagem_url.split('/')[-1].split('?')[0][:255] or 'produto.jpg'
+        presente.imagem_tipo = content_type
+        return None
+
+    @staticmethod
+    def buscar_imagem_para_presente(presente):
+        """Compatibilidade: completa o presente pelo site; True se ganhou foto"""
+        return 'imagem' in IAService.completar_pelo_site(presente)
 
     @staticmethod
     def _registrar_historico(presente, fonte='sugestao'):
@@ -711,6 +818,13 @@ class IAService:
         Se um motor falhar (sem crédito, chave inválida, indisponível),
         passa automaticamente para o próximo.
         """
+        oferta_link = IAService._oferta_do_link(presente)
+        if IAService.descricao_generica(presente.descricao):
+            return IAService._gravar_sugestoes(presente, [], oferta_link, (
+                "A descrição do presente é genérica. Edite o presente com o nome do produto "
+                "para comparar preços em outras lojas."
+            ))
+
         motores = [
             ('Gemini', settings.GEMINI_API_KEY, IAService.buscar_sugestoes_gemini),
             ('ChatGPT', settings.OPENAI_API_KEY, IAService.buscar_sugestoes_chatgpt),
@@ -725,12 +839,29 @@ class IAService:
                 sucesso, mensagem = funcao(presente)
                 if sucesso:
                     logger.info(f"[IA] Sugestões obtidas com {nome}")
+                    IAService._incluir_oferta_link(presente, oferta_link)
                     return True, "Sugestões encontradas com sucesso!"
                 logger.warning(f"[IA] {nome} não retornou sugestões: {mensagem}. Tentando próximo motor...")
             except Exception as e:
                 logger.warning(f"[IA] {nome} falhou: {str(e)}. Tentando próximo motor...")
 
-        return False, "Os motores de busca estão indisponíveis no momento. Tente novamente mais tarde."
+        return IAService._gravar_sugestoes(
+            presente, [], oferta_link,
+            "Os motores de busca estão indisponíveis no momento. Tente novamente mais tarde.")
+
+    @staticmethod
+    def _incluir_oferta_link(presente, oferta_link):
+        """Poe a loja do link do presente entre as sugestoes ja gravadas (no lugar da mesma loja)"""
+        if not oferta_link:
+            return
+        loja = IAService._limpar_nome_loja(oferta_link['loja'])
+        SugestaoCompra.objects.filter(presente=presente, local_compra__iexact=loja).delete()
+        SugestaoCompra.objects.create(
+            grupo=presente.grupo, presente=presente, local_compra=loja,
+            titulo_produto=oferta_link['titulo'], url_compra=oferta_link['url'],
+            preco_sugerido=converter_preco_decimal(oferta_link['preco']),
+        )
+        IAService._registrar_historico(presente)
 
     @staticmethod
     def _limpar_nome_loja(nome):

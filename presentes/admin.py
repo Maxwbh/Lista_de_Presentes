@@ -22,22 +22,28 @@ SEM_IMAGEM = (Q(imagem_base64__isnull=True) | Q(imagem_base64='')) & (Q(imagem__
 COM_LINK = Q(url__isnull=False) & ~Q(url='')
 
 
+def _incompletos(queryset=None):
+    """Ids dos presentes com link e sem foto, sem preco ou com descricao vazia/generica"""
+    from .services import IAService
+    queryset = Presente.objects.all() if queryset is None else queryset
+    candidatos = (queryset.filter(COM_LINK).select_related(None).prefetch_related(None)
+                  .only('pk', 'url', 'preco', 'descricao', 'imagem', 'imagem_base64'))
+    return [p.pk for p in candidatos if IAService.precisa_completar(p)]
+
+
 def _buscar_imagens(ids):
     """
-    Busca no site (link original) a imagem de cada presente; quem estiver sem
-    preco ganha tambem o preco lido. Retorna (imagens, precos) encontrados.
+    Le no site (link original) o que falta em cada presente: foto, preco e
+    descricao vazia/generica. Retorna um Counter com os campos preenchidos.
     """
+    from collections import Counter
     from .services import IAService
 
-    imagens = precos = 0
+    contagem = Counter()
     for presente in Presente.objects.filter(pk__in=ids):
-        sem_preco = presente.preco is None
-        if IAService.buscar_imagem_para_presente(presente):
-            imagens += 1
-        if sem_preco and presente.preco is not None:
-            precos += 1
-    logger.info(f"[IMAGENS] Busca no site: {imagens} imagens e {precos} preços para {len(ids)} presentes")
-    return imagens, precos
+        contagem.update(IAService.completar_pelo_site(presente))
+    logger.info(f"[COMPLETAR] Busca no site para {len(ids)} presentes: {dict(contagem)}")
+    return contagem
 
 
 def _buscar_imagens_em_segundo_plano(ids):
@@ -50,6 +56,19 @@ def _buscar_imagens_em_segundo_plano(ids):
             connection.close()
 
     threading.Thread(target=executar, daemon=True).start()
+
+
+class DadosIncompletosFilter(admin.SimpleListFilter):
+    title = 'dados no site'
+    parameter_name = 'incompleto'
+
+    def lookups(self, request, model_admin):
+        return [('sim', 'Falta foto, preço ou descrição (com link)')]
+
+    def queryset(self, request, queryset):
+        if self.value() == 'sim':
+            return queryset.filter(pk__in=_incompletos(queryset))
+        return queryset
 
 
 class TemImagemFilter(admin.SimpleListFilter):
@@ -109,7 +128,7 @@ class PresenteAdmin(admin.ModelAdmin):
     """Admin para gerenciar Presentes"""
     list_display = ['descricao_curta', 'usuario', 'preco', 'status', 'com_imagem', 'ultima_busca_imagem',
                     'tem_sugestoes', 'data_cadastro']
-    list_filter = ['status', TemImagemFilter, 'data_cadastro']
+    list_filter = ['status', DadosIncompletosFilter, TemImagemFilter, 'data_cadastro']
     actions = ['buscar_imagem_no_site']
     change_list_template = 'admin/presentes/presente/change_list.html'
     search_fields = ['descricao', 'usuario__email', 'usuario__first_name', 'usuario__last_name']
@@ -140,7 +159,7 @@ class PresenteAdmin(admin.ModelAdmin):
     def com_imagem(self, obj):
         return obj.tem_imagem()
 
-    @admin.display(description='Última busca de imagem', ordering='busca_imagem_em')
+    @admin.display(description='Última busca no site', ordering='busca_imagem_em')
     def ultima_busca_imagem(self, obj):
         if not obj.busca_imagem_em:
             return '-'
@@ -155,40 +174,44 @@ class PresenteAdmin(admin.ModelAdmin):
 
     def changelist_view(self, request, extra_context=None):
         extra_context = extra_context or {}
-        extra_context['total_sem_imagem'] = Presente.objects.filter(SEM_IMAGEM & COM_LINK).count()
+        extra_context['total_incompletos'] = len(_incompletos())
         return super().changelist_view(request, extra_context=extra_context)
 
     def _buscar(self, request, queryset):
-        ids = list(queryset.filter(SEM_IMAGEM & COM_LINK).values_list('pk', flat=True))
+        ids = _incompletos(queryset)
         if not ids:
-            self.message_user(request, 'Nenhum presente sem imagem e com link para buscar.', messages.INFO)
+            self.message_user(request, 'Nenhum presente com link sem foto, preço ou descrição para buscar.',
+                              messages.INFO)
         elif len(ids) <= LIMITE_BUSCA_IMAGEM_NA_HORA:
-            imagens, precos = _buscar_imagens(ids)
-            mensagem = f'{imagens} de {len(ids)} presente(s) ganharam imagem buscada no site.'
-            if precos:
-                mensagem += f' {precos} ganharam também o preço que faltava.'
-            self.message_user(request, mensagem, messages.SUCCESS if imagens else messages.WARNING)
-            for presente in Presente.objects.filter(pk__in=ids).filter(SEM_IMAGEM):
+            contagem = _buscar_imagens(ids)
+            nomes = (('imagem', 'foto(s)'), ('preco', 'preço(s)'), ('descricao', 'descrição(ões)'))
+            partes = [f'{contagem[campo]} {nome}' for campo, nome in nomes if contagem.get(campo)]
+            if partes:
+                mensagem = f'{len(ids)} presente(s) consultado(s) no site: {", ".join(partes)} preenchido(s).'
+            else:
+                mensagem = f'{len(ids)} presente(s) consultado(s) no site: nada novo encontrado.'
+            self.message_user(request, mensagem, messages.SUCCESS if partes else messages.WARNING)
+            for presente in Presente.objects.filter(pk__in=ids):
                 self.message_user(request, f'{presente.descricao[:60]}: {presente.busca_imagem_resultado}',
-                                  messages.WARNING)
+                                  messages.INFO)
         else:
             _buscar_imagens_em_segundo_plano(ids)
             self.message_user(
                 request,
-                f'Busca de imagem iniciada para {len(ids)} presentes. Ela roda em segundo plano e '
-                f'pode levar alguns minutos; recarregue a página e veja a coluna "Última busca de imagem".',
+                f'Busca no site iniciada para {len(ids)} presentes. Ela roda em segundo plano e '
+                f'pode levar alguns minutos; recarregue a página e veja a coluna "Última busca no site".',
                 messages.INFO,
             )
 
-    @admin.action(description='Buscar imagem no site (link original)')
+    @admin.action(description='Buscar no site o que falta (foto, preço, descrição)')
     def buscar_imagem_no_site(self, request, queryset):
         self._buscar(request, queryset)
 
     def buscar_imagens_faltantes_view(self, request):
-        """Botao da lista: busca a imagem de todos os presentes sem imagem que tem link"""
+        """Botao da lista: completa pelo site todos os presentes com link e dados faltando"""
         if request.method == 'POST':
             self._buscar(request, Presente.objects.all())
-        return redirect(reverse('admin:presentes_presente_changelist') + '?tem_imagem=nao')
+        return redirect(reverse('admin:presentes_presente_changelist') + '?incompleto=sim')
 
     def tem_sugestoes(self, obj):
         """Indicar se tem sugestões de compra"""

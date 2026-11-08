@@ -1498,6 +1498,18 @@ class IssueSiteNaoMapeadoTest(TestCase):
         criar_issue.assert_called_once()
         self.assertIn('bug', criar_issue.call_args[1]['labels'])
 
+    def test_chamada_de_venda_nao_vira_titulo(self):
+        # Varios presentes ficaram com o titulo 'Pronta Entrega!'
+        texto = 'Pronta Entrega!\n\nAcessórios De Jogos 10 Em 1 Esportivos Para Nintendo Switch\nItens...'
+        with mock.patch('presentes.mercadolivre_api._get', return_value={'plain_text': texto}):
+            self.assertEqual(_titulo_da_descricao('MLB123', 'token'),
+                             'Acessórios De Jogos 10 Em 1 Esportivos Para Nintendo Switch')
+
+    def test_descricao_so_com_chamadas_de_venda_nao_da_titulo(self):
+        texto = 'Pronta Entrega!\nEnvio imediato\nProduto novo e original\n'
+        with mock.patch('presentes.mercadolivre_api._get', return_value={'plain_text': texto}):
+            self.assertIsNone(_titulo_da_descricao('MLB123', 'token'))
+
     def test_descricao_so_com_separador_nao_vira_titulo(self):
         texto = '________________________________________________\nLuva de treino roxa tamanho M\n'
         with mock.patch('presentes.mercadolivre_api._get', return_value={'plain_text': texto}):
@@ -1583,7 +1595,7 @@ class LimparUrlRastreioTest(TestCase):
 
 
 class BuscarImagensAdminTest(TestCase):
-    """Botao e acao do admin que buscam no site a imagem dos presentes sem imagem."""
+    """Botao e acao do admin que buscam no site a foto, o preco e a descricao que faltam."""
 
     def setUp(self):
         self.admin = Usuario.objects.create_superuser(
@@ -1592,12 +1604,13 @@ class BuscarImagensAdminTest(TestCase):
         self.sem_imagem = Presente.objects.create(
             usuario=self.admin, descricao='Tesoura', url='https://www.loja.com.br/tesoura')
         self.sem_link = Presente.objects.create(usuario=self.admin, descricao='Sabonete')
-        self.com_imagem = Presente.objects.create(
-            usuario=self.admin, descricao='Meia', url='https://www.loja.com.br/meia', imagem_base64='aGVsbG8=')
+        self.completo = Presente.objects.create(
+            usuario=self.admin, descricao='Meia', url='https://www.loja.com.br/meia', imagem_base64='aGVsbG8=',
+            preco=20)
         self.url_botao = reverse('admin:presentes_presente_buscar_imagens')
 
-    def _leitura(self, preco=59.9):
-        return {'success': True, 'titulo': 'Tesoura', 'preco': preco,
+    def _leitura(self, preco=59.9, titulo='Tesoura de costura em titânio 21 cm'):
+        return {'success': True, 'titulo': titulo, 'preco': preco,
                 'imagem_url': 'https://www.loja.com.br/foto.jpg'}
 
     def _foto(self):
@@ -1605,24 +1618,25 @@ class BuscarImagensAdminTest(TestCase):
         resposta.raise_for_status.return_value = None
         return resposta
 
-    def test_filtro_sem_imagem_e_botao_com_total(self):
-        resposta = self.client.get(reverse('admin:presentes_presente_changelist') + '?tem_imagem=nao')
-        self.assertContains(resposta, 'Buscar imagens que faltam (1)')
+    def test_filtro_incompletos_e_botao_com_total(self):
+        resposta = self.client.get(reverse('admin:presentes_presente_changelist') + '?incompleto=sim')
+        self.assertContains(resposta, 'Buscar no site o que falta (1)')
         descricoes = [p.descricao for p in resposta.context['cl'].result_list]
-        self.assertCountEqual(descricoes, ['Tesoura', 'Sabonete'])
+        self.assertEqual(descricoes, ['Tesoura'])
 
     def test_botao_busca_imagem_e_preco_que_faltavam(self):
         with mock.patch('presentes.scrapers.ScraperFactory.extract_product_info',
                         return_value=self._leitura()) as extrair, \
                 mock.patch('presentes.services.requests.get', return_value=self._foto()):
             resposta = self.client.post(self.url_botao, follow=True)
-        # So o presente sem imagem e com link e consultado
+        # So o presente com link e dados faltando e consultado
         extrair.assert_called_once_with('https://www.loja.com.br/tesoura')
         self.sem_imagem.refresh_from_db()
         self.assertTrue(self.sem_imagem.tem_imagem())
         self.assertEqual(str(self.sem_imagem.preco), '59.90')
-        self.assertContains(resposta, '1 de 1 presente(s) ganharam imagem')
-        self.assertContains(resposta, 'ganharam também o preço')
+        # Descricao digitada (nao generica) nao e trocada
+        self.assertEqual(self.sem_imagem.descricao, 'Tesoura')
+        self.assertContains(resposta, '1 foto(s), 1 preço(s) preenchido(s)')
 
     def test_preco_existente_nao_e_alterado(self):
         self.sem_imagem.preco = 10
@@ -1634,15 +1648,52 @@ class BuscarImagensAdminTest(TestCase):
         self.sem_imagem.refresh_from_db()
         self.assertEqual(str(self.sem_imagem.preco), '10.00')
 
+    def test_com_foto_e_sem_preco_busca_so_o_preco(self):
+        self.completo.preco = None
+        self.completo.save()
+        with mock.patch('presentes.scrapers.ScraperFactory.extract_product_info',
+                        side_effect=lambda url: self._leitura(preco=25)), \
+                mock.patch('presentes.services.requests.get', return_value=self._foto()) as baixar:
+            self.client.post(self.url_botao)
+        self.completo.refresh_from_db()
+        self.assertEqual(str(self.completo.preco), '25.00')
+        self.assertEqual(self.completo.imagem_base64, 'aGVsbG8=')  # foto existente mantida
+        self.assertEqual(baixar.call_count, 1)  # so a foto da tesoura
+        self.assertEqual(self.completo.busca_imagem_resultado, 'Preço preenchido.')
+
+    def test_descricao_generica_e_trocada_pelo_titulo_do_site(self):
+        generico = Presente.objects.create(usuario=self.admin, descricao='Pronta Entrega!', preco=162.75,
+                                           imagem_base64='aGVsbG8=', url='https://www.loja.com.br/switch')
+        titulo = 'Acessórios De Jogos 10 Em 1 Esportivos Para Nintendo Switch'
+        with mock.patch('presentes.scrapers.ScraperFactory.extract_product_info',
+                        return_value=self._leitura(titulo=titulo)), \
+                mock.patch('presentes.services.requests.get', return_value=self._foto()):
+            self.client.post(self.url_botao)
+        generico.refresh_from_db()
+        self.assertEqual(generico.descricao, titulo)
+        self.assertEqual(str(generico.preco), '162.75')
+        self.assertIn('Descrição atualizada.', generico.busca_imagem_resultado)
+
+    def test_descricao_generica_fica_se_o_site_tambem_for_generico(self):
+        generico = Presente.objects.create(usuario=self.admin, descricao='Pronta Entrega!', preco=10,
+                                           imagem_base64='aGVsbG8=', url='https://www.loja.com.br/x')
+        with mock.patch('presentes.scrapers.ScraperFactory.extract_product_info',
+                        return_value=self._leitura(titulo='Pronta Entrega')), \
+                mock.patch('presentes.services.requests.get', return_value=self._foto()):
+            self.client.post(self.url_botao)
+        generico.refresh_from_db()
+        self.assertEqual(generico.descricao, 'Pronta Entrega!')
+        self.assertIn('Sem descrição', generico.busca_imagem_resultado)
+
     def test_muitos_presentes_rodam_em_segundo_plano(self):
         for i in range(6):
             Presente.objects.create(usuario=self.admin, descricao=f'Item {i}', url=f'https://loja.com/{i}')
         with mock.patch('presentes.admin.threading.Thread') as thread:
             resposta = self.client.post(self.url_botao, follow=True)
         thread.return_value.start.assert_called_once()
-        self.assertContains(resposta, 'Busca de imagem iniciada para 7 presentes')
+        self.assertContains(resposta, 'Busca no site iniciada para 7 presentes')
 
-    def test_registra_o_motivo_quando_nao_acha_a_foto(self):
+    def test_registra_o_motivo_quando_nao_acha_os_dados(self):
         casos = [
             ({'success': True, 'titulo': 'Pelúcia', 'preco': None, 'imagem_url': None,
               'aviso': 'Anúncio fora do catálogo do Mercado Livre'}, 'fora do catálogo'),
@@ -1654,6 +1705,7 @@ class BuscarImagensAdminTest(TestCase):
                 resposta = self.client.post(self.url_botao, follow=True)
             self.sem_imagem.refresh_from_db()
             self.assertIn(esperado, self.sem_imagem.busca_imagem_resultado)
+            self.assertIn('Sem foto e preço', self.sem_imagem.busca_imagem_resultado)
             self.assertIsNotNone(self.sem_imagem.busca_imagem_em)
             # A mensagem do admin mostra o motivo de cada presente
             self.assertContains(resposta, f'Tesoura: {self.sem_imagem.busca_imagem_resultado}')
@@ -1911,3 +1963,106 @@ class ValidacaoAppleTest(TestCase):
                     self.assertEqual(app['secret'], 'KEY456')
         finally:
             importlib.reload(modulo)
+
+
+class PresenteObrigatoriosTest(TestCase):
+    """Descricao e preco obrigatorios; imagem e link opcionais."""
+
+    def _form(self, **dados):
+        from .forms import PresenteForm
+        return PresenteForm(data={'descricao': 'Kit 3 tesouras', 'preco': '89.90', 'url': '', **dados})
+
+    def test_aceita_sem_imagem_e_sem_link(self):
+        self.assertTrue(self._form().is_valid())
+
+    def test_recusa_sem_preco(self):
+        form = self._form(preco='')
+        self.assertFalse(form.is_valid())
+        self.assertIn('preco', form.errors)
+
+    def test_recusa_preco_zero(self):
+        form = self._form(preco='0')
+        self.assertFalse(form.is_valid())
+        self.assertIn('maior que zero', form.errors['preco'][0])
+
+    def test_recusa_sem_descricao(self):
+        form = self._form(descricao='   ')
+        self.assertFalse(form.is_valid())
+        self.assertIn('descricao', form.errors)
+
+
+class SugestaoDaLojaDoLinkTest(TestCase):
+    """A loja do link do presente entra na comparacao; descricao generica nao busca em outras lojas."""
+
+    def setUp(self):
+        self.grupo = Grupo.objects.create(nome='Familia')
+        self.dono = Usuario.objects.create_user(email='mel@exemplo.com', username='mel', password='x')
+
+    def _presente(self, descricao, url='https://www.mercadolivre.com.br/up/MLBU1979771151', preco=None):
+        return Presente.objects.create(grupo=self.grupo, usuario=self.dono, descricao=descricao,
+                                       url=url, preco=preco, imagem_base64='aGVsbG8=')
+
+    def _leitura(self, titulo, preco):
+        return {'success': True, 'titulo': titulo, 'preco': preco, 'imagem_url': None}
+
+    def test_nome_da_loja_pelo_link(self):
+        casos = {
+            'https://www.mercadolivre.com.br/p/MLB1': 'Mercado Livre',
+            'https://produto.mercadolivre.com.br/MLB-1': 'Mercado Livre',
+            'https://www.amazon.com.br/dp/B0': 'Amazon',
+            'https://spaceorbit.com.br/produtos/x/': 'Spaceorbit',
+        }
+        for url, loja in casos.items():
+            with self.subTest(url=url):
+                self.assertEqual(IAService.nome_loja_do_link(url), loja)
+
+    def test_descricao_generica_so_traz_a_loja_do_link(self):
+        presente = self._presente('Pronta Entrega!')
+        with mock.patch('presentes.scrapers.ScraperFactory.extract_product_info',
+                        return_value=self._leitura('Pronta Entrega', 162.75)), \
+                mock.patch.object(IAService, 'buscar_preco_zoom') as zoom, \
+                mock.patch.object(IAService, 'buscar_sugestoes_gemini') as gemini:
+            sucesso, mensagem = IAService.buscar_sugestoes_reais(presente)
+        zoom.assert_not_called()
+        gemini.assert_not_called()
+        self.assertTrue(sucesso)
+        self.assertIn('genérica', mensagem)
+        sugestoes = list(SugestaoCompra.objects.filter(presente=presente))
+        self.assertEqual([(s.local_compra, float(s.preco_sugerido)) for s in sugestoes], [('Mercado Livre', 162.75)])
+        self.assertEqual(sugestoes[0].url_compra, presente.url)
+
+    def test_loja_do_link_entra_com_o_preco_atual_junto_das_outras(self):
+        presente = self._presente('Mata Formigas Formicel Gel 10g', url='https://www.loja-x.com.br/formicel', preco=30)
+        zoom = [{'loja': 'Amazon', 'titulo': 'Mata Formigas Formicel Gel 10g 2 unidades',
+                 'url': 'https://amazon.com.br/f', 'preco': 28.0, 'fonte': 'Zoom'}]
+        with mock.patch('presentes.scrapers.ScraperFactory.extract_product_info',
+                        return_value=self._leitura('Mata Formigas Formicel Gel 10g', 31.5)), \
+                mock.patch.object(IAService, 'buscar_preco_zoom', return_value=zoom), \
+                mock.patch.object(IAService, 'buscar_preco_buscape', return_value=[]), \
+                mock.patch.object(IAService, 'buscar_sugestoes_gemini', return_value=(False, 'sem chave')):
+            sucesso, _ = IAService.buscar_sugestoes_reais(presente)
+        self.assertTrue(sucesso)
+        lojas = {s.local_compra: float(s.preco_sugerido) for s in SugestaoCompra.objects.filter(presente=presente)}
+        self.assertEqual(lojas, {'Amazon': 28.0, 'Loja-x': 31.5})
+        presente.refresh_from_db()
+        self.assertEqual(float(presente.preco), 30)  # preco cadastrado nao muda
+
+    def test_migracao_limpa_sugestoes_e_historico_de_descricao_generica(self):
+        import importlib
+        from django.apps import apps
+        migracao = importlib.import_module('presentes.migrations.0012_limpa_sugestoes_descricao_generica')
+        generico = self._presente('Pronta Entrega!')
+        normal = self._presente('Acessórios De Jogos 10 Em 1 Para Nintendo Switch')
+        for p in (generico, normal):
+            SugestaoCompra.objects.create(presente=p, local_compra='Magazine Luiza',
+                                          url_compra='https://magalu.com/b', preco_sugerido=131.92)
+            PrecoHistorico.objects.create(presente=p, preco=459.08, fonte='sugestao')
+        PrecoHistorico.objects.create(presente=generico, preco=162.75, fonte='site')
+
+        migracao.limpar(apps, None)
+
+        self.assertFalse(SugestaoCompra.objects.filter(presente=generico).exists())
+        self.assertEqual(list(PrecoHistorico.objects.filter(presente=generico).values_list('fonte', flat=True)),
+                         ['site'])
+        self.assertEqual(SugestaoCompra.objects.filter(presente=normal).count(), 1)
+        self.assertEqual(PrecoHistorico.objects.filter(presente=normal).count(), 1)

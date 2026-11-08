@@ -467,6 +467,11 @@
                                         </span>
                                         {% endif %}
                                         <span class="font-semibold text-sm truncate">{{ sugestao.local_compra|loja_limpa }}</span>
+                                        {% if presente.url and sugestao.url_compra == presente.url %}
+                                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-info/15 text-info shrink-0" title="Loja do link cadastrado no presente">
+                                            <i class="bi bi-link-45deg"></i> Link do presente
+                                        </span>
+                                        {% endif %}
                                     </div>
                                     {% if sugestao.titulo_produto %}
                                     <p class="text-[11px] text-base-content/50 line-clamp-2 mt-0.5" title="{{ sugestao.titulo_produto }}">
