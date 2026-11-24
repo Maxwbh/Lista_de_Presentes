@@ -797,9 +797,20 @@ class GenericScraper(BaseScraper):
             # Preco em outra moeda (ex.: lojas do Paraguai em US$): usa o valor
             # em reais que a pagina mostra entre parenteses, ex. 'US$ 254,00 (R$ 1.371,60)'
             logger.info(f"Preço da página em {moeda}; procurando o valor em reais")
-            em_reais = re.search(r'\(\s*R\$\s*(\d{1,3}(?:\.\d{3})*,\d{2})\s*\)', soup.get_text(' '))
+            texto = soup.get_text(' ')
+            em_reais = re.search(r'\(\s*R\$\s*(\d{1,3}(?:\.\d{3})*,\d{2})\s*\)', texto)
             if em_reais:
                 preco = self.clean_price(em_reais.group(1))
+            elif moeda == 'USD':
+                # Sem o valor entre parenteses: preco em dolar da meta tag vezes
+                # a cotacao que a propria pagina mostra ('Dólar hoje: R$ 6,08')
+                meta = soup.find('meta', property='product:price:amount') or soup.find('meta', attrs={'itemprop': 'price'})
+                dolares = self.preco_de_meta(meta.get('content')) if meta and meta.get('content') else None
+                cotacao = re.search(r'D[oó]lar\s+hoje\s*:?\s*R\$\s*(\d{1,2},\d{2,4})', texto, re.I)
+                cotacao = self.clean_price(cotacao.group(1)) if cotacao else None
+                if dolares and cotacao:
+                    preco = round(dolares * cotacao, 2)
+                    logger.info(f"Preço em reais calculado: US$ {dolares} x cotação da página R$ {cotacao} = R$ {preco}")
         else:
             # nuvemshop:price: lojas Nuvemshop (ex.: Space Orbit), preco atual
             # do produto, ja com a promocao

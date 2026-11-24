@@ -1751,6 +1751,17 @@ class PrecoMetaTagTest(TestCase):
             url='https://www.comprasparaguai.com.br/ssd_54489/')
         self.assertEqual(resultado['preco'], 1371.60)
 
+    def test_preco_em_dolar_usa_a_cotacao_da_pagina_quando_falta_o_valor_em_reais(self):
+        # Issue #55: 799,00 x 6,08 = 4.857,92, o mesmo valor que o site mostra
+        resultado = self._extrair(
+            '<html><head><meta property="og:title" content="Drone Dji Mini 5 Pro">'
+            '<meta property="product:price:amount" content="799.0">'
+            '<meta property="product:price:currency" content="USD"></head><body>'
+            '<span class="cotacao-label">Dólar hoje:</span> <strong>R$ 6,08</strong>'
+            '<span class="price">US$ 799,00</span></body></html>',
+            url='https://www.comprasparaguai.com.br/drone-dji-mini-5-pro__5012200/')
+        self.assertEqual(resultado['preco'], 4857.92)
+
     def test_preco_em_dolar_sem_valor_em_reais_fica_vazio(self):
         resultado = self._extrair(
             '<html><head><meta property="og:title" content="SSD WD Green 2TB">'
