@@ -2084,9 +2084,35 @@ class IssuesDeNovembroTest(TestCase):
         html = ('<html><head><title>Amazon.com.br</title></head><body><!-- To discuss automated access '
                 'to Amazon data please contact us. -->'
                 'Clique no botão abaixo para continuar comprando</body></html>')
+        # Link sem o nome do produto: continua como bloqueio
         resultado, issues = self._extrair(html, 'https://www.amazon.com.br/dp/B0D8JYHFMN')
         self.assertEqual(resultado['error_type'], 'blocked')
         self.assertEqual(issues, 0)
+
+        # Link com o nome: a descricao vem do link, com aviso e sem issue
+        url = 'https://www.amazon.com.br/Kiki-Cones-Pel%C3%BAcia-Cone-Fantasy/dp/B0BFXNQQV3/ref=asc_df?psc=1'
+        resultado, issues = self._extrair(html, url)
+        self.assertTrue(resultado['success'])
+        self.assertEqual(resultado['titulo'], 'Kiki Cones Pelúcia Cone Fantasy')
+        self.assertIsNone(resultado['preco'])
+        self.assertIsNone(resultado['imagem_url'])
+        self.assertIn('Amazon bloqueou', resultado['aviso'])
+        self.assertEqual(issues, 0)
+
+    def test_titulo_do_link_da_amazon(self):
+        from .scrapers import AmazonScraper
+        casos = {
+            'https://www.amazon.com.br/Glazy-Vidros-Redutor-Atrito-Microfibra/dp/B0D8JYHFMN':
+                'Glazy Vidros Redutor Atrito Microfibra',
+            'http://amazon.com.br/EA-SPORTS-FC-26-PlayStation/dp/B0FH132GYR/ref=asc_df_B0FH132GYR?mcid=1':
+                'EA SPORTS FC 26 PlayStation',
+            'https://www.amazon.com.br/dp/B0D8JYHFMN': None,
+            'https://www.amazon.com.br/-/pt/dp/B0D8JYHFMN': None,
+            'https://amzn.to/4pxiozo': None,
+        }
+        for url, esperado in casos.items():
+            with self.subTest(url=url):
+                self.assertEqual(AmazonScraper.titulo_do_link(url), esperado)
 
     def test_verificacao_do_aliexpress_e_bloqueio(self):
         html = ('<script>var url = window.location.protocol + "//pt.aliexpress.com//item/1.html'
@@ -2113,6 +2139,19 @@ class IssuesDeNovembroTest(TestCase):
                 f'<script type="application/ld+json">{json.dumps(produto)}</script></head></html>')
         resultado, _ = self._extrair(html)
         self.assertEqual(resultado['imagem_url'], 'https://image.api.playstation.com/gta.png')
+
+    def test_cartao_presente_da_steam_avisa_e_nao_abre_issue(self):
+        # Issue #51: pagina de escolha do valor, sem preco unico
+        html = ('<html><head><meta property="og:title" content="Cartões-Presente Steam">'
+                '<meta property="og:image" content="https://store.akamai.steamstatic.com/steam.jpg"></head>'
+                '<body><div class="giftcard_text price">R$ 50,00</div></body></html>')
+        resultado, issues = self._extrair(
+            html, 'https://store.steampowered.com/digitalgiftcards/selectgiftcard?l=portuguese')
+        self.assertTrue(resultado['success'])
+        self.assertIsNone(resultado['preco'])
+        self.assertEqual(resultado['imagem_url'], 'https://store.akamai.steamstatic.com/steam.jpg')
+        self.assertIn('Cartão-presente', resultado['aviso'])
+        self.assertEqual(issues, 0)
 
     def test_produto_fora_do_ar_na_farm_nao_usa_preco_de_outro_produto(self):
         html = ('<html><head><title>Macaquinho Estampado Bandana</title>'
