@@ -381,10 +381,37 @@ def buscar_produto(url, avisos=None):
             logger.warning(f"Sem preco para o produto {produto_id}: {e}")
             if avisos is not None:
                 avisos.append('limite')
-        except MercadoLivreAPIError:
+        except MercadoLivreAPIError as e:
             logger.warning(f"Sem preco para o produto {produto_id}", exc_info=True)
+            if avisos is not None and 'HTTP 404' in str(e):
+                # 'No winners found': o produto de catalogo nao tem oferta
+                # ativa na API, e o anuncio (/items) e bloqueado para terceiros
+                avisos.append('sem_ofertas')
     if preco is None:
         preco = (produto.get('buy_box_winner') or {}).get('price')
 
-    titulo = titulo_anuncio or produto.get('name')
+    titulo = _escolher_titulo(titulo_anuncio, produto.get('name'))
     return titulo, preco, _primeira_imagem(produto.get('pictures'))
+
+
+def _palavras(texto):
+    import unicodedata
+    texto = unicodedata.normalize('NFKD', texto or '').encode('ascii', 'ignore').decode().lower()
+    return {p for p in re.findall(r'[a-z0-9]+', texto) if len(p) >= 4}
+
+
+def _escolher_titulo(titulo_anuncio, nome_catalogo):
+    """
+    Titulo do produto: a linha da descricao do anuncio ou o nome do catalogo.
+
+    A descricao as vezes comeca por um destaque ('Fácil de mover e armazenar'),
+    e o catalogo as vezes tem um nome curto em outro idioma ('Vernier Caliper').
+    Usa a descricao se ela tiver palavra em comum com o catalogo ou se o nome
+    do catalogo for curto (ate 3 palavras); senao, o nome do catalogo.
+    """
+    if not titulo_anuncio or not nome_catalogo:
+        return titulo_anuncio or nome_catalogo
+    if _palavras(titulo_anuncio) & _palavras(nome_catalogo) or len(nome_catalogo.split()) <= 3:
+        return titulo_anuncio
+    logger.info(f"Título da descrição ('{titulo_anuncio[:60]}') não parece o produto; usando o nome do catálogo")
+    return nome_catalogo

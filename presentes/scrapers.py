@@ -116,6 +116,24 @@ BLOCKED_TITLE_MARKERS = (
 )
 
 
+# Paginas anti-robo que respondem 200 com titulo comum: procura no conteudo
+# (so em paginas pequenas, para nao confundir com uma pagina de produto)
+BLOCKED_CONTENT_MARKERS = (
+    'to discuss automated access to amazon data',   # Amazon: "Continuar comprando"
+    '/errors/validatecaptcha',                      # Amazon: captcha
+    '_____tmd_____/punish',                         # AliExpress: verificacao (x5sec)
+)
+TAMANHO_MAXIMO_PAGINA_BLOQUEIO = 20000
+
+# Loja deco.cx (ex.: Farm Rio) com o produto fora do ar: a pagina mostra so
+# "Voce tambem pode gostar", com os precos de outros produtos
+MARCADORES_PRODUTO_INDISPONIVEL = ('hasProduct:!1',)
+AVISO_PRODUTO_INDISPONIVEL = (
+    'O produto não está mais disponível na loja (a página mostra só outros produtos). '
+    'Preencha o preço manualmente ou troque o link.'
+)
+
+
 class ParsingError(ScrapingError):
     """Erro de parsing/extracao de dados (site acessivel mas dados nao extraidos) - GERA issue"""
     pass
@@ -180,6 +198,12 @@ class BaseScraper:
         if any(marcador in titulo_pagina for marcador in BLOCKED_TITLE_MARKERS):
             logger.warning(f"Acesso bloqueado por verificacao anti-robo em {url} (titulo: {titulo_pagina[:80]})")
             raise BlockedError("O site bloqueou a consulta automática (verificação anti-robô)")
+        if len(response.content) <= TAMANHO_MAXIMO_PAGINA_BLOQUEIO:
+            conteudo = response.content.decode('utf-8', errors='ignore').lower()
+            marcador = next((m for m in BLOCKED_CONTENT_MARKERS if m in conteudo), None)
+            if marcador:
+                logger.warning(f"Acesso bloqueado por verificacao anti-robo em {url} (conteudo: '{marcador}')")
+                raise BlockedError("O site bloqueou a consulta automática (verificação anti-robô)")
 
         return soup
 
@@ -276,6 +300,18 @@ class BaseScraper:
                 nome = self._normalizar_nome(produto.get('name'))
                 if nome and (nome == nome_pagina or nome in nome_pagina or nome_pagina in nome):
                     return produto
+        return None
+
+    def imagem_dados_estruturados(self, soup, titulo=None, url=None):
+        """Foto do produto da pagina no JSON-LD (schema.org 'image'), ou None"""
+        produtos = self._produtos_json_ld(soup)
+        produto = self._produto_da_pagina(produtos, titulo, url) if produtos else None
+        imagem = (produto or {}).get('image')
+        for candidata in imagem if isinstance(imagem, list) else [imagem]:
+            if isinstance(candidata, dict):
+                candidata = candidata.get('url') or candidata.get('contentUrl')
+            if isinstance(candidata, str) and candidata.strip():
+                return candidata.strip()
         return None
 
     def preco_dados_estruturados(self, soup, sku_id=None, titulo=None, url=None):
@@ -455,6 +491,12 @@ AVISO_ML_LIMITE_DE_CONSULTAS = (
 )
 
 
+AVISO_ML_SEM_OFERTAS = (
+    'O produto do catálogo do Mercado Livre está sem oferta ativa na API oficial, e a página '
+    'exige verificação de conta. Preencha o preço manualmente.'
+)
+
+
 class MercadoLivreScraper(BaseScraper):
     """Scraper específico para Mercado Livre"""
 
@@ -476,6 +518,8 @@ class MercadoLivreScraper(BaseScraper):
                 if not resultado[1] and 'limite' in avisos:
                     # Limite temporario da API, nao defeito do leitor
                     self.aviso = AVISO_ML_LIMITE_DE_CONSULTAS
+                elif not resultado[1] and 'sem_ofertas' in avisos:
+                    self.aviso = AVISO_ML_SEM_OFERTAS
                 elif not resultado[1] and not resultado[2]:
                     self.aviso = AVISO_ML_FORA_DO_CATALOGO
                 return resultado
@@ -686,6 +730,13 @@ class GenericScraper(BaseScraper):
             titulo = re.sub(r'\s*[\|\-]\s*[A-Za-z0-9\s]+$', '', titulo)
             titulo = titulo.strip()[:200]
 
+        html = str(soup)
+        if titulo and any(marcador in html for marcador in MARCADORES_PRODUTO_INDISPONIVEL):
+            # Os precos e fotos da pagina sao de outros produtos: nao usa
+            logger.info(f"Produto indisponível na loja: {url}")
+            self.aviso = AVISO_PRODUTO_INDISPONIVEL
+            return (titulo, None, None)
+
         # Preço - tentar várias estratégias
         price_patterns = [
             r'R\$?\s*(\d+(?:[.,]\d{3})*(?:[.,]\d{2}))',
@@ -738,6 +789,10 @@ class GenericScraper(BaseScraper):
             twitter_image = soup.find('meta', attrs={'name': 'twitter:image'})
             if twitter_image and twitter_image.get('content'):
                 imagem_url = twitter_image.get('content')
+
+        if not imagem_url:
+            # Lojas VTEX e outras sem og:image (ex.: Joli, PlayStation Store)
+            imagem_url = self.imagem_dados_estruturados(soup, titulo, url)
 
         if imagem_url and not imagem_url.startswith('http'):
             from urllib.parse import urljoin
@@ -828,7 +883,7 @@ class ScraperFactory:
             # falha de extração.)
             dados_faltando = [nome for nome, valor in
                               (('título', titulo), ('preço', preco), ('imagem', imagem_url)) if not valor]
-            if is_generic and dados_faltando:
+            if is_generic and dados_faltando and not scraper.aviso:
                 try:
                     from .github_helper import criar_issue_erro_geral
                     from urllib.parse import urlparse
