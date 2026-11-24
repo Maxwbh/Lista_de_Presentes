@@ -133,6 +133,12 @@ AVISO_PRODUTO_INDISPONIVEL = (
     'Preencha o preço manualmente ou troque o link.'
 )
 
+# Paginas em que a pessoa escolhe o valor (cartao-presente): nao ha preco unico
+MARCADORES_CARTAO_PRESENTE = ('store.steampowered.com/digitalgiftcards',)
+AVISO_CARTAO_PRESENTE = (
+    'Cartão-presente: a página tem vários valores. Informe no campo de preço o valor desejado.'
+)
+
 
 class ParsingError(ScrapingError):
     """Erro de parsing/extracao de dados (site acessivel mas dados nao extraidos) - GERA issue"""
@@ -729,6 +735,13 @@ class GenericScraper(BaseScraper):
         if titulo:
             titulo = re.sub(r'\s*[\|\-]\s*[A-Za-z0-9\s]+$', '', titulo)
             titulo = titulo.strip()[:200]
+
+        if titulo and any(marcador in url.lower() for marcador in MARCADORES_CARTAO_PRESENTE):
+            # Os precos da pagina sao as opcoes de valor (e podem vir em dolar)
+            logger.info(f"Página de cartão-presente, sem preço único: {url}")
+            self.aviso = AVISO_CARTAO_PRESENTE
+            imagem = soup.find('meta', property='og:image')
+            return (titulo, None, imagem.get('content') if imagem else None)
 
         html = str(soup)
         if titulo and any(marcador in html for marcador in MARCADORES_PRODUTO_INDISPONIVEL):

@@ -2114,6 +2114,19 @@ class IssuesDeNovembroTest(TestCase):
         resultado, _ = self._extrair(html)
         self.assertEqual(resultado['imagem_url'], 'https://image.api.playstation.com/gta.png')
 
+    def test_cartao_presente_da_steam_avisa_e_nao_abre_issue(self):
+        # Issue #51: pagina de escolha do valor, sem preco unico
+        html = ('<html><head><meta property="og:title" content="Cartões-Presente Steam">'
+                '<meta property="og:image" content="https://store.akamai.steamstatic.com/steam.jpg"></head>'
+                '<body><div class="giftcard_text price">R$ 50,00</div></body></html>')
+        resultado, issues = self._extrair(
+            html, 'https://store.steampowered.com/digitalgiftcards/selectgiftcard?l=portuguese')
+        self.assertTrue(resultado['success'])
+        self.assertIsNone(resultado['preco'])
+        self.assertEqual(resultado['imagem_url'], 'https://store.akamai.steamstatic.com/steam.jpg')
+        self.assertIn('Cartão-presente', resultado['aviso'])
+        self.assertEqual(issues, 0)
+
     def test_produto_fora_do_ar_na_farm_nao_usa_preco_de_outro_produto(self):
         html = ('<html><head><title>Macaquinho Estampado Bandana</title>'
                 '<meta property="og:image" content="https://decoims.com/farmrio/logo.png"></head><body><script>'

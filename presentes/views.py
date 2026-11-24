@@ -1182,6 +1182,8 @@ def extrair_info_produto_view(request):
                 'titulo': result.get('titulo', ''),
                 'imagem_url': result.get('imagem_url', ''),
                 'preco': result.get('preco', ''),
+                # Motivo conhecido de dado faltando (ex.: cartao-presente, produto fora do ar)
+                'aviso': result.get('aviso') or '',
             }
 
             logger.info(f"Extração bem-sucedida: título={bool(result.get('titulo'))}, imagem={bool(result.get('imagem_url'))}, preco={result.get('preco')}")
