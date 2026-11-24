@@ -2066,3 +2066,110 @@ class SugestaoDaLojaDoLinkTest(TestCase):
                          ['site'])
         self.assertEqual(SugestaoCompra.objects.filter(presente=normal).count(), 1)
         self.assertEqual(PrecoHistorico.objects.filter(presente=normal).count(), 1)
+
+
+class IssuesDeNovembroTest(TestCase):
+    """Issues #47 a #54: bloqueios, foto no JSON-LD e produto fora do ar."""
+
+    def _extrair(self, html, url='https://www.loja-nova.com.br/produto/1'):
+        resposta = mock.Mock(url=url, content=html.encode(), status_code=200)
+        resposta.raise_for_status.return_value = None
+        with mock.patch('presentes.scrapers.requests.get', return_value=resposta), \
+                mock.patch('presentes.github_helper.criar_issue_erro_geral') as geral, \
+                mock.patch('presentes.github_helper.criar_issue_falha_scraping') as falha:
+            resultado = ScraperFactory.extract_product_info(url)
+        return resultado, geral.call_count + falha.call_count
+
+    def test_pagina_continuar_comprando_da_amazon_e_bloqueio(self):
+        html = ('<html><head><title>Amazon.com.br</title></head><body><!-- To discuss automated access '
+                'to Amazon data please contact us. -->'
+                'Clique no botão abaixo para continuar comprando</body></html>')
+        resultado, issues = self._extrair(html, 'https://www.amazon.com.br/dp/B0D8JYHFMN')
+        self.assertEqual(resultado['error_type'], 'blocked')
+        self.assertEqual(issues, 0)
+
+    def test_verificacao_do_aliexpress_e_bloqueio(self):
+        html = ('<script>var url = window.location.protocol + "//pt.aliexpress.com//item/1.html'
+                '/_____tmd_____/punish?x5secdata=abc";</script>')
+        resultado, issues = self._extrair(html, 'https://pt.aliexpress.com/item/1.html')
+        self.assertEqual(resultado['error_type'], 'blocked')
+        self.assertEqual(issues, 0)
+
+    def test_foto_do_json_ld_quando_nao_ha_og_image(self):
+        produto = {'@type': 'Product', 'name': 'Aspirador Wap 12 Litros',
+                   'image': 'https://joli.vtexassets.com/arquivos/ids/1/aspirador.jpg',
+                   'offers': {'@type': 'Offer', 'price': 299.99, 'priceCurrency': 'BRL'}}
+        html = (f'<html><head><title>Aspirador Wap 12 Litros - Joli</title>'
+                f'<script type="application/ld+json">{json.dumps(produto)}</script></head></html>')
+        resultado, issues = self._extrair(html)
+        self.assertEqual(resultado['imagem_url'], 'https://joli.vtexassets.com/arquivos/ids/1/aspirador.jpg')
+        self.assertEqual(resultado['preco'], 299.99)
+        self.assertEqual(issues, 0)
+
+    def test_foto_do_json_ld_como_lista_de_imageobject(self):
+        produto = {'@type': 'Product', 'name': 'GTA VI', 'offers': {'price': 549.9},
+                   'image': [{'@type': 'ImageObject', 'url': 'https://image.api.playstation.com/gta.png'}]}
+        html = (f'<html><head><title>GTA VI</title>'
+                f'<script type="application/ld+json">{json.dumps(produto)}</script></head></html>')
+        resultado, _ = self._extrair(html)
+        self.assertEqual(resultado['imagem_url'], 'https://image.api.playstation.com/gta.png')
+
+    def test_produto_fora_do_ar_na_farm_nao_usa_preco_de_outro_produto(self):
+        html = ('<html><head><title>Macaquinho Estampado Bandana</title>'
+                '<meta property="og:image" content="https://decoims.com/farmrio/logo.png"></head><body><script>'
+                '{hasProduct:!1,products:[{"@type":"Product",offers:{priceCurrency:"BRL",lowPrice:234.5}}]}'
+                '</script></body></html>')
+        resultado, issues = self._extrair(html, 'https://www.farmrio.com.br/macaquinho-366695-57783/p')
+        self.assertTrue(resultado['success'])
+        self.assertIsNone(resultado['preco'])
+        self.assertIsNone(resultado['imagem_url'])
+        self.assertIn('não está mais disponível', resultado['aviso'])
+        self.assertEqual(issues, 0)
+
+
+@override_settings(MERCADOLIVRE_CLIENT_ID='app-id', MERCADOLIVRE_CLIENT_SECRET='app-secret')
+class MercadoLivreSemOfertaTest(TestCase):
+    """Issue #53: produto de catalogo sem oferta ('No winners found') e titulo de destaque."""
+
+    URL = ('https://www.mercadolivre.com.br/p/MLB52919694?pdp_filters=item_id%3AMLB6464323148'
+           '#wid=MLB6464323148')
+
+    def _resposta(self, status, dados):
+        resposta = mock.Mock(status_code=status, text=json.dumps(dados))
+        resposta.json.return_value = dados
+        return resposta
+
+    def _get(self, rotas):
+        def get(url, **kwargs):
+            for trecho, (status, dados) in rotas.items():
+                if trecho in url:
+                    return self._resposta(status, dados)
+            return self._resposta(404, {})
+        return mock.patch('presentes.mercadolivre_api.requests.get', side_effect=get)
+
+    def test_sem_oferta_ativa_avisa_e_nao_abre_issue(self):
+        MercadoLivreToken.objects.create(access_token='t', refresh_token='r',
+                                         expira_em=timezone.now() + timedelta(hours=1))
+        rotas = {
+            '/items/MLB6464323148/description': (200, {'plain_text': 'Fácil de mover e armazenar\nDetalhes'}),
+            '/products/MLB52919694/items': (404, {'message': 'No winners found', 'error': 'not_found'}),
+            '/products/MLB52919694': (200, {'name': 'Carrinho De Feira Dobrável 4 Rodas Com Bolsa',
+                                            'pictures': [{'url': 'https://http2.mlstatic.com/c.jpg'}]}),
+        }
+        with self._get(rotas), mock.patch('presentes.github_helper.criar_issue_erro_geral') as issue:
+            resultado = ScraperFactory.extract_product_info(self.URL)
+        self.assertTrue(resultado['success'])
+        self.assertIsNone(resultado['preco'])
+        self.assertIn('sem oferta ativa', resultado['aviso'])
+        # 'Fácil de mover e armazenar' e um destaque, nao o produto
+        self.assertEqual(resultado['titulo'], 'Carrinho De Feira Dobrável 4 Rodas Com Bolsa')
+        issue.assert_not_called()
+
+    def test_escolha_do_titulo(self):
+        from .mercadolivre_api import _escolher_titulo
+        # Nome curto do catalogo em outro idioma: fica a descricao
+        self.assertEqual(_escolher_titulo('Paquímetro Manual 150 mm', 'Vernier Caliper'), 'Paquímetro Manual 150 mm')
+        # Palavra em comum: fica a descricao (mais especifica)
+        self.assertEqual(_escolher_titulo('Kit Hama Beads 28000 peças', 'Kit Completo Hama Beads 72 Cores'),
+                         'Kit Hama Beads 28000 peças')
+        self.assertEqual(_escolher_titulo(None, 'Carrinho De Feira'), 'Carrinho De Feira')
