@@ -91,7 +91,11 @@ class NetworkError(ScrapingError):
 
 class BlockedError(NetworkError):
     """Site respondeu com pagina de verificacao/anti-robo em vez do produto - NAO gera issue"""
-    pass
+
+    def __init__(self, mensagem, url_final=None):
+        super().__init__(mensagem)
+        # Endereco depois dos redirecionamentos (ex.: link curto ja expandido)
+        self.url_final = url_final
 
 
 # Trechos de URL de paginas de verificacao anti-robo (ex.: Mercado Livre
@@ -193,7 +197,7 @@ class BaseScraper:
         final_url = (response.url or '').lower()
         if any(marker in final_url for marker in BLOCKED_URL_MARKERS):
             logger.warning(f"Acesso bloqueado por verificacao anti-robo em {url} (redirecionado para {response.url})")
-            raise BlockedError("O site bloqueou a consulta automática (verificação anti-robô)")
+            raise BlockedError("O site bloqueou a consulta automática (verificação anti-robô)", response.url)
 
         soup = BeautifulSoup(response.content, 'html.parser')
 
@@ -203,13 +207,13 @@ class BaseScraper:
                     f"URL final {response.url}, título da página: {titulo_pagina[:100] or '(vazio)'}")
         if any(marcador in titulo_pagina for marcador in BLOCKED_TITLE_MARKERS):
             logger.warning(f"Acesso bloqueado por verificacao anti-robo em {url} (titulo: {titulo_pagina[:80]})")
-            raise BlockedError("O site bloqueou a consulta automática (verificação anti-robô)")
+            raise BlockedError("O site bloqueou a consulta automática (verificação anti-robô)", response.url)
         if len(response.content) <= TAMANHO_MAXIMO_PAGINA_BLOQUEIO:
             conteudo = response.content.decode('utf-8', errors='ignore').lower()
             marcador = next((m for m in BLOCKED_CONTENT_MARKERS if m in conteudo), None)
             if marcador:
                 logger.warning(f"Acesso bloqueado por verificacao anti-robo em {url} (conteudo: '{marcador}')")
-                raise BlockedError("O site bloqueou a consulta automática (verificação anti-robô)")
+                raise BlockedError("O site bloqueou a consulta automática (verificação anti-robô)", response.url)
 
         return soup
 
@@ -355,6 +359,12 @@ class BaseScraper:
         raise NotImplementedError
 
 
+AVISO_AMAZON_BLOQUEIO = (
+    'A Amazon bloqueou a consulta automática. A descrição veio do próprio link: '
+    'confira o nome e preencha o preço e a foto manualmente.'
+)
+
+
 class AmazonScraper(BaseScraper):
     """Scraper específico para Amazon Brasil"""
 
@@ -369,6 +379,22 @@ class AmazonScraper(BaseScraper):
             'Upgrade-Insecure-Requests': '1',
         })
 
+    @staticmethod
+    def titulo_do_link(url):
+        """
+        Nome do produto no link da Amazon, ou None:
+        /Glazy-Vidros-Redutor-Atrito-Microfibra/dp/B0D8JYHFMN -> 'Glazy Vidros Redutor Atrito Microfibra'
+        """
+        from urllib.parse import unquote
+        match = re.search(r'/([^/]+)/(?:dp|gp/product)/[A-Z0-9]{10}', unquote(urlparse(url or '').path))
+        if not match:
+            return None
+        palavras = [p for p in re.split(r'[-_\s]+', match.group(1)) if p]
+        # Um trecho so (ex.: '/-/pt/dp/...', '/exec/dp/...') nao e nome de produto
+        if len(palavras) < 2:
+            return None
+        return ' '.join(palavras)[:200]
+
     def extract(self, url):
         """
         Extrai informações de produtos da Amazon.
@@ -377,7 +403,17 @@ class AmazonScraper(BaseScraper):
         Lanca ParsingError se conseguir acessar mas nao extrair dados minimos.
         """
         # get_soup() pode lancar NetworkError (propagamos)
-        soup = self.get_soup(url)
+        try:
+            soup = self.get_soup(url)
+        except BlockedError as bloqueio:
+            # A Amazon costuma devolver uma pagina anti-robo. O nome do
+            # produto esta no proprio link: aproveita como descricao
+            titulo = self.titulo_do_link(bloqueio.url_final) or self.titulo_do_link(url)
+            if not titulo:
+                raise
+            logger.info(f"Amazon bloqueou a consulta; título tirado do link: {titulo}")
+            self.aviso = AVISO_AMAZON_BLOQUEIO
+            return (titulo, None, None)
 
         titulo = None
         preco = None
