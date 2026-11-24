@@ -137,6 +137,11 @@ AVISO_PRODUTO_INDISPONIVEL = (
     'Preencha o preço manualmente ou troque o link.'
 )
 
+AVISO_PRODUTO_INDISPONIVEL_ULTIMO_PRECO = (
+    'O produto está indisponível na loja. O preço, se preenchido, é o último anunciado, '
+    'convertido pela cotação de hoje: confira antes de salvar.'
+)
+
 # Paginas em que a pessoa escolhe o valor (cartao-presente): nao ha preco unico
 MARCADORES_CARTAO_PRESENTE = ('store.steampowered.com/digitalgiftcards',)
 AVISO_CARTAO_PRESENTE = (
@@ -808,6 +813,11 @@ class GenericScraper(BaseScraper):
                 dolares = self.preco_de_meta(meta.get('content')) if meta and meta.get('content') else None
                 cotacao = re.search(r'D[oó]lar\s+hoje\s*:?\s*R\$\s*(\d{1,2},\d{2,4})', texto, re.I)
                 cotacao = self.clean_price(cotacao.group(1)) if cotacao else None
+                if 'ops! produto indisponível' in texto.lower():
+                    # Compras Paraguai: 'Ops! Produto indisponível :(' - a meta
+                    # tag guarda o ultimo preco anunciado
+                    logger.info(f"Produto indisponível na loja: {url}")
+                    self.aviso = AVISO_PRODUTO_INDISPONIVEL_ULTIMO_PRECO
                 if dolares and cotacao:
                     preco = round(dolares * cotacao, 2)
                     logger.info(f"Preço em reais calculado: US$ {dolares} x cotação da página R$ {cotacao} = R$ {preco}")
