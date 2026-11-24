@@ -1751,6 +1751,31 @@ class PrecoMetaTagTest(TestCase):
             url='https://www.comprasparaguai.com.br/ssd_54489/')
         self.assertEqual(resultado['preco'], 1371.60)
 
+    def test_preco_em_dolar_usa_a_cotacao_da_pagina_quando_falta_o_valor_em_reais(self):
+        # Issue #55: 799,00 x 6,08 = 4.857,92, o mesmo valor que o site mostra
+        resultado = self._extrair(
+            '<html><head><meta property="og:title" content="Drone Dji Mini 5 Pro">'
+            '<meta property="product:price:amount" content="799.0">'
+            '<meta property="product:price:currency" content="USD"></head><body>'
+            '<span class="cotacao-label">Dólar hoje:</span> <strong>R$ 6,08</strong>'
+            '<span class="price">US$ 799,00</span></body></html>',
+            url='https://www.comprasparaguai.com.br/drone-dji-mini-5-pro__5012200/')
+        self.assertEqual(resultado['preco'], 4857.92)
+
+    def test_produto_indisponivel_no_compras_paraguai_traz_ultimo_preco_com_aviso(self):
+        # Issue #55: 'Ops! Produto indisponível :(' - sem valor em reais na pagina
+        html = ('<html><head><meta property="og:title" content="Mga Muñeca Lol Surprise">'
+                '<meta property="og:image" content="https://bucket.com/lol.jpg">'
+                '<meta property="product:price:amount" content="13.0">'
+                '<meta property="product:price:currency" content="USD"></head><body>'
+                '<span class="cotacao-label">Dólar hoje:</span> <strong>R$ 6,08</strong>'
+                '<span>Ops! Produto indisponível :(</span></body></html>')
+        with mock.patch('presentes.github_helper.criar_issue_falha_scraping') as issue:
+            resultado = self._extrair(html, url='https://www.comprasparaguai.com.br/lol__4643142/')
+        self.assertEqual(resultado['preco'], 79.04)
+        self.assertIn('indisponível na loja', resultado['aviso'])
+        issue.assert_not_called()
+
     def test_preco_em_dolar_sem_valor_em_reais_fica_vazio(self):
         resultado = self._extrair(
             '<html><head><meta property="og:title" content="SSD WD Green 2TB">'
