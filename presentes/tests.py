@@ -1143,6 +1143,37 @@ class RegistroAcessosTest(TestCase):
         self.assertEqual(resumo['faixas_sugeridas_local'], ['19:00-21:59'])
         self.assertEqual(resumo['cron_keep_alive_utc'], ['*/14 0 * * *', '*/14 22-23 * * *'])
 
+    def test_resumo_estima_espera_e_acerto_do_monitor(self):
+        import datetime
+        from .acessos import resumo_acessos
+        from .models import AcessoHora, DespertarServidor
+
+        ontem = timezone.localdate() - timedelta(days=1)
+        fuso = timezone.get_current_timezone()
+
+        def quando(hora, minuto=5):
+            return datetime.datetime.combine(ontem, datetime.time(hora, minuto), tzinfo=fuso)
+
+        # Tres periodos de uso: 8-9h, 14h e 20h
+        for hora in (8, 9, 14, 20):
+            AcessoHora.objects.create(data=ontem, hora=hora, acessos=10)
+        # 8h: a pessoa acordou o servidor (esperou)
+        DespertarServidor.objects.create(iniciado_em=quando(8), primeiro_acesso_em=quando(8), origem='USUARIO')
+        # 13h: o monitor acordou e houve acesso as 14h (ping util, sem espera)
+        DespertarServidor.objects.create(iniciado_em=quando(13, 50), primeiro_acesso_em=quando(13, 50),
+                                         origem='MONITOR')
+        # 3h: o monitor acordou e ninguem acessou (ping perdido)
+        DespertarServidor.objects.create(iniciado_em=quando(3), primeiro_acesso_em=quando(3), origem='MONITOR')
+
+        espera = resumo_acessos(dias=7)['espera']
+
+        self.assertEqual(espera['periodos_de_uso'], 3)
+        self.assertEqual(espera['com_espera'], 1)
+        self.assertEqual(espera['sem_espera'], 2)
+        self.assertEqual(espera['despertares_monitor'], 2)
+        self.assertEqual(espera['despertares_monitor_uteis'], 1)
+        self.assertEqual(espera['acerto_monitor_percentual'], 50.0)
+
     def test_resumo_so_para_superusuario(self):
         usuario = Usuario.objects.create_user(email='comum@exemplo.com', username='comum', password='SenhaForte!2026')
         self.client.force_login(usuario)

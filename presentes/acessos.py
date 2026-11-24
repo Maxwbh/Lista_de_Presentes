@@ -158,4 +158,52 @@ def resumo_acessos(dias=30, limite_percentual=5.0, horas_antes=1):
             'por_monitor': despertares.filter(origem='MONITOR').count(),
             'por_hora': despertares_por_hora,
         },
+        'espera': _espera(AcessoHora.objects.filter(data__gte=inicio), despertares),
+    }
+
+
+def _espera(acessos, despertares):
+    """
+    Estimativa de quantas vezes as pessoas esperaram o servidor acordar.
+
+    Periodo de uso: horas seguidas com acesso (os acessos sao guardados por
+    hora, entao duas visitas na mesma hora contam como um periodo). A pessoa
+    esperou se foi um acesso dela que acordou o servidor naquele periodo;
+    senao, o servidor ja estava acordado.
+
+    Ping do monitor util: houve acesso de pessoa na mesma hora do despertar
+    ou na hora seguinte. Deploys tambem contam como despertar.
+    """
+    def ordinal(data, hora):
+        return data.toordinal() * 24 + hora
+
+    horas_com_acesso = sorted({ordinal(a.data, a.hora) for a in acessos if a.acessos})
+    periodos = []
+    for hora in horas_com_acesso:
+        if periodos and hora == periodos[-1][1] + 1:
+            periodos[-1][1] = hora
+        else:
+            periodos.append([hora, hora])
+
+    por_usuario, por_monitor = set(), []
+    for despertar in despertares:
+        local = timezone.localtime(despertar.primeiro_acesso_em)
+        hora = ordinal(local.date(), local.hour)
+        if despertar.origem == 'USUARIO':
+            por_usuario.add(hora)
+        else:
+            por_monitor.append(hora)
+
+    com_espera = sum(1 for inicio, fim in periodos if any(inicio <= h <= fim for h in por_usuario))
+    com_acesso = set(horas_com_acesso)
+    uteis = sum(1 for h in por_monitor if h in com_acesso or h + 1 in com_acesso)
+    total = len(periodos)
+    return {
+        'periodos_de_uso': total,
+        'com_espera': com_espera,
+        'sem_espera': total - com_espera,
+        'percentual_sem_espera': round(100 * (total - com_espera) / total, 1) if total else None,
+        'despertares_monitor': len(por_monitor),
+        'despertares_monitor_uteis': uteis,
+        'acerto_monitor_percentual': round(100 * uteis / len(por_monitor), 1) if por_monitor else None,
     }
