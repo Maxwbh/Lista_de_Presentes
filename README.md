@@ -6,13 +6,13 @@
 
 Cada pessoa monta a sua lista colando o link do produto. Os outros veem o que falta comprar, marcam o que compraram, e quem ganha não descobre o que vem.
 
-[![Experimente agora](https://img.shields.io/badge/Experimente%20agora-lista--presentes-059669?style=for-the-badge&logo=googlechrome&logoColor=white)](https://lista-presentes-im4b.onrender.com)
+[![Experimente agora](https://img.shields.io/badge/Experimente%20agora-lista--presentes-1D4ED8?style=for-the-badge&logo=googlechrome&logoColor=white)](https://lista-presentes-im4b.onrender.com)
 
 ![Tests](https://github.com/Maxwbh/Lista_de_Presentes/actions/workflows/tests.yml/badge.svg)
-![Python](https://img.shields.io/badge/python-3.11%20%7C%203.12-blue.svg)
-![Django](https://img.shields.io/badge/django-5.1-green.svg)
-![PWA](https://img.shields.io/badge/PWA-instal%C3%A1vel-5a0fc8.svg)
-![License](https://img.shields.io/badge/license-MIT-green.svg)
+![Python](https://img.shields.io/badge/python-3.11%20%7C%203.12-0D1B4B.svg)
+![Django](https://img.shields.io/badge/django-5.1-0891B2.svg)
+![PWA](https://img.shields.io/badge/PWA-instal%C3%A1vel-06B6D4.svg)
+![License](https://img.shields.io/badge/license-MIT-5F6C88.svg)
 
 <img src="docs/images/ver-presentes.png" alt="Presentes do grupo, por membro" width="820">
 
@@ -130,6 +130,7 @@ O GitHub Actions roda os testes (Python 3.11 e 3.12), o lint e a verificação d
 | Logs de leitura dos sites e issues automáticas | [SCRAPING_LOGS.md](docs/features/SCRAPING_LOGS.md) |
 | Versionamento | [VERSIONAMENTO.md](docs/development/VERSIONAMENTO.md) |
 | Como contribuir | [CONTRIBUTING.md](docs/development/CONTRIBUTING.md) |
+| Uso da marca M&S no projeto | [MARCA.md](docs/development/MARCA.md) |
 | Histórico de mudanças | [CHANGELOG.md](CHANGELOG.md) |
 
 ---
@@ -147,13 +148,9 @@ Sugestões, problemas e pull requests são bem-vindos.
 
 **Maxwell Oliveira** (@maxwbh)
 
-- 💼 Empresa: **M&S do Brasil LTDA**
-- 🌐 Site: [msbrasil.inf.br](http://msbrasil.inf.br)
 - 📧 Email: [maxwbh@gmail.com](mailto:maxwbh@gmail.com)
 - 💻 GitHub: [@Maxwbh](https://github.com/Maxwbh/)
 - 💼 LinkedIn: [linkedin.com/in/maxwbh](https://www.linkedin.com/in/maxwbh/)
-
----
 
 ---
 
@@ -161,8 +158,20 @@ Sugestões, problemas e pull requests são bem-vindos.
 
 Distribuído sob a licença MIT. Veja o arquivo [LICENSE](LICENSE).
 
+A licença vale para o código. O nome e a marca da M&S do Brasil não estão
+incluídos nela — veja [MARCA.md](docs/development/MARCA.md).
+
 <div align="center">
 
 **Gostou? Deixe uma ⭐ no repositório e compartilhe com a sua família!**
+
+<br>
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/marca/ms-assinatura-horizontal-fundo-escuro-256.png">
+  <img src="docs/images/marca/ms-assinatura-horizontal-fundo-claro-256.png" alt="M&S do Brasil" width="150">
+</picture>
+
+um projeto **M&S do Brasil** · [msbrasil.inf.br](http://msbrasil.inf.br)
 
 </div>
