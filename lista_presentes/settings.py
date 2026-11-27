@@ -130,7 +130,9 @@ if DATABASE_URL and not USE_SQLITE:
     # Usar parse() diretamente com a URL modificada (não config() que lê do env)
     db_config = dj_database_url.parse(
         DATABASE_URL,
-        conn_max_age=600,  # Pool de conexões: mantém conexões por 10 minutos
+        # Reaproveita a conexão por até 60 s (configurável). Com o pooler do
+        # Supabase (Supavisor) um valor alto só segura conexões ociosas.
+        conn_max_age=int(os.getenv('DB_CONN_MAX_AGE', '60')),
         conn_health_checks=True,  # Verifica saúde da conexão antes de usar
     )
 

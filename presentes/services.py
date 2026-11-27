@@ -773,21 +773,23 @@ class IAService:
     def _baixar_foto(presente, imagem_url):
         """Baixa a foto para o presente (sem salvar). Retorna None ou o motivo da falha."""
         import base64
-        from .rede import obter, identificar_imagem, EXTENSOES, TAMANHO_MAXIMO_IMAGEM
+        from .rede import obter, EXTENSOES
+        from .imagens import otimizar_imagem, TAMANHO_MAXIMO_ENTRADA
         try:
             resp = obter(imagem_url, headers=IAService.HEADERS, timeout=15)
             resp.raise_for_status()
         except Exception as e:
             return f'Erro ao baixar a foto: {e}'
-        if len(resp.content) > TAMANHO_MAXIMO_IMAGEM:
-            return 'A foto do site tem mais de 5 MB.'
-        # O tipo vem do conteudo; o content-type informado pelo site nao vale
-        content_type = identificar_imagem(resp.content)
+        if len(resp.content) > TAMANHO_MAXIMO_ENTRADA:
+            return 'A foto do site tem mais de 15 MB.'
+        # O tipo vem do conteudo; o content-type informado pelo site nao vale.
+        # A imagem e reduzida antes de ir para o banco.
+        dados, content_type = otimizar_imagem(resp.content)
         if not content_type:
             return 'O endereço da foto não devolveu uma imagem aceita (JPEG, PNG, GIF ou WEBP).'
-        presente.imagem_base64 = base64.b64encode(resp.content).decode('utf-8')
-        presente.imagem_nome = (imagem_url.split('/')[-1].split('?')[0][:255]
-                                or f'produto.{EXTENSOES[content_type]}')
+        presente.imagem_base64 = base64.b64encode(dados).decode('utf-8')
+        nome = imagem_url.split('/')[-1].split('?')[0].rsplit('.', 1)[0][:200] or 'produto'
+        presente.imagem_nome = f'{nome}.{EXTENSOES[content_type]}'
         presente.imagem_tipo = content_type
         return None
 

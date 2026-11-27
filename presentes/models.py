@@ -1,5 +1,5 @@
 from django.db import models
-from django.contrib.auth.models import AbstractUser
+from django.contrib.auth.models import AbstractUser, UserManager
 from django.utils import timezone
 import hashlib
 import secrets
@@ -13,6 +13,36 @@ def versao_da_imagem(conteudo):
     return hashlib.sha1(conteudo.encode('ascii', 'ignore'), usedforsecurity=False).hexdigest()[:12]
 
 
+class SemImagemManager(models.Manager):
+    """
+    Manager que não traz a coluna da imagem em base64.
+
+    As imagens chegam a vários MB por linha e só as rotas de imagem precisam
+    delas; sem isso, cada página trazia do banco a foto do usuário logado, a
+    imagem do grupo ativo e as dos presentes. A coluna continua acessível: o
+    Django busca sob demanda se alguém ler o atributo.
+    """
+    campos_pesados = ()
+
+    def get_queryset(self):
+        return super().get_queryset().defer(*self.campos_pesados)
+
+
+class GrupoManager(SemImagemManager):
+    campos_pesados = ('imagem_base64',)
+
+
+class PresenteManager(SemImagemManager):
+    campos_pesados = ('imagem_base64',)
+
+
+class UsuarioManager(UserManager):
+    """UserManager que também deixa a foto de fora (inclusive no request.user)."""
+
+    def get_queryset(self):
+        return super().get_queryset().defer('foto_base64')
+
+
 class VersaoImagemMixin:
     """
     Mantem um campo curto de versao sincronizado com cada campo base64.
@@ -21,6 +51,13 @@ class VersaoImagemMixin:
     ?v= (cache longo no navegador) sem carregar o base64 do banco.
     """
     CAMPOS_VERSAO = ()  # pares (campo_base64, campo_versao)
+
+    def refresh_from_db(self, using=None, fields=None, from_queryset=None):
+        # O manager base adia o base64; sem isto, refresh_from_db() deixaria
+        # a imagem com o valor antigo em vez de recarregá-la.
+        if from_queryset is None:
+            from_queryset = models.QuerySet(model=type(self), using=using)
+        return super().refresh_from_db(using=using, fields=fields, from_queryset=from_queryset)
 
     def _sincronizar_versoes(self, kwargs):
         adiados = self.get_deferred_fields()
@@ -67,9 +104,13 @@ class Grupo(VersaoImagemMixin, models.Model):
 
     CAMPOS_VERSAO = (('imagem_base64', 'imagem_versao'),)
 
+    objects = GrupoManager()
+
     class Meta:
         verbose_name = 'Grupo'
         verbose_name_plural = 'Grupos'
+        # Também ao seguir chaves estrangeiras (ex.: request.user.grupo_ativo)
+        base_manager_name = 'objects'
         ordering = ['-data_criacao']
         indexes = [
             models.Index(fields=['codigo_convite'], name='grupo_codigo_idx'),
@@ -125,9 +166,12 @@ class Usuario(VersaoImagemMixin, AbstractUser):
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = ['username', 'first_name', 'last_name']
 
+    objects = UsuarioManager()
+
     class Meta:
         verbose_name = 'Usuário'
         verbose_name_plural = 'Usuários'
+        base_manager_name = 'objects'
 
     def __str__(self):
         return f"{self.first_name} {self.last_name}"
@@ -227,7 +271,10 @@ class Presente(VersaoImagemMixin, models.Model):
     busca_imagem_em = models.DateTimeField(null=True, blank=True)
     busca_imagem_resultado = models.CharField(max_length=300, blank=True, default='')
 
+    objects = PresenteManager()
+
     class Meta:
+        base_manager_name = 'objects'
         verbose_name = 'Presente'
         verbose_name_plural = 'Presentes'
         ordering = ['-data_cadastro']
