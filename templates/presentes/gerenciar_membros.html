@@ -31,16 +31,6 @@
 </div>
 
 <div class="max-w-3xl mx-auto animate-slide-up">
-    {% if messages %}
-        {% for message in messages %}
-            <div role="alert" class="alert {% if message.tags == 'error' %}alert-error{% elif message.tags == 'success' %}alert-success{% elif message.tags == 'warning' %}alert-warning{% else %}alert-info{% endif %} mb-4 rounded-xl text-sm">
-                <span>{{ message }}</span>
-                <button type="button" class="btn btn-ghost btn-xs" onclick="this.closest('.alert').remove()">
-                    <i class="bi bi-x-lg"></i>
-                </button>
-            </div>
-        {% endfor %}
-    {% endif %}
 
     <!-- Convidar Membros (destaque) -->
     <div class="bg-secondary/5 border border-secondary/15 rounded-3xl p-6 mb-6">
@@ -48,7 +38,7 @@
             <i class="bi bi-person-plus-fill text-secondary"></i>
             <h4 class="font-extrabold text-sm uppercase tracking-wider text-secondary">Convidar Membros</h4>
         </div>
-        <p class="text-xs text-base-content/50 mb-4">Compartilhe este link — quem abrir entra direto no grupo</p>
+        <p class="text-xs text-base-content/70 mb-4">Compartilhe este link — quem abrir entra direto no grupo</p>
 
         <div class="flex flex-col sm:flex-row gap-2 mb-3">
             <input type="text" class="input input-bordered rounded-xl flex-1 text-sm font-mono" id="linkConvite" value="{{ link_convite }}" readonly onclick="this.select()">
@@ -73,7 +63,7 @@
 
         <!-- Adicionar membro já cadastrado, pelo e-mail -->
         <div class="border-t border-secondary/10 pt-4">
-            <p class="text-xs font-bold uppercase tracking-wider text-base-content/40 mb-2">
+            <p class="text-xs font-bold uppercase tracking-wider text-base-content/70 mb-2">
                 <i class="bi bi-envelope-plus"></i> Adicionar membro já cadastrado
             </p>
             <form method="post" action="{% url 'adicionar_membro' grupo.id %}" class="flex flex-col sm:flex-row gap-2">
@@ -84,7 +74,7 @@
                     <i class="bi bi-person-plus"></i> Adicionar
                 </button>
             </form>
-            <p class="text-[11px] text-base-content/40 mt-2">
+            <p class="text-[11px] text-base-content/70 mt-2">
                 A pessoa precisa ter cadastro no sistema. Se ainda não tiver, envie o link de convite acima.
             </p>
         </div>
@@ -93,7 +83,7 @@
     <!-- Lista de Membros -->
     <div class="bg-base-100 border border-base-300/40 rounded-3xl overflow-hidden mb-6">
         <div class="px-6 py-5 border-b border-base-300/40">
-            <h3 class="font-extrabold text-sm uppercase tracking-wider text-base-content/40 flex items-center gap-2">
+            <h3 class="font-extrabold text-sm uppercase tracking-wider text-base-content/70 flex items-center gap-2">
                 <i class="bi bi-people"></i> Membros <span class="text-base-content/25">({{ membros.count }})</span>
             </h3>
         </div>
@@ -117,7 +107,7 @@
                             </span>
                         {% endif %}
                     </div>
-                    <p class="text-xs text-base-content/40 truncate mt-0.5">
+                    <p class="text-xs text-base-content/70 truncate mt-0.5">
                         {{ membro.usuario.email }}
                         <span class="opacity-60">&bull; desde {{ membro.data_entrada|date:"d/m/Y" }}</span>
                     </p>
@@ -128,8 +118,8 @@
                 <div class="flex gap-1 shrink-0">
                     <form method="post" action="{% url 'toggle_mantenedor' grupo.id membro.usuario.id %}">
                         {% csrf_token %}
-                        <button type="submit"
-                           class="btn btn-ghost btn-sm btn-square rounded-xl text-base-content/40 hover:text-primary hover:bg-primary/10"
+                        <button aria-label="{% if membro.e_mantenedor %}Remover privilégios de admin{% else %}Promover a admin{% endif %}" type="submit"
+                           class="btn btn-ghost btn-sm btn-square rounded-xl text-base-content/70 hover:text-primary hover:bg-primary/10"
                            title="{% if membro.e_mantenedor %}Remover privilégios de admin{% else %}Promover a admin{% endif %}">
                             {% if membro.e_mantenedor %}
                                 <i class="bi bi-shield-slash"></i>
@@ -141,8 +131,8 @@
                     <form method="post" action="{% url 'remover_membro' grupo.id membro.usuario.id %}"
                           onsubmit="return confirm('Deseja realmente remover {{ membro.usuario.get_full_name|default:membro.usuario.email|escapejs }} do grupo?')">
                         {% csrf_token %}
-                        <button type="submit"
-                           class="btn btn-ghost btn-sm btn-square rounded-xl text-base-content/40 hover:text-error hover:bg-error/10"
+                        <button aria-label="Remover do grupo" type="submit"
+                           class="btn btn-ghost btn-sm btn-square rounded-xl text-base-content/70 hover:text-error hover:bg-error/10"
                            title="Remover do grupo">
                             <i class="bi bi-person-x"></i>
                         </button>
@@ -153,7 +143,7 @@
             {% empty %}
             <div class="px-6 py-12 text-center">
                 <i class="bi bi-people text-4xl text-base-content/10 block mb-3"></i>
-                <p class="text-sm text-base-content/40">Nenhum membro no grupo ainda</p>
+                <p class="text-sm text-base-content/70">Nenhum membro no grupo ainda</p>
             </div>
             {% endfor %}
         </div>
@@ -161,7 +151,7 @@
 
     <!-- Configurações do Grupo -->
     <div class="bg-base-100 border border-base-300/40 rounded-3xl p-6 mb-4">
-        <h3 class="font-extrabold text-sm uppercase tracking-wider text-base-content/40 mb-4 flex items-center gap-2">
+        <h3 class="font-extrabold text-sm uppercase tracking-wider text-base-content/70 mb-4 flex items-center gap-2">
             <i class="bi bi-gear"></i> Configurações
         </h3>
         <div class="flex flex-wrap gap-2">

@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% load preco_tags %}
 
-{% block title %}Sugestoes de Compra - Lista de Presentes{% endblock %}
+{% block title %}Sugestões de compra - Lista de Presentes{% endblock %}
 
 {% block content %}
 <div class="bg-gradient-to-r from-primary via-primary/90 to-secondary text-white py-10 -mx-4 -mt-6 px-4 rounded-3xl mb-8 relative overflow-hidden">
@@ -9,9 +9,9 @@
     <div class="max-w-7xl mx-auto relative z-10">
         <h1 class="text-3xl font-extrabold">
             <i class="bi bi-robot mr-2"></i>
-            Sugestoes de Compra com IA
+            Sugestões de compra com IA
         </h1>
-        <p class="mt-2 opacity-90">Compare precos e encontre as melhores ofertas</p>
+        <p class="mt-2 opacity-90">Compare preços e encontre as melhores ofertas</p>
     </div>
 </div>
 
@@ -35,9 +35,9 @@
 
                     <div class="flex flex-wrap gap-5 mb-4">
                         {% if presente.preco %}
-                            <div class="flex items-center gap-2 text-base-content/60">
+                            <div class="flex items-center gap-2 text-base-content/70">
                                 <i class="bi bi-cash-coin text-primary"></i>
-                                <strong>Preco estimado:</strong> R$ {{ presente.preco }}
+                                <strong>Preço estimado:</strong> R$ {{ presente.preco }}
                             </div>
                         {% endif %}
 
@@ -49,15 +49,15 @@
                             </span>
                         </div>
 
-                        <div class="flex items-center gap-2 text-base-content/60">
+                        <div class="flex items-center gap-2 text-base-content/70">
                             <i class="bi bi-flag-fill text-primary"></i>
-                            <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold {% if presente.status == 'ATIVO' %}bg-success text-success-content{% else %}bg-base-300 text-base-content/60{% endif %}">
+                            <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold {% if presente.status == 'ATIVO' %}bg-success text-success-content{% else %}bg-base-300 text-base-content/70{% endif %}">
                                 {{ presente.get_status_display }}
                             </span>
                         </div>
 
                         {% if presente.url %}
-                            <div class="flex items-center gap-2 text-base-content/60">
+                            <div class="flex items-center gap-2 text-base-content/70">
                                 <i class="bi bi-link-45deg text-primary"></i>
                                 <a href="{{ presente.url }}" target="_blank" class="link link-primary">Ver link original</a>
                             </div>
@@ -82,10 +82,10 @@
     <div class="bg-base-100 border border-base-300/40 rounded-3xl shadow-md mb-8 animate-fade-in">
         <div class="card-body">
             <div class="flex items-center justify-between mb-2">
-                <h3 class="font-extrabold text-sm uppercase tracking-wider text-base-content/40">
+                <h3 class="font-extrabold text-sm uppercase tracking-wider text-base-content/70">
                     <i class="bi bi-graph-down-arrow"></i> Evolução de Preço
                 </h3>
-                <div class="flex items-center gap-3 text-xs text-base-content/50">
+                <div class="flex items-center gap-3 text-xs text-base-content/70">
                     <span><strong class="text-success">Mín:</strong> R$ {{ sparkline.min|floatformat:2 }}</span>
                     <span><strong class="text-error">Máx:</strong> R$ {{ sparkline.max|floatformat:2 }}</span>
                 </div>
@@ -129,12 +129,12 @@
     <!-- Sugestoes -->
     {% if sugestoes %}
         <div class="flex justify-between items-center mb-6">
-            <h2 class="font-extrabold text-sm uppercase tracking-wider text-base-content/40">
+            <h2 class="font-extrabold text-sm uppercase tracking-wider text-base-content/70">
                 <i class="bi bi-shop"></i>
                 Lojas Encontradas
             </h2>
             <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-primary text-primary-content">
-                {{ sugestoes|length }} {% if sugestoes|length == 1 %}opcao{% else %}opcoes{% endif %}
+                {{ sugestoes|length }} {% if sugestoes|length == 1 %}opção{% else %}opções{% endif %}
             </span>
         </div>
 
@@ -144,7 +144,7 @@
                 <div class="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 p-4 sm:p-5 transition-colors hover:bg-base-200/30 {% if not forloop.last %}border-b border-base-300/40{% endif %} {% if forloop.first %}bg-success/5{% endif %}">
                     <!-- Posição -->
                     <div class="flex items-center gap-3 sm:gap-4 flex-1 min-w-0">
-                        <div class="w-9 h-9 rounded-xl flex items-center justify-center font-extrabold text-sm shrink-0 {% if forloop.first %}bg-success text-success-content{% else %}bg-base-200 text-base-content/40{% endif %}">
+                        <div class="w-9 h-9 rounded-xl flex items-center justify-center font-extrabold text-sm shrink-0 {% if forloop.first %}bg-success text-success-content{% else %}bg-base-200 text-base-content/70{% endif %}">
                             {% if forloop.first %}<i class="bi bi-trophy-fill"></i>{% else %}{{ forloop.counter }}{% endif %}
                         </div>
 
@@ -169,11 +169,11 @@
                                 {% endif %}
                             </div>
                             {% if sugestao.titulo_produto %}
-                            <p class="text-xs text-base-content/60 line-clamp-2 mt-0.5" title="{{ sugestao.titulo_produto }}">
+                            <p class="text-xs text-base-content/70 line-clamp-2 mt-0.5" title="{{ sugestao.titulo_produto }}">
                                 {{ sugestao.titulo_produto }}
                             </p>
                             {% endif %}
-                            <span class="text-[11px] text-base-content/40">
+                            <span class="text-[11px] text-base-content/70">
                                 <i class="bi bi-clock"></i> {{ sugestao.data_busca|date:"d/m/Y H:i" }}
                             </span>
                         </div>
@@ -192,7 +192,7 @@
                                 </div>
                                 {% endif %}
                             {% else %}
-                                <div class="text-sm font-semibold text-base-content/40">Consultar</div>
+                                <div class="text-sm font-semibold text-base-content/70">Consultar</div>
                             {% endif %}
                         </div>
 
@@ -206,7 +206,7 @@
                                 </button>
                             </form>
                             {% endif %}
-                            <a href="{{ sugestao.url_compra }}" target="_blank" rel="noopener noreferrer" class="btn btn-primary btn-sm btn-square rounded-xl" title="Visitar loja">
+                            <a aria-label="Visitar loja" href="{{ sugestao.url_compra }}" target="_blank" rel="noopener noreferrer" class="btn btn-primary btn-sm btn-square rounded-xl" title="Visitar loja">
                                 <i class="bi bi-box-arrow-up-right"></i>
                             </a>
                         </div>
@@ -218,26 +218,26 @@
         <!-- Estatisticas de Comparacao -->
         {% if sugestoes|length > 1 %}
             <div class="mt-8">
-                <h4 class="font-extrabold text-sm uppercase tracking-wider text-base-content/40 text-center mb-4">
+                <h4 class="font-extrabold text-sm uppercase tracking-wider text-base-content/70 text-center mb-4">
                     <i class="bi bi-bar-chart-fill"></i>
-                    Analise de Precos
+                    Análise de preços
                 </h4>
                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <div class="bg-base-100 border border-base-300/40 rounded-3xl p-5 text-center">
                         <div class="text-xl font-extrabold text-primary">
                             {% with menor=sugestoes.first %}R$ {{ menor.preco_sugerido|default:"--" }}{% endwith %}
                         </div>
-                        <div class="text-xs text-base-content/50 mt-1">Menor Preco</div>
+                        <div class="text-xs text-base-content/70 mt-1">Menor preço</div>
                     </div>
                     <div class="bg-base-100 border border-base-300/40 rounded-3xl p-5 text-center">
                         <div class="text-xl font-extrabold text-primary">
                             {% with maior=sugestoes.last %}R$ {{ maior.preco_sugerido|default:"--" }}{% endwith %}
                         </div>
-                        <div class="text-xs text-base-content/50 mt-1">Maior Preco</div>
+                        <div class="text-xs text-base-content/70 mt-1">Maior preço</div>
                     </div>
                     <div class="bg-base-100 border border-base-300/40 rounded-3xl p-5 text-center">
                         <div class="text-xl font-extrabold text-primary">{{ sugestoes|length }}</div>
-                        <div class="text-xs text-base-content/50 mt-1">Lojas</div>
+                        <div class="text-xs text-base-content/70 mt-1">Lojas</div>
                     </div>
                 </div>
             </div>
@@ -247,8 +247,8 @@
         <div class="bg-base-100 border border-base-300/40 rounded-3xl shadow-lg">
             <div class="card-body items-center text-center py-20">
                 <i class="bi bi-search text-7xl text-base-300 mb-5"></i>
-                <h3 class="text-xl font-bold text-base-content/70 mb-2">Nenhuma sugestao encontrada ainda</h3>
-                <p class="text-base-content/50 mb-8">Use os botoes acima para buscar opcoes de compra com inteligencia artificial</p>
+                <h3 class="text-xl font-bold text-base-content/70 mb-2">Nenhuma sugestão encontrada ainda</h3>
+                <p class="text-base-content/70 mb-8">Use os botões acima para buscar opções de compra com inteligência artificial</p>
 
                 <div class="flex flex-wrap gap-3 justify-center">
                     <a href="{% url 'buscar_sugestoes' presente.id %}" class="btn btn-primary btn-sm rounded-xl gap-2 btn-search-ia">

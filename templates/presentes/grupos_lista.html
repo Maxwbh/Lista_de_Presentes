@@ -10,7 +10,7 @@
         <h2 class="text-3xl font-bold flex items-center gap-2">
             <i class="bi bi-people-fill text-primary"></i> Meus Grupos
         </h2>
-        <p class="text-base-content/60 mt-1">Gerencie seus grupos e convide amigos</p>
+        <p class="text-base-content/70 mt-1">Gerencie seus grupos e convide amigos</p>
     </div>
     <a href="{% url 'criar_grupo' %}" class="btn btn-primary gap-2 shadow-lg">
         <i class="bi bi-plus-circle"></i> Criar Novo Grupo
@@ -64,10 +64,10 @@
                 </h3>
 
                 {% if grupo.descricao %}
-                    <p class="text-base-content/60 text-sm line-clamp-2">{{ grupo.descricao|truncatewords:20 }}</p>
+                    <p class="text-base-content/70 text-sm line-clamp-2">{{ grupo.descricao|truncatewords:20 }}</p>
                 {% endif %}
 
-                <p class="text-base-content/40 text-sm flex items-center gap-1">
+                <p class="text-base-content/70 text-sm flex items-center gap-1">
                     <i class="bi bi-people"></i> {{ grupo.membros.count }} membros
                 </p>
 
@@ -117,7 +117,7 @@
                         <i class="bi bi-people"></i>
                     </div>
                     <h3 class="text-2xl font-bold mb-2">Você ainda não faz parte de nenhum grupo</h3>
-                    <p class="text-base-content/60 mb-6">Crie um novo grupo ou peça um convite para entrar em um grupo existente!</p>
+                    <p class="text-base-content/70 mb-6">Crie um novo grupo ou peça um convite para entrar em um grupo existente!</p>
                     <a href="{% url 'criar_grupo' %}" class="btn btn-primary btn-lg gap-2">
                         <i class="bi bi-plus-circle"></i> Criar Meu Primeiro Grupo
                     </a>

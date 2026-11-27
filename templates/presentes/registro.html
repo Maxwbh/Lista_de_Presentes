@@ -30,7 +30,7 @@
 
                 <!-- Avatar / Foto -->
                 <div class="mb-6">
-                    <h3 class="font-extrabold text-sm uppercase tracking-wider text-base-content/40 mb-3 flex items-center gap-2">
+                    <h3 class="font-extrabold text-sm uppercase tracking-wider text-base-content/70 mb-3 flex items-center gap-2">
                         <i class="bi bi-person-circle"></i> Sua foto ou avatar
                     </h3>
 
@@ -42,7 +42,7 @@
                                 <img id="foto-preview-img" class="w-full h-full object-cover" style="display:none;" alt="Sua foto">
                             </div>
                             <!-- Botão upload foto -->
-                            <button type="button" id="btn-upload-foto"
+                            <button aria-label="Enviar sua foto" type="button" id="btn-upload-foto"
                                     class="absolute -bottom-1.5 -right-1.5 w-7 h-7 rounded-full bg-primary text-primary-content flex items-center justify-center text-xs shadow-md hover:scale-110 transition-transform"
                                     title="Enviar sua foto"
                                     onclick="document.getElementById('foto-input').click()">
@@ -52,7 +52,7 @@
 
                         <div class="flex-1">
                             <p class="text-sm font-semibold text-base-content/70 mb-1">Escolha um avatar ou envie uma foto</p>
-                            <p class="text-xs text-base-content/40">A foto aparecerá na toolbar e na lista de membros</p>
+                            <p class="text-xs text-base-content/70">A foto aparecerá na toolbar e na lista de membros</p>
                         </div>
                     </div>
 
@@ -92,7 +92,7 @@
 
                 <!-- Dados Pessoais -->
                 <div class="bg-base-200/40 rounded-2xl p-5 mb-5">
-                    <h3 class="font-extrabold text-sm uppercase tracking-wider text-base-content/40 mb-4 flex items-center gap-2">
+                    <h3 class="font-extrabold text-sm uppercase tracking-wider text-base-content/70 mb-4 flex items-center gap-2">
                         <i class="bi bi-person"></i> Dados Pessoais
                     </h3>
 
@@ -132,7 +132,7 @@
 
                 <!-- Segurança -->
                 <div class="bg-base-200/40 rounded-2xl p-5 mb-6">
-                    <h3 class="font-extrabold text-sm uppercase tracking-wider text-base-content/40 mb-4 flex items-center gap-2">
+                    <h3 class="font-extrabold text-sm uppercase tracking-wider text-base-content/70 mb-4 flex items-center gap-2">
                         <i class="bi bi-shield-lock"></i> Segurança
                     </h3>
 
@@ -145,7 +145,7 @@
                             <div class="h-full w-0 transition-all duration-300 rounded-full" id="strength-bar"></div>
                         </div>
                         <label class="label pt-0.5">
-                            <span class="label-text-alt text-base-content/40 text-xs">Mínimo 4 caracteres (pode ser só números)</span>
+                            <span class="label-text-alt text-base-content/70 text-xs">Mínimo 4 caracteres (pode ser só números)</span>
                         </label>
                         {% if form.password1.errors %}<p class="text-error text-xs mt-1">{{ form.password1.errors.0 }}</p>{% endif %}
                     </div>
@@ -165,9 +165,9 @@
                 </button>
             </form>
 
-            <div class="divider text-base-content/30 text-xs my-5">ou</div>
+            <div class="divider text-base-content/70 text-xs my-5">ou</div>
 
-            <p class="text-center text-sm text-base-content/50">
+            <p class="text-center text-sm text-base-content/70">
                 Já tem conta?
                 <a href="{% url 'login' %}{% if request.GET.next %}?next={{ request.GET.next|urlencode }}{% endif %}" class="link link-primary font-bold no-underline hover:underline">Fazer Login</a>
             </p>

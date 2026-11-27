@@ -1,14 +1,14 @@
 {% extends 'base.html' %}
 
-{% block title %}Dashboard - Lista de Presentes{% endblock %}
+{% block title %}Início - Lista de Presentes{% endblock %}
 
 {% block content %}
 <!-- Header -->
-<div class="relative mb-8 animate-fade-in bg-gradient-to-r from-primary via-primary/90 to-secondary rounded-3xl px-8 py-10 text-white overflow-hidden">
+<div class="relative mb-6 md:mb-8 animate-fade-in bg-gradient-to-r from-primary via-primary/90 to-secondary rounded-3xl px-6 md:px-8 py-6 md:py-10 text-white overflow-hidden">
     <div class="absolute -top-10 -right-10 w-40 h-40 bg-white/10 rounded-full blur-2xl"></div>
     <div class="relative flex flex-col sm:flex-row sm:items-center gap-5">
         <!-- Imagem do grupo -->
-        <div class="shrink-0 w-24 h-24 sm:w-28 sm:h-28 rounded-2xl overflow-hidden ring-4 ring-white/30 shadow-lg bg-white/15 flex items-center justify-center">
+        <div class="shrink-0 w-16 h-16 sm:w-28 sm:h-28 rounded-2xl overflow-hidden ring-4 ring-white/30 shadow-lg bg-white/15 flex items-center justify-center">
             {% if grupo.tem_imagem %}
                 <img src="{{ grupo.get_imagem_url }}" alt="{{ grupo.nome }}" class="w-full h-full object-cover">
             {% else %}
@@ -19,7 +19,7 @@
             <p class="text-sm font-bold uppercase tracking-wider text-white/70 truncate">
                 <i class="bi bi-people"></i> {{ grupo.nome }}
             </p>
-            <h2 class="text-3xl font-extrabold tracking-tight mt-1">
+            <h2 class="text-2xl sm:text-3xl font-extrabold tracking-tight mt-1">
                 Bem-vindo, <span class="text-white/90">{{ user.first_name }}</span>!
             </h2>
             <p class="text-white/70 mt-1">Aqui está o resumo da sua lista de presentes</p>
@@ -28,15 +28,15 @@
 </div>
 
 <!-- Stats Cards -->
-<div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+<div class="grid grid-cols-3 gap-3 md:gap-6 mb-6 md:mb-8">
     <!-- Total Usuários -->
     <div class="card bg-base-100 border border-base-300/40 rounded-3xl shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
-        <div class="card-body flex-row items-center justify-between">
+        <div class="card-body p-4 md:p-8 flex-row items-center justify-between">
             <div>
-                <p class="font-extrabold text-sm uppercase tracking-wider text-base-content/40">Total de Usuários</p>
-                <p class="text-4xl font-bold text-primary mt-1">{{ total_usuarios }}</p>
+                <p class="font-extrabold text-[10px] md:text-sm uppercase tracking-wider text-base-content/70 leading-tight">Membros</p>
+                <p class="text-2xl md:text-4xl font-bold text-primary mt-1">{{ total_usuarios }}</p>
             </div>
-            <div class="bg-primary/10 p-4 rounded-2xl">
+            <div class="hidden md:block bg-primary/10 p-4 rounded-2xl">
                 <i class="bi bi-people text-3xl text-primary"></i>
             </div>
         </div>
@@ -44,16 +44,16 @@
 
     <!-- Meus Presentes Ativos -->
     <div class="card bg-base-100 border border-base-300/40 rounded-3xl shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
-        <div class="card-body flex-row items-center justify-between">
+        <div class="card-body p-4 md:p-8 flex-row items-center justify-between">
             <div>
-                <p class="font-extrabold text-sm uppercase tracking-wider text-base-content/40">Meus Presentes Ativos</p>
-                <p class="text-4xl font-bold text-success mt-1">{{ meus_presentes_ativos }}</p>
+                <p class="font-extrabold text-[10px] md:text-sm uppercase tracking-wider text-base-content/70 leading-tight">Meus presentes</p>
+                <p class="text-2xl md:text-4xl font-bold text-success mt-1">{{ meus_presentes_ativos }}</p>
             </div>
-            <div class="bg-success/10 p-4 rounded-2xl">
+            <div class="hidden md:block bg-success/10 p-4 rounded-2xl">
                 <i class="bi bi-gift text-3xl text-success"></i>
             </div>
         </div>
-        <div class="px-6 pb-4">
+        <div class="hidden md:block px-6 pb-4">
             <a href="{% url 'meus_presentes' %}" class="link link-primary text-sm font-medium inline-flex items-center gap-1 hover:gap-2 transition-all">
                 Ver meus presentes <i class="bi bi-arrow-right"></i>
             </a>
@@ -62,16 +62,16 @@
 
     <!-- Presentes Disponíveis -->
     <div class="card bg-base-100 border border-base-300/40 rounded-3xl shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
-        <div class="card-body flex-row items-center justify-between">
+        <div class="card-body p-4 md:p-8 flex-row items-center justify-between">
             <div>
-                <p class="font-extrabold text-sm uppercase tracking-wider text-base-content/40">Presentes Disponíveis</p>
-                <p class="text-4xl font-bold text-warning mt-1">{{ presentes_nao_comprados }}</p>
+                <p class="font-extrabold text-[10px] md:text-sm uppercase tracking-wider text-base-content/70 leading-tight">Disponíveis</p>
+                <p class="text-2xl md:text-4xl font-bold text-warning mt-1">{{ presentes_nao_comprados }}</p>
             </div>
-            <div class="bg-warning/10 p-4 rounded-2xl">
+            <div class="hidden md:block bg-warning/10 p-4 rounded-2xl">
                 <i class="bi bi-bag-check text-3xl text-warning"></i>
             </div>
         </div>
-        <div class="px-6 pb-4">
+        <div class="hidden md:block px-6 pb-4">
             <a href="{% url 'lista_usuarios' %}" class="link link-primary text-sm font-medium inline-flex items-center gap-1 hover:gap-2 transition-all">
                 Ver presentes <i class="bi bi-arrow-right"></i>
             </a>
@@ -79,13 +79,97 @@
     </div>
 </div>
 
-<!-- Como Funciona -->
-<div class="card bg-base-100 border border-base-300/40 rounded-3xl shadow-lg animate-slide-up">
-    <div class="card-body">
-        <h3 class="font-extrabold text-sm uppercase tracking-wider text-base-content/40 mb-6 flex items-center gap-2">
-            <i class="bi bi-info-circle text-primary"></i>
-            Como Funciona
-        </h3>
+<!-- O que mudou no grupo -->
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+    <!-- Novidades -->
+    <section class="card bg-base-100 border border-base-300/40 rounded-3xl shadow-lg lg:col-span-2">
+        <div class="card-body">
+            <h3 class="font-extrabold text-sm uppercase tracking-wider text-base-content/70 flex items-center gap-2">
+                <i class="bi bi-stars text-primary"></i> Novidades no grupo
+            </h3>
+            {% if novidades %}
+                <ul class="divide-y divide-base-300/40">
+                    {% for presente in novidades %}
+                    <li>
+                        <a href="{% url 'presentes_usuario' presente.usuario_id %}" class="flex items-center gap-3 py-3 hover:bg-base-200/60 rounded-xl px-2 -mx-2 transition-colors">
+                            <div class="w-12 h-12 rounded-xl bg-base-200 overflow-hidden shrink-0 flex items-center justify-center">
+                                {% if presente.tem_imagem %}
+                                    <img src="{{ presente.get_imagem_url }}" alt="" loading="lazy" class="w-full h-full object-contain">
+                                {% else %}
+                                    <i class="bi bi-gift text-xl text-base-content/40"></i>
+                                {% endif %}
+                            </div>
+                            <div class="min-w-0 flex-1">
+                                <p class="font-semibold text-sm truncate">{{ presente.descricao }}</p>
+                                <p class="text-xs text-base-content/70">{{ presente.usuario.first_name }} adicionou {{ presente.data_cadastro|timesince }} atrás</p>
+                            </div>
+                            {% if presente.preco %}<span class="text-sm font-bold text-primary shrink-0">R$ {{ presente.preco }}</span>{% endif %}
+                        </a>
+                    </li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <p class="text-sm text-base-content/70">Nenhum presente novo nas últimas duas semanas.</p>
+            {% endif %}
+        </div>
+    </section>
+
+    <div class="space-y-6">
+        <!-- Precos em queda -->
+        <section class="card bg-base-100 border border-base-300/40 rounded-3xl shadow-lg">
+            <div class="card-body">
+                <h3 class="font-extrabold text-sm uppercase tracking-wider text-base-content/70 flex items-center gap-2">
+                    <i class="bi bi-fire text-error"></i> Preços em queda
+                </h3>
+                {% if precos_em_queda %}
+                    <ul class="space-y-2">
+                        {% for presente in precos_em_queda %}
+                        <li>
+                            <a href="{% url 'presentes_usuario' presente.usuario_id %}" class="flex items-center justify-between gap-2 text-sm hover:text-primary">
+                                <span class="truncate">{{ presente.descricao }} <span class="text-base-content/70">· {{ presente.usuario.first_name }}</span></span>
+                                <span class="badge badge-sm border-0 {{ presente.temperatura_atual.css }} shrink-0">{{ presente.temperatura_atual.variacao|floatformat:0 }}%</span>
+                            </a>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    <p class="text-sm text-base-content/70">Nenhuma queda de preço registrada agora.</p>
+                {% endif %}
+            </div>
+        </section>
+
+        <!-- Quem ainda nao ganhou -->
+        <section class="card bg-base-100 border border-base-300/40 rounded-3xl shadow-lg">
+            <div class="card-body">
+                <h3 class="font-extrabold text-sm uppercase tracking-wider text-base-content/70 flex items-center gap-2">
+                    <i class="bi bi-heart text-primary"></i> Ainda não ganharam nada
+                </h3>
+                {% if sem_presente %}
+                    <ul class="flex flex-wrap gap-2">
+                        {% for membro in sem_presente %}
+                        <li>
+                            <a href="{% url 'presentes_usuario' membro.pk %}" class="btn btn-sm btn-ghost border border-base-300 rounded-xl">
+                                {{ membro.first_name|default:membro.username }}
+                                <span class="text-base-content/70 font-normal">({{ membro.total }})</span>
+                            </a>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    <p class="text-sm text-base-content/70">Todo mundo com lista já ganhou pelo menos um presente.</p>
+                {% endif %}
+            </div>
+        </section>
+    </div>
+</div>
+
+<!-- Como funciona: aberto só para quem ainda não cadastrou presentes -->
+<details class="card bg-base-100 border border-base-300/40 rounded-3xl shadow-lg animate-slide-up" {% if not tem_presentes %}open{% endif %}>
+    <summary class="cursor-pointer px-8 py-5 font-extrabold text-sm uppercase tracking-wider text-base-content/70 flex items-center gap-2">
+        <i class="bi bi-info-circle text-primary"></i>
+        Como funciona
+    </summary>
+    <div class="card-body pt-0">
 
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
             <!-- Passo 1 -->
@@ -95,7 +179,7 @@
                 </div>
                 <span class="badge badge-primary badge-sm mb-3">Passo 1</span>
                 <h4 class="font-semibold mb-2">Cadastre seus presentes</h4>
-                <p class="text-base-content/60 text-sm">Adicione os presentes que você deseja ganhar com descrição, link e preço.</p>
+                <p class="text-base-content/70 text-sm">Adicione os presentes que você deseja ganhar com descrição, link e preço.</p>
             </div>
 
             <!-- Passo 2 -->
@@ -105,7 +189,7 @@
                 </div>
                 <span class="badge badge-success badge-sm mb-3">Passo 2</span>
                 <h4 class="font-semibold mb-2">Busque sugestões com IA</h4>
-                <p class="text-base-content/60 text-sm">Use nossa IA para encontrar os melhores lugares para comprar com os melhores preços.</p>
+                <p class="text-base-content/70 text-sm">Use nossa IA para encontrar os melhores lugares para comprar com os melhores preços.</p>
             </div>
 
             <!-- Passo 3 -->
@@ -115,9 +199,9 @@
                 </div>
                 <span class="badge badge-warning badge-sm mb-3">Passo 3</span>
                 <h4 class="font-semibold mb-2">Compre presentes de amigos</h4>
-                <p class="text-base-content/60 text-sm">Navegue pelos presentes de outros usuários e marque quando comprar um.</p>
+                <p class="text-base-content/70 text-sm">Navegue pelos presentes de outros usuários e marque quando comprar um.</p>
             </div>
         </div>
     </div>
-</div>
+</details>
 {% endblock %}

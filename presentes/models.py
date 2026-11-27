@@ -284,7 +284,7 @@ class Presente(VersaoImagemMixin, models.Model):
         if len(precos) < 2:
             return {
                 'codigo': 'sem_dados', 'icone': 'bi-thermometer-half',
-                'label': 'Sem histórico', 'css': 'bg-base-200 text-base-content/50',
+                'label': 'Sem histórico', 'css': 'bg-base-200 text-base-content/70',
                 'variacao': None,
             }
         atual = precos[-1]
@@ -304,7 +304,7 @@ class Presente(VersaoImagemMixin, models.Model):
             }
         return {
             'codigo': 'estavel', 'icone': 'bi-dash-lg',
-            'label': 'Preço estável', 'css': 'bg-base-200 text-base-content/60',
+            'label': 'Preço estável', 'css': 'bg-base-200 text-base-content/70',
             'variacao': variacao,
         }
 

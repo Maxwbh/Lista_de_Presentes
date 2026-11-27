@@ -23,7 +23,7 @@
 
         <!-- Detalhes do Presente -->
         <div class="bg-base-100 border border-base-300/40 rounded-3xl p-6 sm:p-8 mb-6">
-            <h3 class="font-extrabold text-sm uppercase tracking-wider text-base-content/40 mb-5 flex items-center gap-2">
+            <h3 class="font-extrabold text-sm uppercase tracking-wider text-base-content/70 mb-5 flex items-center gap-2">
                 <i class="bi bi-card-text"></i> Detalhes
             </h3>
 
@@ -31,7 +31,7 @@
             <div class="form-control w-full mb-6">
                 <label class="label pb-1.5" for="{{ form.descricao.id_for_label }}">
                     <span class="label-text font-semibold text-sm">Descrição do Presente <span class="text-error">*</span></span>
-                    <span class="label-text-alt text-base-content/40 text-xs"><span id="char-count">{{ form.descricao.value|length|default:0 }}</span> caracteres</span>
+                    <span class="label-text-alt text-base-content/70 text-xs"><span id="char-count">{{ form.descricao.value|length|default:0 }}</span> caracteres</span>
                 </label>
                 {{ form.descricao }}
                 {% if form.descricao.errors %}
@@ -47,7 +47,7 @@
                     </label>
                     {{ form.url }}
                     <label class="label pt-1">
-                        <span class="label-text-alt text-base-content/40 text-xs">De onde você viu o produto</span>
+                        <span class="label-text-alt text-base-content/70 text-xs">De onde você viu o produto</span>
                     </label>
                     {% if form.url.errors %}
                         <p class="text-error text-xs mt-1">{{ form.url.errors.0 }}</p>
@@ -63,7 +63,7 @@
                         {{ form.preco }}
                     </div>
                     <label class="label pt-1">
-                        <span class="label-text-alt text-base-content/40 text-xs">Preço aproximado do produto</span>
+                        <span class="label-text-alt text-base-content/70 text-xs">Preço aproximado do produto</span>
                     </label>
                     {% if form.preco.errors %}
                         <p class="text-error text-xs mt-1">{{ form.preco.errors.0 }}</p>
@@ -74,7 +74,7 @@
 
         <!-- Imagem -->
         <div class="bg-base-100 border border-base-300/40 rounded-3xl p-6 sm:p-8 mb-6">
-            <h3 class="font-extrabold text-sm uppercase tracking-wider text-base-content/40 mb-5 flex items-center gap-2">
+            <h3 class="font-extrabold text-sm uppercase tracking-wider text-base-content/70 mb-5 flex items-center gap-2">
                 <i class="bi bi-image"></i> Imagem
             </h3>
 
@@ -100,7 +100,7 @@
                         <i class="bi bi-cloud-upload text-xl text-primary"></i>
                     </div>
                     <p class="font-bold text-sm">Clique para fazer upload</p>
-                    <p class="text-xs text-base-content/40 mt-0.5">arraste uma imagem ou Ctrl+V para colar</p>
+                    <p class="text-xs text-base-content/70 mt-0.5">arraste uma imagem ou Ctrl+V para colar</p>
                 </div>
                 {{ form.imagem }}
 
@@ -110,12 +110,12 @@
                 </div>
 
                 <!-- Divider "ou" -->
-                <div class="divider text-base-content/30 text-xs my-5">ou use uma URL</div>
+                <div class="divider text-base-content/70 text-xs my-5">ou use uma URL</div>
 
                 <!-- Image URL input -->
                 <div class="flex gap-2">
                     {{ form.url_imagem }}
-                    <button class="btn btn-ghost border border-base-300 rounded-xl shrink-0" type="button" id="load-from-url" title="Carregar imagem da URL">
+                    <button aria-label="Carregar imagem da URL" class="btn btn-ghost border border-base-300 rounded-xl shrink-0" type="button" id="load-from-url" title="Carregar imagem da URL">
                         <i class="bi bi-download"></i>
                     </button>
                 </div>
@@ -131,7 +131,7 @@
 
         <!-- Actions -->
         <div class="flex items-center justify-between gap-3 mb-4">
-            <a href="{% url 'meus_presentes' %}" class="btn btn-ghost rounded-xl gap-2 text-base-content/60">
+            <a href="{% url 'meus_presentes' %}" class="btn btn-ghost rounded-xl gap-2 text-base-content/70">
                 <i class="bi bi-arrow-left"></i>
                 Cancelar
             </a>

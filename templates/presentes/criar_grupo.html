@@ -19,13 +19,6 @@
 </div>
 
 <div class="max-w-2xl mx-auto animate-slide-up">
-    {% if messages %}
-        {% for message in messages %}
-            <div role="alert" class="alert alert-{{ message.tags }} mb-6 rounded-xl text-sm">
-                <span>{{ message }}</span>
-            </div>
-        {% endfor %}
-    {% endif %}
 
     <!-- Entrar em grupo existente com código -->
     <div class="bg-secondary/5 border border-secondary/15 rounded-3xl p-5 mb-6">
@@ -48,7 +41,7 @@
 
         <!-- Detalhes do Grupo -->
         <div class="bg-base-100 border border-base-300/40 rounded-3xl p-6 sm:p-8 mb-6">
-            <h3 class="font-extrabold text-sm uppercase tracking-wider text-base-content/40 mb-5 flex items-center gap-2">
+            <h3 class="font-extrabold text-sm uppercase tracking-wider text-base-content/70 mb-5 flex items-center gap-2">
                 <i class="bi bi-card-text"></i> Detalhes
             </h3>
 
@@ -59,7 +52,7 @@
                 </label>
                 {{ form.nome }}
                 <label class="label pt-1">
-                    <span class="label-text-alt text-base-content/40 text-xs">Ex: "Família Silva 2025", "Amigos do Trabalho"</span>
+                    <span class="label-text-alt text-base-content/70 text-xs">Ex: "Família Silva 2025", "Amigos do Trabalho"</span>
                 </label>
                 {% if form.nome.errors %}
                     <p class="text-error text-xs mt-1">{{ form.nome.errors.0 }}</p>
@@ -69,11 +62,11 @@
             <!-- Descrição -->
             <div class="form-control w-full">
                 <label class="label pb-1.5" for="{{ form.descricao.id_for_label }}">
-                    <span class="label-text font-semibold text-sm">Descrição <span class="text-base-content/30 font-normal">(opcional)</span></span>
+                    <span class="label-text font-semibold text-sm">Descrição <span class="text-base-content/70 font-normal">(opcional)</span></span>
                 </label>
                 {{ form.descricao }}
                 <label class="label pt-1">
-                    <span class="label-text-alt text-base-content/40 text-xs">Propósito do grupo, ocasião, membros esperados...</span>
+                    <span class="label-text-alt text-base-content/70 text-xs">Propósito do grupo, ocasião, membros esperados...</span>
                 </label>
                 {% if form.descricao.errors %}
                     <p class="text-error text-xs mt-1">{{ form.descricao.errors.0 }}</p>
@@ -83,7 +76,7 @@
 
         <!-- Imagem do Grupo -->
         <div class="bg-base-100 border border-base-300/40 rounded-3xl p-6 sm:p-8 mb-6">
-            <h3 class="font-extrabold text-sm uppercase tracking-wider text-base-content/40 mb-5 flex items-center gap-2">
+            <h3 class="font-extrabold text-sm uppercase tracking-wider text-base-content/70 mb-5 flex items-center gap-2">
                 <i class="bi bi-image"></i> Logo do Grupo <span class="text-base-content/25 font-medium normal-case tracking-normal">(opcional)</span>
             </h3>
 
@@ -98,7 +91,7 @@
                 <div class="form-control flex-1">
                     {{ form.url_imagem }}
                     <label class="label pt-1">
-                        <span class="label-text-alt text-base-content/40 text-xs">Cole a URL de uma imagem para representar o grupo</span>
+                        <span class="label-text-alt text-base-content/70 text-xs">Cole a URL de uma imagem para representar o grupo</span>
                     </label>
                     {% if form.url_imagem.errors %}
                         <p class="text-error text-xs mt-1">{{ form.url_imagem.errors.0 }}</p>
@@ -112,7 +105,7 @@
             <h4 class="font-extrabold text-xs uppercase tracking-wider text-secondary mb-3 flex items-center gap-2">
                 <i class="bi bi-magic"></i> Ao criar o grupo
             </h4>
-            <ul class="space-y-2 text-sm text-base-content/60">
+            <ul class="space-y-2 text-sm text-base-content/70">
                 <li class="flex items-center gap-2.5">
                     <i class="bi bi-check-circle-fill text-secondary text-xs"></i>
                     Você se torna o <strong class="text-base-content/80">administrador</strong>
@@ -130,7 +123,7 @@
 
         <!-- Actions -->
         <div class="flex items-center justify-between gap-3 mb-4">
-            <a href="{% url 'grupos_lista' %}" class="btn btn-ghost rounded-xl gap-2 text-base-content/60">
+            <a href="{% url 'grupos_lista' %}" class="btn btn-ghost rounded-xl gap-2 text-base-content/70">
                 <i class="bi bi-arrow-left"></i>
                 Cancelar
             </a>

@@ -20,15 +20,15 @@
 <div class="grid grid-cols-3 gap-4 mb-8">
     <div class="bg-base-100 border border-base-300/50 rounded-2xl p-5 text-center">
         <p class="text-3xl font-extrabold text-primary">{{ total_presentes }}</p>
-        <p class="text-xs text-base-content/50 font-semibold uppercase tracking-wider mt-1">Total</p>
+        <p class="text-xs text-base-content/70 font-semibold uppercase tracking-wider mt-1">Total</p>
     </div>
     <div class="bg-base-100 border border-base-300/50 rounded-2xl p-5 text-center">
         <p class="text-3xl font-extrabold text-success">{{ presentes_ativos }}</p>
-        <p class="text-xs text-base-content/50 font-semibold uppercase tracking-wider mt-1">Ativos</p>
+        <p class="text-xs text-base-content/70 font-semibold uppercase tracking-wider mt-1">Ativos</p>
     </div>
     <div class="bg-base-100 border border-base-300/50 rounded-2xl p-5 text-center">
-        <p class="text-3xl font-extrabold text-base-content/30">{{ presentes_comprados }}</p>
-        <p class="text-xs text-base-content/50 font-semibold uppercase tracking-wider mt-1">Comprados</p>
+        <p class="text-3xl font-extrabold text-base-content/70">{{ presentes_comprados }}</p>
+        <p class="text-xs text-base-content/70 font-semibold uppercase tracking-wider mt-1">Comprados</p>
     </div>
 </div>
 
@@ -107,7 +107,7 @@
                 <h3 class="font-bold text-base leading-snug line-clamp-2 mb-2">{{ presente.descricao|truncatewords:15 }}</h3>
 
                 <!-- Meta info -->
-                <div class="flex items-center gap-3 text-xs text-base-content/40 mb-3">
+                <div class="flex items-center gap-3 text-xs text-base-content/70 mb-3">
                     <span class="inline-flex items-center gap-1">
                         <i class="bi bi-calendar3"></i>
                         {{ presente.data_cadastro|date:"d/m/Y" }}
@@ -137,10 +137,10 @@
                     <div class="flex items-center justify-between py-1.5 {% if not forloop.last %}border-b border-base-300/40{% endif %}">
                         <span class="text-xs font-medium text-base-content/70 truncate flex-1 mr-2">{{ sugestao.local_compra|loja_limpa }}</span>
                         <span class="text-xs font-bold text-success whitespace-nowrap">
-                            {% if sugestao.preco_sugerido %}R$ {{ sugestao.preco_sugerido }}{% else %}<span class="text-base-content/30">Consultar</span>{% endif %}
+                            {% if sugestao.preco_sugerido %}R$ {{ sugestao.preco_sugerido }}{% else %}<span class="text-base-content/70">Consultar</span>{% endif %}
                         </span>
                         {% if sugestao.url_compra %}
-                        <a href="{{ sugestao.url_compra }}" target="_blank" class="ml-2 text-base-content/30 hover:text-primary transition-colors">
+                        <a aria-label="Abrir a loja em nova aba" href="{{ sugestao.url_compra }}" target="_blank" class="ml-2 text-base-content/70 hover:text-primary transition-colors">
                             <i class="bi bi-box-arrow-up-right text-[10px]"></i>
                         </a>
                         {% endif %}
@@ -158,12 +158,12 @@
                     <a href="{% url 'editar_presente' presente.id %}" class="btn btn-sm btn-primary rounded-xl flex-1 gap-1.5 text-xs font-semibold">
                         <i class="bi bi-pencil"></i> Editar
                     </a>
-                    <a href="{% url 'deletar_presente' presente.id %}" class="btn btn-sm btn-ghost text-error rounded-xl gap-1 text-xs hover:bg-error/10">
+                    <a aria-label="Excluir presente" href="{% url 'deletar_presente' presente.id %}" class="btn btn-sm btn-ghost text-error rounded-xl gap-1 text-xs hover:bg-error/10">
                         <i class="bi bi-trash"></i>
                     </a>
                 </div>
                 {% else %}
-                <div class="flex items-center gap-2 pt-3 border-t border-base-300/40 text-xs text-base-content/40">
+                <div class="flex items-center gap-2 pt-3 border-t border-base-300/40 text-xs text-base-content/70">
                     <i class="bi bi-check-circle-fill text-success"></i>
                     <span>Presente já foi comprado</span>
                 </div>
@@ -179,7 +179,7 @@
             <i class="bi bi-gift"></i>
         </div>
         <h3 class="text-xl font-extrabold mb-2">Nenhum presente cadastrado</h3>
-        <p class="text-base-content/50 text-sm mb-8 max-w-sm mx-auto">Adicione seus primeiros presentes para começar a organizar sua lista de desejos</p>
+        <p class="text-base-content/70 text-sm mb-8 max-w-sm mx-auto">Adicione seus primeiros presentes para começar a organizar sua lista de desejos</p>
         <a href="{% url 'adicionar_presente' %}" class="btn btn-primary gap-2 rounded-xl">
             <i class="bi bi-plus-circle"></i>
             Adicionar Meu Primeiro Presente

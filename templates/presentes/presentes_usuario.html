@@ -32,7 +32,7 @@
                         {{ usuario_presente.email }}
                     </span>
                     {% if usuario_presente.data_cadastro %}
-                        <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-base-200 text-base-content/60">
+                        <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-base-200 text-base-content/70">
                             <i class="bi bi-calendar-check"></i>
                             Membro desde {{ usuario_presente.data_cadastro|date:"d/m/Y" }}
                         </span>
@@ -53,8 +53,8 @@
             <div class="stat-value text-success">{{ presentes_ativos }}</div>
         </div>
         <div class="stat">
-            <div class="stat-title">Ja Comprados</div>
-            <div class="stat-value text-base-content/50">{{ presentes_comprados }}</div>
+            <div class="stat-title">Já comprados</div>
+            <div class="stat-value text-base-content/70">{{ presentes_comprados }}</div>
         </div>
     </div>
 
@@ -63,7 +63,7 @@
             <i class="bi bi-info-circle-fill text-lg"></i>
             <span>
                 <strong>Dica:</strong> Clique em "Marcar como Comprado" quando decidir presentear.
-                {{ usuario_presente.first_name }} recebera uma notificacao!
+                {{ usuario_presente.first_name }} receberá uma notificação!
             </span>
         </div>
     {% endif %}
@@ -99,7 +99,7 @@
                             <div class="absolute top-3 right-3">
                                 {% if presente.status == 'ATIVO' %}
                                     <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-success/90 text-white backdrop-blur-sm shadow">
-                                        <i class="bi bi-check-circle text-[10px]"></i> Disponivel
+                                        <i class="bi bi-check-circle text-[10px]"></i> Disponível
                                     </span>
                                 {% else %}
                                     <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-base-content/60 text-white backdrop-blur-sm shadow">
@@ -125,7 +125,7 @@
 
                             {% if presente.sugestoes.count > 0 %}
                             <div class="absolute bottom-3 right-3">
-                                <span class="inline-flex items-center gap-1 px-2 py-1 rounded-xl text-[10px] font-bold bg-base-100/90 text-primary backdrop-blur-sm shadow" title="Tem sugestoes de lojas">
+                                <span class="inline-flex items-center gap-1 px-2 py-1 rounded-xl text-[10px] font-bold bg-base-100/90 text-primary backdrop-blur-sm shadow" title="Tem sugestões de lojas">
                                     <i class="bi bi-shop"></i> {{ presente.sugestoes.count }}
                                 </span>
                             </div>
@@ -135,7 +135,7 @@
                         <div class="p-5 flex flex-col flex-1">
                             <h5 class="font-bold text-base leading-snug line-clamp-2 mb-2">{{ presente.descricao|truncatewords:15 }}</h5>
 
-                            <div class="flex items-center gap-3 text-xs text-base-content/40 mb-3">
+                            <div class="flex items-center gap-3 text-xs text-base-content/70 mb-3">
                                 <span class="inline-flex items-center gap-1">
                                     <i class="bi bi-calendar3"></i>
                                     {{ presente.data_cadastro|date:"d/m/Y" }}
@@ -157,15 +157,15 @@
                                             </button>
                                         </form>
                                         {% if presente.sugestoes.count > 0 %}
-                                        <button type="button" class="btn btn-ghost btn-sm btn-square rounded-xl border border-base-300" title="Ver sugestoes de lojas" onclick="document.getElementById('modalSugestoes{{ presente.id }}').showModal()">
+                                        <button aria-label="Ver sugestões de lojas" type="button" class="btn btn-ghost btn-sm btn-square rounded-xl border border-base-300" title="Ver sugestões de lojas" onclick="document.getElementById('modalSugestoes{{ presente.id }}').showModal()">
                                             <i class="bi bi-shop"></i>
                                         </button>
                                         {% endif %}
                                     </div>
                                 {% else %}
-                                    <div class="flex items-center gap-2 text-sm text-base-content/50 bg-base-200/60 rounded-xl px-3 py-2">
+                                    <div class="flex items-center gap-2 text-sm text-base-content/70 bg-base-200/60 rounded-xl px-3 py-2">
                                         <i class="bi bi-check-circle"></i>
-                                        <span>Ja comprado por alguem</span>
+                                        <span>Já comprado por alguém</span>
                                     </div>
                                 {% endif %}
                             </div>
@@ -183,10 +183,10 @@
                         <div class="bg-gradient-to-r from-primary to-secondary text-white -mx-6 -mt-6 px-6 py-4 mb-4 rounded-t-2xl flex items-center justify-between">
                             <h3 class="font-bold text-lg flex items-center gap-2">
                                 <i class="bi bi-shop"></i>
-                                Sugestoes para: {{ presente.descricao|truncatewords:10 }}
+                                Sugestões para: {{ presente.descricao|truncatewords:10 }}
                             </h3>
                             <form method="dialog">
-                                <button class="btn btn-ghost btn-sm text-white hover:bg-white/20">
+                                <button aria-label="Fechar" class="btn btn-ghost btn-sm text-white hover:bg-white/20">
                                     <i class="bi bi-x-lg"></i>
                                 </button>
                             </form>
@@ -195,7 +195,7 @@
                         <div role="alert" class="alert alert-info mb-4">
                             <i class="bi bi-info-circle"></i>
                             <span>
-                                Encontramos <strong>{{ presente.sugestoes.count }}</strong> {% if presente.sugestoes.count == 1 %}opcao de compra{% else %}opcoes de compra{% endif %} para este presente
+                                Encontramos <strong>{{ presente.sugestoes.count }}</strong> {% if presente.sugestoes.count == 1 %}opção de compra{% else %}opções de compra{% endif %} para este presente
                             </span>
                         </div>
 
@@ -205,7 +205,7 @@
                                     {% if forloop.first %}
                                         <div class="mb-2">
                                             <span class="badge badge-success gap-1">
-                                                <i class="bi bi-trophy-fill"></i> Melhor Preco
+                                                <i class="bi bi-trophy-fill"></i> Melhor preço
                                             </span>
                                         </div>
                                     {% endif %}
@@ -216,7 +216,7 @@
                                                 <i class="bi bi-shop-window"></i>
                                                 {{ sugestao.local_compra|loja_limpa }}
                                             </h6>
-                                            <p class="text-xs text-base-content/50 flex items-center gap-1">
+                                            <p class="text-xs text-base-content/70 flex items-center gap-1">
                                                 <i class="bi bi-clock"></i>
                                                 Atualizado em {{ sugestao.data_busca|date:"d/m/Y às H:i" }}
                                             </p>
@@ -233,7 +233,7 @@
                                                     </p>
                                                 {% endif %}
                                             {% else %}
-                                                <div class="text-lg text-base-content/50">
+                                                <div class="text-lg text-base-content/70">
                                                     Consultar loja
                                                 </div>
                                             {% endif %}
@@ -271,7 +271,7 @@
             <div class="card-body text-center py-20">
                 <i class="bi bi-funnel text-7xl text-base-300 block mb-4"></i>
                 <h3 class="text-xl font-bold text-base-content mb-2">Nenhum presente nesta categoria</h3>
-                <p class="text-base-content/60">Tente outro filtro</p>
+                <p class="text-base-content/70">Tente outro filtro</p>
             </div>
         </div>
 
@@ -279,8 +279,8 @@
         <div class="bg-base-100 border border-base-300/40 rounded-3xl shadow-sm animate-slide-up">
             <div class="card-body text-center py-20">
                 <i class="bi bi-gift text-7xl text-base-300 block mb-4"></i>
-                <h3 class="text-xl font-bold text-base-content mb-2">{{ usuario_presente.first_name }} ainda nao adicionou presentes</h3>
-                <p class="text-base-content/60">Quando adicionar, eles aparecerao aqui para voce escolher!</p>
+                <h3 class="text-xl font-bold text-base-content mb-2">{{ usuario_presente.first_name }} ainda não adicionou presentes</h3>
+                <p class="text-base-content/70">Quando adicionar, eles aparecerão aqui para você escolher!</p>
             </div>
         </div>
     {% endif %}

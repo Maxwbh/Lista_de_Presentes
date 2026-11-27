@@ -2897,3 +2897,94 @@ class PerfilESessaoTest(TestCase):
     def test_logout_encerra_a_sessao(self):
         self.assertRedirects(self.client.get(reverse('logout')), reverse('login'), fetch_redirect_response=False)
         self.assertEqual(self.client.get(reverse('dashboard')).status_code, 302)
+
+
+class InicioDoGrupoTest(TestCase):
+    """A tela inicial mostra o que mudou no grupo sem estragar a surpresa."""
+
+    def setUp(self):
+        self.grupo = Grupo.objects.create(nome='Familia')
+        self.eu = Usuario.objects.create_user(email='eu@exemplo.com', username='eu', password='x', first_name='Eu')
+        self.ana = Usuario.objects.create_user(email='ana@exemplo.com', username='ana', password='x', first_name='Ana')
+        self.bia = Usuario.objects.create_user(email='bia@exemplo.com', username='bia', password='x', first_name='Bia')
+        for usuario in (self.eu, self.ana, self.bia):
+            GrupoMembro.objects.create(grupo=self.grupo, usuario=usuario)
+        self.eu.grupo_ativo = self.grupo
+        self.eu.save()
+        self.client.force_login(self.eu)
+
+    def _presente(self, usuario, descricao, status='ATIVO', **extra):
+        return Presente.objects.create(grupo=self.grupo, usuario=usuario, descricao=descricao, status=status,
+                                       preco=extra.pop('preco', 100), **extra)
+
+    def test_novidades_e_quem_ainda_nao_ganhou(self):
+        self._presente(self.ana, 'Livro da Ana')
+        self._presente(self.bia, 'Bola da Bia')
+        self._presente(self.bia, 'Tenis da Bia', status='COMPRADO')
+        self._presente(self.eu, 'Meu presente')
+        contexto = self.client.get(reverse('dashboard')).context
+
+        novidades = [p.descricao for p in contexto['novidades']]
+        self.assertIn('Livro da Ana', novidades)
+        self.assertNotIn('Meu presente', novidades)
+        self.assertNotIn('Tenis da Bia', novidades)
+        # Bia ja ganhou; eu nao apareco (seria revelar o que compraram para mim)
+        self.assertEqual([m.first_name for m in contexto['sem_presente']], ['Ana'])
+
+    def test_precos_em_queda_dos_outros(self):
+        caiu = self._presente(self.ana, 'Fone')
+        for preco in (200, 200, 150):
+            PrecoHistorico.objects.create(presente=caiu, preco=preco)
+        meu = self._presente(self.eu, 'Relogio')
+        for preco in (200, 200, 150):
+            PrecoHistorico.objects.create(presente=meu, preco=preco)
+        contexto = self.client.get(reverse('dashboard')).context
+        self.assertEqual([p.descricao for p in contexto['precos_em_queda']], ['Fone'])
+
+    def test_como_funciona_aberto_so_para_quem_nao_tem_presentes(self):
+        self.assertRegex(self.client.get(reverse('dashboard')).content.decode(), r'<details[^>]*\bopen\b')
+        self._presente(self.eu, 'Meu presente')
+        self.assertNotRegex(self.client.get(reverse('dashboard')).content.decode(), r'<details[^>]*\bopen\b')
+
+
+class InterfaceTest(TestCase):
+    """Detalhes de acessibilidade e texto da interface."""
+
+    def setUp(self):
+        self.grupo = Grupo.objects.create(nome='Familia')
+        self.eu = Usuario.objects.create_user(email='eu@exemplo.com', username='eu', password='x', first_name='Eu')
+        self.outro = Usuario.objects.create_user(email='outro@exemplo.com', username='outro', password='x')
+        GrupoMembro.objects.create(grupo=self.grupo, usuario=self.eu, e_mantenedor=True)
+        GrupoMembro.objects.create(grupo=self.grupo, usuario=self.outro)
+        self.eu.grupo_ativo = self.grupo
+        self.eu.save()
+        self.client.force_login(self.eu)
+
+    def test_mensagem_aparece_uma_vez_so(self):
+        resposta = self.client.post(reverse('toggle_mantenedor', args=[self.grupo.pk, self.outro.pk]), follow=True)
+        self.assertEqual(resposta.content.decode().count('agora é mantenedor'), 1)
+
+    def test_botoes_so_com_icone_tem_nome_acessivel(self):
+        html = self.client.get(reverse('gerenciar_membros', args=[self.grupo.pk])).content.decode()
+        for rotulo in ('Abrir menu', 'Notificações', 'Remover do grupo', 'Promover a admin'):
+            with self.subTest(rotulo=rotulo):
+                self.assertIn(f'aria-label="{rotulo}"', html)
+
+    def test_menu_em_portugues(self):
+        html = self.client.get(reverse('dashboard')).content.decode()
+        self.assertNotIn('Dashboard', html)
+        self.assertIn('Início', html)
+
+    def test_texto_com_contraste_minimo(self):
+        """Texto em text-base-content abaixo de /70 reprova o contraste AA nos temas claros."""
+        import re
+        html = self.client.get(reverse('lista_usuarios')).content.decode()
+        for tag in re.findall(r'<(?!i\b)\w+[^>]*class="[^"]*text-base-content/[1-6]0\b[^"]*"', html):
+            self.assertIn('togglePassword', tag)
+
+    def test_filtros_recolhidos_no_celular(self):
+        html = self.client.get(reverse('lista_usuarios')).content.decode()
+        self.assertIn('id="filtros-avancados" class="hidden lg:flex', html)
+        self.assertIn('aria-expanded="false"', html)
+        html = self.client.get(reverse('lista_usuarios'), {'preco_min': '10'}).content.decode()
+        self.assertIn('id="filtros-avancados" class="flex lg:flex', html)

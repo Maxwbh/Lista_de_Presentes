@@ -19,20 +19,13 @@
 </div>
 
 <div class="max-w-2xl mx-auto animate-slide-up">
-    {% if messages %}
-        {% for message in messages %}
-            <div role="alert" class="alert alert-{{ message.tags }} mb-6 rounded-xl text-sm">
-                <span>{{ message }}</span>
-            </div>
-        {% endfor %}
-    {% endif %}
 
     <form method="post">
         {% csrf_token %}
 
         <!-- Detalhes do Grupo -->
         <div class="bg-base-100 border border-base-300/40 rounded-3xl p-6 sm:p-8 mb-6">
-            <h3 class="font-extrabold text-sm uppercase tracking-wider text-base-content/40 mb-5 flex items-center gap-2">
+            <h3 class="font-extrabold text-sm uppercase tracking-wider text-base-content/70 mb-5 flex items-center gap-2">
                 <i class="bi bi-card-text"></i> Detalhes
             </h3>
 
@@ -50,7 +43,7 @@
             <!-- Descrição -->
             <div class="form-control w-full">
                 <label class="label pb-1.5" for="{{ form.descricao.id_for_label }}">
-                    <span class="label-text font-semibold text-sm">Descrição <span class="text-base-content/30 font-normal">(opcional)</span></span>
+                    <span class="label-text font-semibold text-sm">Descrição <span class="text-base-content/70 font-normal">(opcional)</span></span>
                 </label>
                 {{ form.descricao }}
                 {% if form.descricao.errors %}
@@ -61,7 +54,7 @@
 
         <!-- Logo do Grupo -->
         <div class="bg-base-100 border border-base-300/40 rounded-3xl p-6 sm:p-8 mb-6">
-            <h3 class="font-extrabold text-sm uppercase tracking-wider text-base-content/40 mb-5 flex items-center gap-2">
+            <h3 class="font-extrabold text-sm uppercase tracking-wider text-base-content/70 mb-5 flex items-center gap-2">
                 <i class="bi bi-image"></i> Logo do Grupo
             </h3>
 
@@ -82,7 +75,7 @@
                 <div class="form-control flex-1">
                     {{ form.url_imagem }}
                     <label class="label pt-1">
-                        <span class="label-text-alt text-base-content/40 text-xs">Cole a URL de uma nova imagem — deixe em branco para manter a atual</span>
+                        <span class="label-text-alt text-base-content/70 text-xs">Cole a URL de uma nova imagem — deixe em branco para manter a atual</span>
                     </label>
                     {% if form.url_imagem.errors %}
                         <p class="text-error text-xs mt-1">{{ form.url_imagem.errors.0 }}</p>
@@ -99,7 +92,7 @@
 
         <!-- Actions -->
         <div class="flex items-center justify-between gap-3 mb-8">
-            <a href="{% url 'gerenciar_membros' grupo.id %}" class="btn btn-ghost rounded-xl gap-2 text-base-content/60">
+            <a href="{% url 'gerenciar_membros' grupo.id %}" class="btn btn-ghost rounded-xl gap-2 text-base-content/70">
                 <i class="bi bi-arrow-left"></i>
                 Cancelar
             </a>
@@ -112,17 +105,17 @@
 
     <!-- Informações do Grupo -->
     <div class="bg-base-100 border border-base-300/40 rounded-3xl p-6 sm:p-8 mb-4">
-        <h3 class="font-extrabold text-sm uppercase tracking-wider text-base-content/40 mb-5 flex items-center gap-2">
+        <h3 class="font-extrabold text-sm uppercase tracking-wider text-base-content/70 mb-5 flex items-center gap-2">
             <i class="bi bi-info-circle"></i> Informações
         </h3>
 
         <div class="grid grid-cols-2 gap-4">
             <!-- Código de convite com copiar -->
             <div class="col-span-2 sm:col-span-1">
-                <p class="text-[11px] font-bold uppercase tracking-wider text-base-content/40 mb-1.5">Código de Convite</p>
+                <p class="text-[11px] font-bold uppercase tracking-wider text-base-content/70 mb-1.5">Código de Convite</p>
                 <div class="flex items-center gap-2">
                     <code class="bg-base-200 px-3 py-1.5 rounded-lg text-sm font-bold flex-1 truncate" id="codigo-convite">{{ grupo.codigo_convite }}</code>
-                    <button type="button" class="btn btn-ghost btn-sm btn-square rounded-lg" onclick="copiarCodigo(this)" title="Copiar código">
+                    <button aria-label="Copiar código" type="button" class="btn btn-ghost btn-sm btn-square rounded-lg" onclick="copiarCodigo(this)" title="Copiar código">
                         <i class="bi bi-clipboard"></i>
                     </button>
                 </div>
@@ -130,7 +123,7 @@
 
             <!-- Status -->
             <div>
-                <p class="text-[11px] font-bold uppercase tracking-wider text-base-content/40 mb-1.5">Status</p>
+                <p class="text-[11px] font-bold uppercase tracking-wider text-base-content/70 mb-1.5">Status</p>
                 {% if grupo.ativo %}
                     <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-success/10 text-success">
                         <span class="w-1.5 h-1.5 rounded-full bg-success"></span> Ativo
@@ -144,13 +137,13 @@
 
             <!-- Membros -->
             <div>
-                <p class="text-[11px] font-bold uppercase tracking-wider text-base-content/40 mb-1.5">Membros</p>
+                <p class="text-[11px] font-bold uppercase tracking-wider text-base-content/70 mb-1.5">Membros</p>
                 <p class="text-lg font-extrabold">{{ grupo.membros.count }}</p>
             </div>
 
             <!-- Criado em -->
             <div>
-                <p class="text-[11px] font-bold uppercase tracking-wider text-base-content/40 mb-1.5">Criado em</p>
+                <p class="text-[11px] font-bold uppercase tracking-wider text-base-content/70 mb-1.5">Criado em</p>
                 <p class="text-sm font-semibold text-base-content/70">{{ grupo.data_criacao|date:"d/m/Y H:i" }}</p>
             </div>
         </div>
