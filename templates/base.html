@@ -98,8 +98,11 @@
                 <div tabindex="0" class="dropdown-content z-[1] p-2 shadow-xl bg-base-100 rounded-2xl w-64 border border-base-300/50 mt-2">
                     <p class="text-[10px] font-bold uppercase tracking-widest text-base-content/30 px-3 py-1.5">Trocar grupo</p>
                     {% for membro in user_grupos %}
-                    <a href="{% url 'ativar_grupo' membro.grupo.pk %}?next={{ request.path }}"
-                       class="flex items-center gap-2.5 px-3 py-2 rounded-xl transition-colors text-sm {% if membro.grupo == grupo_ativo %}bg-primary/10 text-primary font-bold{% else %}hover:bg-base-200{% endif %}">
+                    <form method="post" action="{% url 'ativar_grupo' membro.grupo.pk %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                    <button type="submit"
+                       class="w-full text-left flex items-center gap-2.5 px-3 py-2 rounded-xl transition-colors text-sm {% if membro.grupo == grupo_ativo %}bg-primary/10 text-primary font-bold{% else %}hover:bg-base-200{% endif %}">
                         {% if membro.grupo == grupo_ativo %}
                             <i class="bi bi-check-circle-fill text-xs"></i>
                         {% else %}
@@ -109,7 +112,8 @@
                         {% if membro.e_mantenedor %}
                             <span class="text-[9px] font-bold uppercase tracking-wider text-primary/60">Admin</span>
                         {% endif %}
-                    </a>
+                    </button>
+                    </form>
                     {% endfor %}
                     <div class="border-t border-base-300/40 mt-1.5 pt-1.5">
                         <a href="{% url 'grupos_lista' %}" class="flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm hover:bg-base-200 text-base-content/60">

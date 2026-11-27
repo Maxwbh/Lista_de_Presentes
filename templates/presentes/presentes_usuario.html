@@ -150,7 +150,7 @@
                             <div class="mt-auto flex flex-col gap-2">
                                 {% if presente.status == 'ATIVO' %}
                                     <div class="flex items-center gap-1.5">
-                                        <form method="post" action="{% url 'marcar_comprado' presente.id %}" class="flex-1" onsubmit="return confirmCompra('{{ presente.descricao|truncatewords:8 }}')">
+                                        <form method="post" action="{% url 'marcar_comprado' presente.id %}" class="flex-1" onsubmit="return confirmCompra('{{ presente.descricao|truncatewords:8|escapejs }}')">
                                             {% csrf_token %}
                                             <button type="submit" class="btn btn-primary btn-sm rounded-xl w-full gap-1.5">
                                                 <i class="bi bi-bag-heart"></i> Comprar
@@ -290,7 +290,8 @@
 {% block extra_js %}
 <script>
     function confirmCompra(descricao) {
-        return confirm(`Tem certeza que deseja marcar "${descricao}" como comprado?\n\n{{ usuario_presente.first_name }} receberá uma notificação!`);
+        return confirm('Tem certeza que deseja marcar "' + descricao + '" como comprado?\n\n' +
+                       '{{ usuario_presente.first_name|escapejs }} receberá uma notificação!');
     }
 
     function filterPresentes(status) {

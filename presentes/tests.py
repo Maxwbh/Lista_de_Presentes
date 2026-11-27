@@ -23,6 +23,15 @@ from .relevancia import calcular_relevancia, resultado_relevante
 from .services import IAService
 
 
+def _imagem_bytes(formato='PNG'):
+    """Imagem minima valida no formato pedido, para testes que baixam fotos."""
+    from io import BytesIO
+    from PIL import Image
+    saida = BytesIO()
+    Image.new('RGB', (2, 2), (200, 30, 60)).save(saida, format=formato)
+    return saida.getvalue()
+
+
 class ConviteGrupoFluxoTest(TestCase):
     """
     Cobre o fluxo de entrada por link de convite, incluindo o caso de quem
@@ -1645,7 +1654,7 @@ class BuscarImagensAdminTest(TestCase):
                 'imagem_url': 'https://www.loja.com.br/foto.jpg'}
 
     def _foto(self):
-        resposta = mock.Mock(content=b'jpeg', headers={'content-type': 'image/jpeg'})
+        resposta = mock.Mock(content=_imagem_bytes('JPEG'), headers={'content-type': 'image/jpeg'})
         resposta.raise_for_status.return_value = None
         return resposta
 
@@ -2268,3 +2277,283 @@ class MercadoLivreSemOfertaTest(TestCase):
         self.assertEqual(_escolher_titulo('Kit Hama Beads 28000 peças', 'Kit Completo Hama Beads 72 Cores'),
                          'Kit Hama Beads 28000 peças')
         self.assertEqual(_escolher_titulo(None, 'Carrinho De Feira'), 'Carrinho De Feira')
+
+
+SVG_COM_SCRIPT = b'<svg xmlns="http://www.w3.org/2000/svg"><script>1</script></svg>'
+
+
+def _resolver_para(ip):
+    """socket.getaddrinfo falso que resolve qualquer nome para o IP dado."""
+    import socket
+    familia = socket.AF_INET6 if ':' in ip else socket.AF_INET
+    return mock.patch('presentes.rede.socket.getaddrinfo',
+                      return_value=[(familia, socket.SOCK_STREAM, 6, '', (ip, 443))])
+
+
+class RedeDestinoTest(TestCase):
+    """O servidor so busca URLs http(s) que apontem para a internet publica."""
+
+    def test_recusa_esquemas_que_nao_sao_http(self):
+        from .rede import DestinoBloqueado, validar_destino
+        for url in ('file:///etc/passwd', 'ftp://exemplo.com/a.jpg', 'gopher://x/', '', 'https:///sem-host'):
+            with self.subTest(url=url), self.assertRaises(DestinoBloqueado):
+                validar_destino(url)
+
+    def test_recusa_ips_internos(self):
+        from .rede import DestinoBloqueado, validar_destino
+        for url in ('http://127.0.0.1/', 'http://169.254.169.254/latest/meta-data/', 'http://10.0.0.5/',
+                    'http://192.168.1.1/', 'http://100.64.0.1/', 'http://0.0.0.0/', 'http://[::1]/',
+                    'http://[::ffff:127.0.0.1]/', 'http://[fd00::1]/'):
+            with self.subTest(url=url), self.assertRaises(DestinoBloqueado):
+                validar_destino(url)
+
+    def test_recusa_nome_que_resolve_para_rede_interna(self):
+        from .rede import DestinoBloqueado, validar_destino
+        with _resolver_para('10.1.2.3'), self.assertRaises(DestinoBloqueado):
+            validar_destino('https://loja.exemplo.com.br/foto.jpg')
+
+    def test_aceita_destino_publico(self):
+        from .rede import validar_destino
+        with _resolver_para('93.184.216.34'):
+            validar_destino('https://loja.exemplo.com.br/foto.jpg')
+
+    def test_redirecionamento_para_rede_interna_e_barrado_antes_de_ser_seguido(self):
+        import io
+        import requests
+        from .rede import DestinoBloqueado, obter
+
+        enviados = []
+
+        def enviar(adapter, request, **kwargs):
+            enviados.append(request.url)
+            resposta = requests.Response()
+            resposta.status_code = 302
+            resposta.headers['Location'] = 'http://169.254.169.254/latest/meta-data/'
+            resposta.url = request.url
+            resposta.request = request
+            resposta.raw = io.BytesIO(b'')
+            return resposta
+
+        with _resolver_para('93.184.216.34'), \
+                mock.patch('requests.adapters.HTTPAdapter.send', autospec=True, side_effect=enviar):
+            with self.assertRaises(DestinoBloqueado):
+                obter('https://loja.exemplo.com.br/foto.jpg', timeout=5)
+        self.assertEqual(enviados, ['https://loja.exemplo.com.br/foto.jpg'])
+
+    def test_destino_bloqueado_nao_chega_a_fazer_requisicao(self):
+        from .views import baixar_imagem_da_url
+        with mock.patch('presentes.rede.requests.get') as get:
+            self.assertEqual(baixar_imagem_da_url('http://169.254.169.254/latest/'), (None, None, None))
+        get.assert_not_called()
+
+
+class ImagemPeloConteudoTest(TestCase):
+    """O tipo da imagem vem dos bytes, nunca do que o site ou o navegador declarou."""
+
+    def _resposta(self, conteudo, tipo):
+        resposta = mock.Mock(content=conteudo, headers={'content-type': tipo})
+        resposta.raise_for_status.return_value = None
+        return resposta
+
+    def test_identifica_formatos_aceitos(self):
+        from .rede import identificar_imagem
+        for formato, mime in (('JPEG', 'image/jpeg'), ('PNG', 'image/png'), ('GIF', 'image/gif'),
+                              ('WEBP', 'image/webp')):
+            with self.subTest(formato=formato):
+                self.assertEqual(identificar_imagem(_imagem_bytes(formato)), mime)
+        self.assertIsNone(identificar_imagem(SVG_COM_SCRIPT))
+        self.assertIsNone(identificar_imagem(b'<html></html>'))
+        self.assertIsNone(identificar_imagem(b''))
+
+    def test_svg_baixado_por_url_e_recusado(self):
+        from .views import baixar_imagem_da_url
+        with _resolver_para('93.184.216.34'), \
+                mock.patch('presentes.rede.requests.get',
+                           return_value=self._resposta(SVG_COM_SCRIPT, 'image/svg+xml')):
+            self.assertEqual(baixar_imagem_da_url('https://loja.exemplo.com.br/x.svg'), (None, None, None))
+
+    def test_tipo_declarado_pelo_site_e_ignorado(self):
+        from .views import baixar_imagem_da_url
+        with _resolver_para('93.184.216.34'), \
+                mock.patch('presentes.rede.requests.get',
+                           return_value=self._resposta(_imagem_bytes('PNG'), 'text/html')):
+            dados, nome, tipo = baixar_imagem_da_url('https://loja.exemplo.com.br/foto')
+        self.assertTrue(dados)
+        self.assertEqual(tipo, 'image/png')
+        self.assertEqual(nome, 'imagem.png')
+
+    def test_foto_do_site_em_svg_e_recusada(self):
+        presente = Presente(descricao='X')
+        with _resolver_para('93.184.216.34'), \
+                mock.patch('presentes.rede.requests.get',
+                           return_value=self._resposta(SVG_COM_SCRIPT, 'image/svg+xml')):
+            motivo = IAService._baixar_foto(presente, 'https://loja.exemplo.com.br/x.svg')
+        self.assertIn('não devolveu uma imagem aceita', motivo)
+        self.assertFalse(presente.imagem_base64)
+
+    def test_upload_usa_o_tipo_real_do_arquivo(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        from .views import converter_imagem_para_base64
+        arquivo = SimpleUploadedFile('foto.svg', _imagem_bytes('PNG'), content_type='image/svg+xml')
+        _, _, tipo = converter_imagem_para_base64(arquivo)
+        self.assertEqual(tipo, 'image/png')
+        svg = SimpleUploadedFile('foto.png', SVG_COM_SCRIPT, content_type='image/png')
+        self.assertEqual(converter_imagem_para_base64(svg), (None, None, None))
+
+
+class ServirImagensTest(TestCase):
+    """Fotos de presentes, grupos e usuarios so para quem esta no mesmo grupo."""
+
+    def setUp(self):
+        import base64
+        self.png = base64.b64encode(_imagem_bytes('PNG')).decode()
+        self.grupo = Grupo.objects.create(nome='Familia', imagem_base64=self.png, imagem_tipo='image/png')
+        self.outro_grupo = Grupo.objects.create(nome='Outra')
+        self.dono = Usuario.objects.create_user(email='dono@exemplo.com', username='dono', password='x',
+                                                foto_base64=self.png, foto_tipo='image/png')
+        self.membro = Usuario.objects.create_user(email='membro@exemplo.com', username='membro', password='x')
+        self.estranho = Usuario.objects.create_user(email='fora@exemplo.com', username='fora', password='x')
+        GrupoMembro.objects.create(grupo=self.grupo, usuario=self.dono)
+        GrupoMembro.objects.create(grupo=self.grupo, usuario=self.membro)
+        GrupoMembro.objects.create(grupo=self.outro_grupo, usuario=self.estranho)
+        self.presente = Presente.objects.create(grupo=self.grupo, usuario=self.dono, descricao='Livro',
+                                                imagem_base64=self.png, imagem_tipo='image/png')
+        self.urls = [
+            reverse('servir_imagem', args=[self.presente.pk]),
+            reverse('servir_imagem_grupo', args=[self.grupo.pk]),
+            reverse('servir_foto_usuario', args=[self.dono.pk]),
+        ]
+
+    def test_anonimo_vai_para_o_login(self):
+        for url in self.urls:
+            with self.subTest(url=url):
+                resposta = self.client.get(url)
+                self.assertEqual(resposta.status_code, 302)
+                self.assertIn('/login/', resposta['Location'])
+
+    def test_quem_nao_e_do_grupo_recebe_404(self):
+        self.client.force_login(self.estranho)
+        for url in self.urls:
+            with self.subTest(url=url):
+                self.assertEqual(self.client.get(url).status_code, 404)
+
+    def test_membro_do_grupo_ve_a_imagem_com_cabecalhos_de_protecao(self):
+        self.client.force_login(self.membro)
+        for url in self.urls:
+            with self.subTest(url=url):
+                resposta = self.client.get(url)
+                self.assertEqual(resposta.status_code, 200)
+                self.assertEqual(resposta['Content-Type'], 'image/png')
+                self.assertEqual(resposta['X-Content-Type-Options'], 'nosniff')
+                self.assertIn('sandbox', resposta['Content-Security-Policy'])
+
+    def test_imagem_antiga_em_svg_nao_e_servida(self):
+        import base64
+        self.presente.imagem_base64 = base64.b64encode(SVG_COM_SCRIPT).decode()
+        self.presente.imagem_tipo = 'image/svg+xml'
+        self.presente.save()
+        self.client.force_login(self.membro)
+        self.assertEqual(self.client.get(self.urls[0]).status_code, 404)
+
+
+class AcoesSoPorPostTest(TestCase):
+    """Acoes que mudam dados nao podem ser disparadas por um link (GET)."""
+
+    def setUp(self):
+        self.grupo = Grupo.objects.create(nome='Familia')
+        self.admin = Usuario.objects.create_user(email='admin@exemplo.com', username='admin', password='x')
+        self.membro = Usuario.objects.create_user(email='membro@exemplo.com', username='membro', password='x')
+        GrupoMembro.objects.create(grupo=self.grupo, usuario=self.admin, e_mantenedor=True)
+        GrupoMembro.objects.create(grupo=self.grupo, usuario=self.membro)
+        self.admin.grupo_ativo = self.grupo
+        self.admin.save()
+        self.presente = Presente.objects.create(grupo=self.grupo, usuario=self.membro, descricao='Livro')
+        self.client.force_login(self.admin)
+
+    def test_get_recebe_405_e_nao_muda_nada(self):
+        urls = [
+            reverse('marcar_comprado', args=[self.presente.pk]),
+            reverse('ativar_grupo', args=[self.grupo.pk]),
+            reverse('remover_membro', args=[self.grupo.pk, self.membro.pk]),
+            reverse('toggle_mantenedor', args=[self.grupo.pk, self.membro.pk]),
+            reverse('toggle_ativo_grupo', args=[self.grupo.pk]),
+            reverse('sair_grupo', args=[self.grupo.pk]),
+        ]
+        for url in urls:
+            with self.subTest(url=url):
+                self.assertEqual(self.client.get(url).status_code, 405)
+        self.assertEqual(Compra.objects.count(), 0)
+        self.assertEqual(GrupoMembro.objects.filter(grupo=self.grupo).count(), 2)
+        self.assertFalse(GrupoMembro.objects.get(usuario=self.membro).e_mantenedor)
+        self.grupo.refresh_from_db()
+        self.assertTrue(self.grupo.ativo)
+
+    def test_post_continua_funcionando(self):
+        self.client.post(reverse('toggle_mantenedor', args=[self.grupo.pk, self.membro.pk]))
+        self.assertTrue(GrupoMembro.objects.get(usuario=self.membro).e_mantenedor)
+        self.client.post(reverse('remover_membro', args=[self.grupo.pk, self.membro.pk]))
+        self.assertFalse(GrupoMembro.objects.filter(usuario=self.membro).exists())
+
+    def test_ativar_grupo_so_volta_para_enderecos_do_site(self):
+        url = reverse('ativar_grupo', args=[self.grupo.pk])
+        resposta = self.client.post(url, {'next': '/usuarios/'})
+        self.assertRedirects(resposta, '/usuarios/', fetch_redirect_response=False)
+        for externo in ('https://exemplo.org/', '//exemplo.org/', 'javascript:alert(1)'):
+            with self.subTest(next=externo):
+                resposta = self.client.post(url, {'next': externo})
+                self.assertRedirects(resposta, reverse('dashboard'), fetch_redirect_response=False)
+
+    def test_telas_usam_formularios_post(self):
+        for url in (reverse('grupos_lista'), reverse('gerenciar_membros', args=[self.grupo.pk])):
+            with self.subTest(url=url):
+                html = self.client.get(url).content.decode()
+                self.assertNotRegex(html, r'<a [^>]*href="[^"]*/(ativar|sair|remover|toggle-mantenedor)/')
+                self.assertRegex(html, r'<form method="post" action="[^"]*/(ativar|sair|toggle-mantenedor)/')
+
+
+class EscapeDeNomesTest(TestCase):
+    """Nomes digitados por usuarios nao viram HTML nem JavaScript."""
+
+    NOME = '<img src=x onerror=alert(1)>'
+
+    def test_avatar_escapa_o_nome(self):
+        from .templatetags.avatar_tags import user_avatar_html
+        import base64
+        usuario = Usuario(first_name=self.NOME, last_name='"', foto_base64=base64.b64encode(_imagem_bytes()).decode(),
+                          foto_tipo='image/png')
+        html = user_avatar_html(usuario)
+        self.assertNotIn('<img src=x', html)
+        self.assertIn('&lt;img src=x', html)
+        self.assertNotIn('alt="<', html)
+
+    def test_avatar_ignora_tipo_de_foto_fora_da_lista(self):
+        from .templatetags.avatar_tags import user_avatar_html
+        usuario = Usuario(foto_base64='PHN2Zz4=', foto_tipo='image/svg+xml" onerror="alert(1)')
+        html = user_avatar_html(usuario)
+        self.assertNotIn('<img', html)
+        self.assertNotIn('onerror', html)
+
+    def test_nome_do_grupo_em_confirm_e_escapado_para_js(self):
+        usuario = Usuario.objects.create_user(email='a@exemplo.com', username='a', password='x')
+        grupo = Grupo.objects.create(nome="Fam');alert(1);//")
+        GrupoMembro.objects.create(grupo=grupo, usuario=usuario, e_mantenedor=True)
+        self.client.force_login(usuario)
+        for url in (reverse('grupos_lista'), reverse('gerenciar_membros', args=[grupo.pk])):
+            with self.subTest(url=url):
+                html = self.client.get(url).content.decode()
+                # Dentro de confirm('...') o nome so pode aparecer escapado para JS
+                self.assertNotRegex(html, r"confirm\('[^']*Fam&#x27;")
+                self.assertIn('Fam\\u0027)', html)
+
+
+class CronTokenTest(TestCase):
+
+    @override_settings(CRON_TOKEN='segredo-do-cron')
+    def test_token_so_no_header(self):
+        url = reverse('cron_pesquisar_precos')
+        with mock.patch('threading.Thread') as thread:
+            self.assertEqual(self.client.post(url + '?forcar=1&token=segredo-do-cron').status_code, 403)
+            self.assertEqual(self.client.post(url + '?forcar=1', HTTP_X_CRON_TOKEN='errado').status_code, 403)
+            resposta = self.client.post(url + '?forcar=1', HTTP_X_CRON_TOKEN='segredo-do-cron')
+        self.assertEqual(resposta.status_code, 200)
+        thread.assert_called_once()

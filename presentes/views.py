@@ -2,6 +2,8 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import login, logout, authenticate
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_POST
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.contrib import messages
 from django.db.models import Count, Prefetch, Q
 from django.db import transaction
@@ -16,7 +18,10 @@ from .models import Usuario, Presente, Compra, Notificacao, SugestaoCompra, Grup
 from .forms import UsuarioRegistroForm, PresenteForm, LoginForm, GrupoForm, EditarPerfilForm
 from .services import IAService
 from .github_helper import criar_issue_falha_imagem
+from . import rede
+from .rede import identificar_imagem, EXTENSOES, TAMANHO_MAXIMO_IMAGEM
 import base64
+import hmac
 import re
 import logging
 import secrets
@@ -57,20 +62,19 @@ def requer_grupo_ativo(view_func):
     return wrapper
 
 def converter_imagem_para_base64(imagem_file):
-    """Converte um arquivo de imagem para base64"""
+    """Converte um arquivo de imagem para base64.
+
+    O tipo vem do conteudo do arquivo (Pillow), nunca do que o navegador
+    declarou; formatos fora da lista (ex.: SVG) sao recusados.
+    """
     try:
-        # Ler o conteúdo do arquivo
         imagem_data = imagem_file.read()
-
-        # Converter para base64
+        content_type = identificar_imagem(imagem_data)
+        if not content_type:
+            logger.warning("Upload recusado: arquivo nao e uma imagem aceita")
+            return None, None, None
         imagem_base64 = base64.b64encode(imagem_data).decode('utf-8')
-
-        # Obter o tipo MIME
-        content_type = imagem_file.content_type
-
-        # Obter o nome do arquivo
         nome_arquivo = imagem_file.name
-
         return imagem_base64, nome_arquivo, content_type
     except Exception as e:
         logger.error(f"Erro ao converter imagem para base64: {str(e)}")
@@ -90,37 +94,28 @@ def baixar_imagem_da_url(url):
             'Accept': 'image/webp,image/apng,image/*,*/*;q=0.8',
         }
 
-        response = requests.get(url, headers=headers, timeout=15, stream=True)
+        response = rede.obter(url, headers=headers, timeout=15)
         response.raise_for_status()
 
-        # Verificar se é uma imagem
-        content_type = response.headers.get('content-type', '')
-        if not content_type.startswith('image/'):
-            logger.warning(f"URL não é uma imagem válida: {content_type}")
-            return None, None, None
-
-        # Ler conteúdo
         imagem_data = response.content
-
-        # Verificar tamanho (máximo 5MB)
-        if len(imagem_data) > 5 * 1024 * 1024:
+        if len(imagem_data) > TAMANHO_MAXIMO_IMAGEM:
             logger.warning("Imagem muito grande (> 5MB)")
             return None, None, None
 
-        # Converter para base64
+        # O tipo vem do conteudo; o content-type informado pelo site nao vale
+        content_type = identificar_imagem(imagem_data)
+        if not content_type:
+            logger.warning(f"URL nao devolveu uma imagem aceita: {url}")
+            return None, None, None
+
         imagem_base64 = base64.b64encode(imagem_data).decode('utf-8')
 
         # Extrair nome do arquivo da URL
         parsed_url = urlparse(url)
-        nome_arquivo = parsed_url.path.split('/')[-1] or 'imagem.jpg'
-        # Limpar parâmetros do nome
-        nome_arquivo = nome_arquivo.split('?')[0]
+        nome_arquivo = parsed_url.path.split('/')[-1] or ''
+        nome_arquivo = nome_arquivo.split('?')[0][:255]
         if not nome_arquivo or '.' not in nome_arquivo:
-            # Determinar extensão pelo content-type
-            extensao = content_type.split('/')[-1].split(';')[0]
-            if extensao == 'jpeg':
-                extensao = 'jpg'
-            nome_arquivo = f'imagem.{extensao}'
+            nome_arquivo = f'imagem.{EXTENSOES[content_type]}'
 
         logger.info(f"Imagem baixada da URL: {nome_arquivo} ({content_type})")
         return imagem_base64, nome_arquivo, content_type
@@ -143,12 +138,10 @@ def registro_view(request):
             usuario = form.save()
             # Processar foto se enviada
             if 'foto' in request.FILES:
-                foto_file = request.FILES['foto']
-                if foto_file.content_type.startswith('image/'):
-                    import base64
-                    foto_data = base64.b64encode(foto_file.read()).decode('utf-8')
+                foto_data, _, foto_tipo = converter_imagem_para_base64(request.FILES['foto'])
+                if foto_data:
                     usuario.foto_base64 = foto_data
-                    usuario.foto_tipo = foto_file.content_type
+                    usuario.foto_tipo = foto_tipo
                     usuario.save(update_fields=['foto_base64', 'foto_tipo'])
             # Ha dois backends em AUTHENTICATION_BACKENDS (ModelBackend e allauth),
             # entao o backend precisa ser explicito: sem ele o login() levanta
@@ -181,11 +174,10 @@ def editar_perfil_view(request):
                 usuario.save(update_fields=['foto_base64', 'foto_tipo'])
             # Nova foto enviada
             elif 'foto' in request.FILES:
-                foto_file = request.FILES['foto']
-                if foto_file.content_type.startswith('image/'):
-                    foto_data = base64.b64encode(foto_file.read()).decode('utf-8')
+                foto_data, _, foto_tipo = converter_imagem_para_base64(request.FILES['foto'])
+                if foto_data:
                     usuario.foto_base64 = foto_data
-                    usuario.foto_tipo = foto_file.content_type
+                    usuario.foto_tipo = foto_tipo
                     usuario.save(update_fields=['foto_base64', 'foto_tipo'])
             messages.success(request, 'Perfil atualizado com sucesso!')
             return redirect('editar_perfil')
@@ -538,26 +530,52 @@ def deletar_presente_view(request, pk):
         return redirect('meus_presentes')
     return render(request, 'presentes/deletar_presente.html', {'presente': presente})
 
-def servir_imagem_view(request, pk):
-    """Serve imagem armazenada em base64 no banco de dados"""
-    presente = get_object_or_404(Presente, pk=pk)
+def _resposta_imagem(imagem_base64, tipo, rotulo):
+    """Resposta HTTP para uma imagem guardada em base64.
 
-    if not presente.imagem_base64:
-        # Se não há imagem base64, retornar 404
+    So serve os formatos da lista de permitidos (imagens antigas em SVG ou com
+    tipo desconhecido ficam de fora) e manda cabecalhos que impedem o
+    navegador de tratar o arquivo como pagina.
+    """
+    if not imagem_base64:
         return HttpResponse('Imagem não encontrada', status=404)
-
+    content_type = (tipo or 'image/jpeg').split(';')[0].strip().lower()
+    if content_type not in rede.TIPOS_IMAGEM_PERMITIDOS:
+        logger.warning(f"Imagem {rotulo} com tipo nao permitido ({content_type}); nao sera servida")
+        return HttpResponse('Imagem não encontrada', status=404)
     try:
-        # Decodificar base64
-        imagem_data = base64.b64decode(presente.imagem_base64)
-
-        # Determinar content type (padrão image/jpeg se não especificado)
-        content_type = presente.imagem_tipo or 'image/jpeg'
-
-        # Retornar a imagem
-        return HttpResponse(imagem_data, content_type=content_type)
+        imagem_data = base64.b64decode(imagem_base64)
     except Exception as e:
-        logger.error(f"Erro ao servir imagem do presente {pk}: {str(e)}")
+        logger.error(f"Erro ao decodificar imagem {rotulo}: {str(e)}")
         return HttpResponse('Erro ao carregar imagem', status=500)
+    resposta = HttpResponse(imagem_data, content_type=content_type)
+    resposta['X-Content-Type-Options'] = 'nosniff'
+    resposta['Content-Security-Policy'] = "default-src 'none'; sandbox"
+    resposta['Cache-Control'] = 'private, max-age=300'
+    return resposta
+
+
+def _compartilha_grupo(usuario, outro_id):
+    """True se o usuario logado e outro_id sao membros de algum grupo em comum."""
+    if usuario.pk == outro_id:
+        return True
+    return GrupoMembro.objects.filter(
+        usuario_id=outro_id,
+        grupo__membros__usuario=usuario,
+    ).exists()
+
+
+@login_required
+def servir_imagem_view(request, pk):
+    """Serve a foto do presente para membros do grupo do presente"""
+    presente = get_object_or_404(Presente, pk=pk)
+    if presente.grupo_id:
+        permitido = GrupoMembro.objects.filter(grupo_id=presente.grupo_id, usuario=request.user).exists()
+    else:
+        permitido = _compartilha_grupo(request.user, presente.usuario_id)
+    if not permitido:
+        return HttpResponse('Imagem não encontrada', status=404)
+    return _resposta_imagem(presente.imagem_base64, presente.imagem_tipo, f'do presente {pk}')
 
 @requer_grupo_ativo
 def buscar_sugestoes_ia_view(request, pk):
@@ -942,6 +960,7 @@ def presentes_usuario_view(request, user_id):
     })
 
 @requer_grupo_ativo
+@require_POST
 @transaction.atomic
 def marcar_comprado_view(request, pk):
     grupo_ativo = request.user.grupo_ativo
@@ -1102,7 +1121,7 @@ def compras_grupo_json(request):
 def cron_pesquisar_precos(request):
     """
     Endpoint de cron para a pesquisa semanal de preços. Protegido por token
-    (header 'X-Cron-Token' ou ?token=). Chamado por um agendador externo
+    no header 'X-Cron-Token' (nao aceita na URL, para nao vazar em logs). Chamado por um agendador externo
     (GitHub Actions) — mais confiável e observável que depender só do tráfego.
 
     Respeita o intervalo de 7 dias (use ?forcar=1 para ignorar). Dispara em
@@ -1112,11 +1131,11 @@ def cron_pesquisar_precos(request):
     from .pesquisa_precos import pesquisa_em_atraso, executar_pesquisa
 
     token_esperado = getattr(settings, 'CRON_TOKEN', '') or ''
-    token_recebido = request.headers.get('X-Cron-Token') or request.GET.get('token', '')
+    token_recebido = request.headers.get('X-Cron-Token', '')
 
     if not token_esperado:
         return JsonResponse({'erro': 'CRON_TOKEN não configurado no servidor'}, status=503)
-    if token_recebido != token_esperado:
+    if not hmac.compare_digest(token_recebido.encode(), token_esperado.encode()):
         return JsonResponse({'erro': 'Token inválido'}, status=403)
 
     forcar = request.GET.get('forcar') in ('1', 'true', 'sim')
@@ -1599,6 +1618,7 @@ def editar_grupo_view(request, pk):
 
 
 @login_required
+@require_POST
 def ativar_grupo_view(request, pk):
     """Define o grupo ativo do usuario"""
     grupo = get_object_or_404(Grupo, pk=pk)
@@ -1621,8 +1641,12 @@ def ativar_grupo_view(request, pk):
     logger.info(f"Usuario {request.user.email} ativou grupo {grupo.id}")
 
     # Redirecionar para dashboard ou de onde veio
-    next_url = request.GET.get('next', 'dashboard')
-    return redirect(next_url)
+    # So volta para enderecos deste site (evita redirecionamento aberto)
+    next_url = request.POST.get('next', '')
+    if next_url and url_has_allowed_host_and_scheme(
+            next_url, allowed_hosts={request.get_host()}, require_https=request.is_secure()):
+        return redirect(next_url)
+    return redirect('dashboard')
 
 
 @login_required
@@ -1659,6 +1683,7 @@ def gerenciar_membros_view(request, pk):
 
 
 @login_required
+@require_POST
 def remover_membro_view(request, pk, user_id):
     """Remove um membro do grupo (apenas mantenedores)"""
     grupo = get_object_or_404(Grupo, pk=pk)
@@ -1692,6 +1717,7 @@ def remover_membro_view(request, pk, user_id):
 
 
 @login_required
+@require_POST
 def toggle_mantenedor_view(request, pk, user_id):
     """Alterna status de mantenedor de um membro (apenas mantenedores)"""
     grupo = get_object_or_404(Grupo, pk=pk)
@@ -1719,6 +1745,7 @@ def toggle_mantenedor_view(request, pk, user_id):
 
 
 @login_required
+@require_POST
 def toggle_ativo_grupo_view(request, pk):
     """Ativa/Desativa um grupo (apenas mantenedores)"""
     grupo = get_object_or_404(Grupo, pk=pk)
@@ -1740,6 +1767,7 @@ def toggle_ativo_grupo_view(request, pk):
 
 
 @login_required
+@require_POST
 def sair_grupo_view(request, pk):
     """Usuario sai do grupo"""
     grupo = get_object_or_404(Grupo, pk=pk)
@@ -1873,37 +1901,22 @@ def convite_grupo_view(request, codigo):
     return redirect('dashboard')
 
 
+@login_required
 def servir_imagem_grupo_view(request, pk):
-    """Serve a imagem do grupo em base64"""
+    """Serve a imagem do grupo para os membros dele"""
     grupo = get_object_or_404(Grupo, pk=pk)
-
-    if not grupo.imagem_base64:
-        return HttpResponse('Sem imagem', status=404)
-
-    try:
-        # Decodificar base64
-        imagem_data = base64.b64decode(grupo.imagem_base64)
-
-        # Retornar imagem com content-type correto
-        content_type = grupo.imagem_tipo or 'image/jpeg'
-        return HttpResponse(imagem_data, content_type=content_type)
-    except Exception as e:
-        logger.error(f"Erro ao servir imagem do grupo {pk}: {str(e)}")
-        return HttpResponse('Erro ao carregar imagem', status=500)
+    if not GrupoMembro.objects.filter(grupo=grupo, usuario=request.user).exists():
+        return HttpResponse('Imagem não encontrada', status=404)
+    return _resposta_imagem(grupo.imagem_base64, grupo.imagem_tipo, f'do grupo {pk}')
 
 
+@login_required
 def servir_foto_usuario_view(request, pk):
-    """Serve a foto do usuario a partir do base64 no banco"""
-    try:
-        usuario = get_object_or_404(Usuario, pk=pk)
-        if not usuario.foto_base64:
-            return HttpResponse(status=404)
-        imagem_data = base64.b64decode(usuario.foto_base64)
-        content_type = usuario.foto_tipo or 'image/jpeg'
-        return HttpResponse(imagem_data, content_type=content_type)
-    except Exception as e:
-        logger.error(f"Erro ao servir foto do usuario {pk}: {str(e)}")
-        return HttpResponse('Erro ao carregar foto', status=500)
+    """Serve a foto do usuario para quem divide algum grupo com ele"""
+    usuario = get_object_or_404(Usuario, pk=pk)
+    if not _compartilha_grupo(request.user, usuario.pk):
+        return HttpResponse('Imagem não encontrada', status=404)
+    return _resposta_imagem(usuario.foto_base64, usuario.foto_tipo, f'do usuario {pk}')
 
 
 @login_required
