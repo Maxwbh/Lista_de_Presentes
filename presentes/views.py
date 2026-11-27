@@ -7,7 +7,7 @@ from django.utils.http import url_has_allowed_host_and_scheme
 from django.contrib import messages
 from django.db.models import Count, Prefetch, Q
 from django.db import transaction
-from django.http import JsonResponse, HttpResponse, HttpResponseForbidden
+from django.http import JsonResponse, HttpResponse, HttpResponseForbidden, HttpResponseRedirect
 from django.urls import reverse
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.conf import settings
@@ -176,9 +176,7 @@ def editar_perfil_view(request):
             usuario = form.save()
             # Remover foto (volta a usar avatar emoji)
             if form.cleaned_data.get('remover_foto'):
-                usuario.foto_base64 = None
-                usuario.foto_tipo = None
-                usuario.save(update_fields=['foto_base64', 'foto_tipo'])
+                usuario.save(update_fields=usuario.limpar_imagem('foto_base64'))
             # Nova foto enviada
             elif 'foto' in request.FILES:
                 foto_data, _, foto_tipo = converter_imagem_para_base64(request.FILES['foto'])
@@ -570,7 +568,7 @@ def deletar_presente_view(request, pk):
         return redirect('meus_presentes')
     return render(request, 'presentes/deletar_presente.html', {'presente': presente})
 
-def _resposta_imagem(request, modelo, pk, campo_base64, tipo, versao, rotulo):
+def _resposta_imagem(request, modelo, pk, campo_base64, tipo, versao, rotulo, caminho_storage=''):
     """Resposta HTTP para uma imagem guardada em base64.
 
     So serve os formatos da lista de permitidos (imagens antigas em SVG ou com
@@ -580,6 +578,10 @@ def _resposta_imagem(request, modelo, pk, campo_base64, tipo, versao, rotulo):
     A versao da imagem vira o ETag: se o navegador ja tem essa versao, a
     resposta e 304 sem ler o base64 do banco. Quando precisa, so a coluna da
     imagem e lida.
+
+    Imagem no Supabase Storage: depois da mesma checagem de permissao (feita
+    por quem chama), redireciona para uma URL assinada e temporaria do bucket
+    privado; o arquivo sai do Storage, nao do banco.
     """
     content_type = (tipo or 'image/jpeg').split(';')[0].strip().lower()
     if content_type not in rede.TIPOS_IMAGEM_PERMITIDOS:
@@ -603,6 +605,23 @@ def _resposta_imagem(request, modelo, pk, campo_base64, tipo, versao, rotulo):
         recebido = request.headers.get('If-None-Match', '')
         if recebido.strip() == '*' or f'"{versao}"' in recebido:
             return _cabecalhos(HttpResponse(status=304))
+
+    if caminho_storage:
+        from . import storage
+        if not storage.configurado():
+            logger.error(f"Imagem {rotulo} esta no Storage, mas o Storage nao esta configurado")
+            return HttpResponse('Imagem não encontrada', status=404)
+        try:
+            destino = storage.url_assinada(caminho_storage)
+        except Exception as e:
+            logger.error(f"Erro ao assinar a imagem {rotulo}: {str(e)}")
+            return HttpResponse('Erro ao carregar imagem', status=502)
+        resposta = HttpResponseRedirect(destino)
+        # A URL assinada vale 7 dias e fica 6 em cache: 1 dia de redirect e seguro
+        resposta['Cache-Control'] = 'private, max-age=86400'
+        if versao:
+            resposta['ETag'] = f'"{versao}"'
+        return resposta
 
     imagem_base64 = modelo.objects.filter(pk=pk).values_list(campo_base64, flat=True).first()
     if not imagem_base64:
@@ -636,7 +655,7 @@ def servir_imagem_view(request, pk):
     if not permitido:
         return HttpResponse('Imagem não encontrada', status=404)
     return _resposta_imagem(request, Presente, presente.pk, 'imagem_base64', presente.imagem_tipo,
-                            presente.imagem_versao, f'do presente {pk}')
+                            presente.imagem_versao, f'do presente {pk}', presente.imagem_storage)
 
 @requer_grupo_ativo
 def buscar_sugestoes_ia_view(request, pk):
@@ -1971,7 +1990,7 @@ def servir_imagem_grupo_view(request, pk):
     if not GrupoMembro.objects.filter(grupo=grupo, usuario=request.user).exists():
         return HttpResponse('Imagem não encontrada', status=404)
     return _resposta_imagem(request, Grupo, grupo.pk, 'imagem_base64', grupo.imagem_tipo,
-                            grupo.imagem_versao, f'do grupo {pk}')
+                            grupo.imagem_versao, f'do grupo {pk}', grupo.imagem_storage)
 
 
 @login_required
@@ -1981,7 +2000,7 @@ def servir_foto_usuario_view(request, pk):
     if not _compartilha_grupo(request.user, usuario.pk):
         return HttpResponse('Imagem não encontrada', status=404)
     return _resposta_imagem(request, Usuario, usuario.pk, 'foto_base64', usuario.foto_tipo,
-                            usuario.foto_versao, f'do usuario {pk}')
+                            usuario.foto_versao, f'do usuario {pk}', usuario.foto_storage)
 
 
 @login_required

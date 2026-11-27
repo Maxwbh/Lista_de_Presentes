@@ -63,7 +63,7 @@ Preencher no Dashboard:
 | `MERCADOLIVRE_CLIENT_ID`, `MERCADOLIVRE_CLIENT_SECRET` | Opcional | API do Mercado Livre (Redirect URI `{SITE_URL}/integracoes/mercadolivre/callback/`) |
 | `GITHUB_TOKEN` | Opcional | Issues automáticas para falhas de imagem |
 | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` (e demais provedores) | Opcional | Login social ([SOCIAL_LOGIN_CONFIG.md](../features/SOCIAL_LOGIN_CONFIG.md)) |
-| `SUPABASE_URL`, `SUPABASE_KEY` | Opcional | Não usadas pelo Django hoje |
+| `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` | Recomendado | Imagens no Supabase Storage (bucket privado); sem elas, ficam no banco. Ver [SUPABASE.md](../database/SUPABASE.md#imagens-no-supabase-storage) |
 
 Lista completa com padrões: [INSTALACAO.md](../development/INSTALACAO.md#️-variáveis-de-ambiente).
 

@@ -18,7 +18,8 @@ logger = logging.getLogger(__name__)
 # limite da requisicao (cada leitura de site pode levar alguns segundos)
 LIMITE_BUSCA_IMAGEM_NA_HORA = 5
 
-SEM_IMAGEM = (Q(imagem_base64__isnull=True) | Q(imagem_base64='')) & (Q(imagem__isnull=True) | Q(imagem=''))
+SEM_IMAGEM = ((Q(imagem_base64__isnull=True) | Q(imagem_base64='')) & Q(imagem_storage='')
+              & (Q(imagem__isnull=True) | Q(imagem='')))
 COM_LINK = Q(url__isnull=False) & ~Q(url='')
 
 
@@ -27,7 +28,7 @@ def _incompletos(queryset=None):
     from .services import IAService
     queryset = Presente.objects.all() if queryset is None else queryset
     candidatos = (queryset.filter(COM_LINK).select_related(None).prefetch_related(None)
-                  .only('pk', 'url', 'preco', 'descricao', 'imagem', 'imagem_base64'))
+                  .only('pk', 'url', 'preco', 'descricao', 'imagem', 'imagem_base64', 'imagem_storage'))
     return [p.pk for p in candidatos if IAService.precisa_completar(p)]
 
 

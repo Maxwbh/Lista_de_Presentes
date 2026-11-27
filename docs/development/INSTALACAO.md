@@ -111,7 +111,8 @@ Todas são lidas em `lista_presentes/settings.py` (o `.env` é carregado com `py
 | `USE_SQLITE` | `False` | Força SQLite mesmo com `DATABASE_URL` |
 | `DB_CONN_MAX_AGE` | `60` | Segundos que uma conexão com o PostgreSQL é reaproveitada |
 | `SITE_URL` | `http://localhost:8000` | URL pública, usada em links (issues, e-mails, callback do Mercado Livre) |
-| `SUPABASE_URL`, `SUPABASE_KEY` | vazio | Opcionais, não usadas pelo Django hoje |
+| `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` | vazio | Com as duas, as imagens vão para o Supabase Storage ([SUPABASE.md](../database/SUPABASE.md#imagens-no-supabase-storage)); sem elas, ficam no banco |
+| `SUPABASE_STORAGE_BUCKET` | `lista-presentes` | Bucket privado das imagens |
 
 ### Integrações
 
@@ -220,6 +221,7 @@ Detalhes do Render Free (750 h/mês, sleep após 15 min) em [RENDER.md](../deplo
 | `migrate_images_to_base64` | Migra imagens para base64 ([MIGRACAO_IMAGENS_BASE64.md](../database/MIGRACAO_IMAGENS_BASE64.md)) |
 | `limpar_historico_precos` | Limpa o histórico de preços |
 | `recomprimir_imagens` | Reduz as imagens já gravadas (800 px, WebP); `--dry-run` só mostra o antes e depois |
+| `migrar_imagens_storage` | Leva ao Supabase Storage as imagens que ainda estão no banco (roda em todo deploy) |
 | `fix_migration_history`, `force_migrate` | Recuperação de migrações ([migrations.md](../database/migrations.md)) |
 
 Uso: `python manage.py <comando>`. Veja as opções com `python manage.py <comando> --help`.

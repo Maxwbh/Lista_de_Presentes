@@ -158,6 +158,12 @@ if ! python manage.py migrate --noinput --run-syncdb 2>&1 | tee /tmp/migrate_out
 fi
 set +o pipefail
 
+# Imagens: leva para o Supabase Storage as que ainda estão no banco. Sem o
+# Storage configurado (ou sem imagens pendentes) não faz nada; uma falha não
+# derruba o deploy, porque a imagem continua no banco e é servida de lá.
+echo "🖼️  Moving images to Supabase Storage..."
+python manage.py migrar_imagens_storage || echo "⚠️  Could not move images to Storage (they stay in the database)"
+
 # Verify migrations applied
 echo "✅ Verifying migrations..."
 python manage.py showmigrations | grep "\[ \]" && echo "⚠️  WARNING: Some migrations not applied!" || echo "✅ All migrations applied successfully"
