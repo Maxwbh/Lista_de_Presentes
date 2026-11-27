@@ -28,12 +28,16 @@ def user_avatar_html(user, size='w-8 h-8', text_size='text-lg'):
 
     Nome, classes e tipo passam por format_html (escapados): o nome e
     digitado pelo proprio usuario e aparece para o grupo inteiro.
+
+    A foto vem pela URL versionada (cache no navegador), nao embutida em
+    base64: numa lista, a mesma foto se repetia dezenas de vezes no HTML.
     """
     content_type = (getattr(user, 'foto_tipo', None) or 'image/jpeg').lower()
-    if getattr(user, 'foto_base64', None) and content_type in TIPOS_IMAGEM_PERMITIDOS:
+    foto_url = user.get_foto_url() if hasattr(user, 'get_foto_url') else None
+    if foto_url and content_type in TIPOS_IMAGEM_PERMITIDOS:
         return format_html(
-            '<img src="data:{};base64,{}" alt="{}" class="{} rounded-xl object-cover">',
-            content_type, user.foto_base64, user.get_full_name(), size,
+            '<img src="{}" alt="{}" loading="lazy" decoding="async" class="{} rounded-xl object-cover">',
+            foto_url, user.get_full_name(), size,
         )
     emoji = AVATAR_MAP.get(getattr(user, 'avatar', '') or 'avatar-1', '👩')
     return format_html(
