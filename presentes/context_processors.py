@@ -20,7 +20,7 @@ def grupos_usuario(request):
         user_grupos = GrupoMembro.objects.filter(
             usuario=request.user,
             grupo__ativo=True
-        ).select_related('grupo').order_by('grupo__nome')
+        ).select_related('grupo').defer('grupo__imagem_base64').order_by('grupo__nome')
 
         return {
             'user_grupos': user_grupos,

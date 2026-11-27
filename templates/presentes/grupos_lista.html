@@ -41,8 +41,8 @@
         <div class="card bg-base-200 border border-base-300 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 animate-slide-up {% if grupo == grupo_ativo %}ring-2 ring-success ring-offset-2 ring-offset-base-100{% endif %}">
             <!-- Group Image -->
             <figure>
-                {% if grupo.imagem_base64 %}
-                    <img src="{% url 'servir_imagem_grupo' grupo.pk %}" alt="{{ grupo.nome }}"
+                {% if grupo.tem_imagem %}
+                    <img src="{{ grupo.get_imagem_url }}" alt="{{ grupo.nome }}" loading="lazy"
                          class="w-full h-48 object-cover">
                 {% else %}
                     <div class="w-full h-48 bg-base-300/50 flex items-center justify-center">

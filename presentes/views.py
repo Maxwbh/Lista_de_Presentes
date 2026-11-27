@@ -31,6 +31,9 @@ from functools import wraps
 
 logger = logging.getLogger(__name__)
 
+# Colunas com a imagem em base64: as listagens so precisam da versao
+CAMPOS_PESADOS_PRESENTE = ('imagem_base64', 'usuario__foto_base64')
+
 def requer_superusuario(view_func):
     """
     Restringe a view a superusuarios. Sem login vai para a tela de login;
@@ -335,7 +338,7 @@ def meus_presentes_view(request):
     presentes_list = Presente.objects.filter(
         grupo=grupo_ativo,
         usuario=request.user
-    ).select_related('usuario').prefetch_related('sugestoes', 'historico_precos')
+    ).select_related('usuario').defer(*CAMPOS_PESADOS_PRESENTE).prefetch_related('sugestoes', 'historico_precos')
 
     # Estatísticas
     total_presentes = presentes_list.count()
@@ -530,7 +533,7 @@ def deletar_presente_view(request, pk):
         return redirect('meus_presentes')
     return render(request, 'presentes/deletar_presente.html', {'presente': presente})
 
-def _resposta_imagem(imagem_base64, tipo, rotulo):
+def _resposta_imagem(request, imagem_base64, tipo, versao, rotulo):
     """Resposta HTTP para uma imagem guardada em base64.
 
     So serve os formatos da lista de permitidos (imagens antigas em SVG ou com
@@ -551,7 +554,12 @@ def _resposta_imagem(imagem_base64, tipo, rotulo):
     resposta = HttpResponse(imagem_data, content_type=content_type)
     resposta['X-Content-Type-Options'] = 'nosniff'
     resposta['Content-Security-Policy'] = "default-src 'none'; sandbox"
-    resposta['Cache-Control'] = 'private, max-age=300'
+    # Com ?v= igual a versao atual a URL muda quando a imagem muda, entao o
+    # navegador pode guardar por bastante tempo. Sem versao, cache curto.
+    if versao and request.GET.get('v') == versao:
+        resposta['Cache-Control'] = 'private, max-age=2592000, immutable'
+    else:
+        resposta['Cache-Control'] = 'private, max-age=300'
     return resposta
 
 
@@ -575,7 +583,8 @@ def servir_imagem_view(request, pk):
         permitido = _compartilha_grupo(request.user, presente.usuario_id)
     if not permitido:
         return HttpResponse('Imagem não encontrada', status=404)
-    return _resposta_imagem(presente.imagem_base64, presente.imagem_tipo, f'do presente {pk}')
+    return _resposta_imagem(request, presente.imagem_base64, presente.imagem_tipo,
+                            presente.imagem_versao, f'do presente {pk}')
 
 @requer_grupo_ativo
 def buscar_sugestoes_ia_view(request, pk):
@@ -819,12 +828,13 @@ def lista_usuarios_view(request):
     membros_grupo = GrupoMembro.objects.filter(grupo=grupo_ativo).select_related('usuario')
     usuarios_ids = membros_grupo.values_list('usuario_id', flat=True)
 
-    presentes_grupo_qs = Presente.objects.filter(grupo=grupo_ativo).select_related('usuario').prefetch_related('sugestoes', 'historico_precos')
+    presentes_grupo_qs = (Presente.objects.filter(grupo=grupo_ativo).select_related('usuario')
+                          .defer(*CAMPOS_PESADOS_PRESENTE).prefetch_related('sugestoes', 'historico_precos'))
 
     usuarios_list = Usuario.objects.filter(
         id__in=usuarios_ids,
         ativo=True
-    ).exclude(id=request.user.id).prefetch_related(
+    ).exclude(id=request.user.id).defer('foto_base64').prefetch_related(
         Prefetch('presentes', queryset=presentes_grupo_qs, to_attr='presentes_do_grupo')
     )
 
@@ -845,7 +855,7 @@ def lista_usuarios_view(request):
         usuario__ativo=True
     ).exclude(
         usuario=request.user
-    ).select_related('usuario').prefetch_related('sugestoes', 'historico_precos')
+    ).select_related('usuario').defer(*CAMPOS_PESADOS_PRESENTE).prefetch_related('sugestoes', 'historico_precos')
 
     # Adicionar melhor preço (menor preço das sugestões) para cada presente
     todos_presentes = todos_presentes.annotate(
@@ -933,7 +943,7 @@ def presentes_usuario_view(request, user_id):
     presentes_list = Presente.objects.filter(
         grupo=grupo_ativo,
         usuario=usuario
-    ).select_related('usuario').prefetch_related('sugestoes', 'compra', 'historico_precos')
+    ).select_related('usuario').defer(*CAMPOS_PESADOS_PRESENTE).prefetch_related('sugestoes', 'compra', 'historico_precos')
 
     # Estatísticas
     total_presentes = presentes_list.count()
@@ -1027,7 +1037,7 @@ def notificacoes_view(request):
     notificacoes_list = Notificacao.objects.filter(
         grupo=grupo_ativo,
         usuario=request.user
-    ).select_related('usuario').order_by('-data_notificacao')
+    ).select_related('usuario').defer('usuario__foto_base64').order_by('-data_notificacao')
 
     # Contar notificações não lidas antes de marcar como lidas
     total_nao_lidas = notificacoes_list.filter(lida=False).count()
@@ -1094,7 +1104,8 @@ def compras_grupo_json(request):
 
     compras = Compra.objects.filter(
         grupo=grupo_ativo
-    ).select_related('presente', 'presente__usuario', 'comprador')
+    ).select_related('presente', 'presente__usuario', 'comprador').defer(
+        'presente__imagem_base64', 'presente__usuario__foto_base64', 'comprador__foto_base64')
 
     if tipo == 'minhas':
         # Compras que EU fiz (posso ver tudo)
@@ -1518,7 +1529,7 @@ def grupos_lista_view(request):
     membros = GrupoMembro.objects.filter(
         usuario=request.user,
         grupo__ativo=True
-    ).select_related('grupo').order_by('-grupo__data_criacao')
+    ).select_related('grupo').defer('grupo__imagem_base64').order_by('-grupo__data_criacao')
 
     grupo_ativo = request.user.grupo_ativo
 
@@ -1666,7 +1677,7 @@ def gerenciar_membros_view(request, pk):
         return redirect('grupos_lista')
 
     # Listar membros
-    membros = grupo.membros.select_related('usuario').all()
+    membros = grupo.membros.select_related('usuario').defer('usuario__foto_base64')
 
     # Construir link de convite usando a URL atual (funciona em qualquer ambiente)
     from django.urls import reverse
@@ -1907,7 +1918,8 @@ def servir_imagem_grupo_view(request, pk):
     grupo = get_object_or_404(Grupo, pk=pk)
     if not GrupoMembro.objects.filter(grupo=grupo, usuario=request.user).exists():
         return HttpResponse('Imagem não encontrada', status=404)
-    return _resposta_imagem(grupo.imagem_base64, grupo.imagem_tipo, f'do grupo {pk}')
+    return _resposta_imagem(request, grupo.imagem_base64, grupo.imagem_tipo,
+                            grupo.imagem_versao, f'do grupo {pk}')
 
 
 @login_required
@@ -1916,7 +1928,8 @@ def servir_foto_usuario_view(request, pk):
     usuario = get_object_or_404(Usuario, pk=pk)
     if not _compartilha_grupo(request.user, usuario.pk):
         return HttpResponse('Imagem não encontrada', status=404)
-    return _resposta_imagem(usuario.foto_base64, usuario.foto_tipo, f'do usuario {pk}')
+    return _resposta_imagem(request, usuario.foto_base64, usuario.foto_tipo,
+                            usuario.foto_versao, f'do usuario {pk}')
 
 
 @login_required

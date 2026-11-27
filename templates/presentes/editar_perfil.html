@@ -40,7 +40,7 @@
                             <div id="avatar-preview" class="w-20 h-20 rounded-2xl flex items-center justify-center text-4xl bg-base-200 border-2 border-primary/30 transition-all shadow-sm overflow-hidden">
                                 <span id="avatar-emoji-display">{{ user.avatar|avatar_emoji }}</span>
                                 <img id="foto-preview-img" class="w-full h-full object-cover"
-                                     {% if user.foto_base64 %}src="data:{{ user.foto_tipo|default:'image/jpeg' }};base64,{{ user.foto_base64 }}" style="display:block;"{% else %}style="display:none;"{% endif %}
+                                     {% if user.tem_foto %}src="{{ user.get_foto_url }}" style="display:block;"{% else %}style="display:none;"{% endif %}
                                      alt="Sua foto">
                             </div>
                             <button type="button" id="btn-upload-foto"
@@ -60,7 +60,7 @@
                     {{ form.foto }}
                     {{ form.remover_foto }}
 
-                    <button type="button" id="btn-remover-foto" class="btn btn-xs btn-ghost text-error gap-1 mb-3" {% if not user.foto_base64 %}style="display:none;"{% endif %} onclick="removerFoto()">
+                    <button type="button" id="btn-remover-foto" class="btn btn-xs btn-ghost text-error gap-1 mb-3" {% if not user.tem_foto %}style="display:none;"{% endif %} onclick="removerFoto()">
                         <i class="bi bi-x-circle"></i> Remover foto
                     </button>
 
@@ -160,7 +160,7 @@
     const fotoInput = document.getElementById('foto-input');
     const removerFotoInput = document.getElementById('remover-foto-input');
     const btnRemoverFoto = document.getElementById('btn-remover-foto');
-    let fotoSelecionada = {% if user.foto_base64 %}true{% else %}false{% endif %};
+    let fotoSelecionada = {% if user.tem_foto %}true{% else %}false{% endif %};
 
     function marcarAtivo(btn) {
         avatarGrid.querySelectorAll('.avatar-option').forEach(el => {

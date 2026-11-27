@@ -1,10 +1,53 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser
 from django.utils import timezone
+import hashlib
 import secrets
 
 
-class Grupo(models.Model):
+
+def versao_da_imagem(conteudo):
+    """Identificador curto do conteudo da imagem (muda quando a imagem muda)."""
+    if not conteudo:
+        return ''
+    return hashlib.sha1(conteudo.encode('ascii', 'ignore')).hexdigest()[:12]
+
+
+class VersaoImagemMixin:
+    """
+    Mantem um campo curto de versao sincronizado com cada campo base64.
+
+    Com a versao, as listagens sabem se existe imagem e montam a URL com
+    ?v= (cache longo no navegador) sem carregar o base64 do banco.
+    """
+    CAMPOS_VERSAO = ()  # pares (campo_base64, campo_versao)
+
+    def _sincronizar_versoes(self, kwargs):
+        adiados = self.get_deferred_fields()
+        update_fields = kwargs.get('update_fields')
+        extras = []
+        for campo_base64, campo_versao in self.CAMPOS_VERSAO:
+            if campo_base64 in adiados:
+                continue
+            if update_fields is not None and campo_base64 not in update_fields:
+                continue
+            setattr(self, campo_versao, versao_da_imagem(getattr(self, campo_base64)))
+            extras.append(campo_versao)
+        if update_fields is not None and extras:
+            kwargs['update_fields'] = set(update_fields) | set(extras)
+
+    def _tem_conteudo(self, campo_base64, campo_versao):
+        """True se ha imagem, sem buscar o base64 quando ele foi adiado."""
+        if campo_base64 in self.get_deferred_fields():
+            return bool(getattr(self, campo_versao))
+        return bool(getattr(self, campo_base64))
+
+    def _url_versionada(self, caminho, campo_versao):
+        versao = '' if campo_versao in self.get_deferred_fields() else getattr(self, campo_versao)
+        return f'{caminho}?v={versao}' if versao else caminho
+
+
+class Grupo(VersaoImagemMixin, models.Model):
     """
     Modelo para representar grupos de usuarios.
     Cada grupo tem seus proprios presentes, compras e notificacoes.
@@ -19,6 +62,10 @@ class Grupo(models.Model):
     imagem_base64 = models.TextField(blank=True, null=True, help_text='Imagem codificada em base64')
     imagem_nome = models.CharField(max_length=255, blank=True, null=True, help_text='Nome original do arquivo')
     imagem_tipo = models.CharField(max_length=50, blank=True, null=True, help_text='MIME type da imagem')
+    imagem_versao = models.CharField(max_length=12, blank=True, default='', db_default='', editable=False,
+                                     help_text='Muda quando a imagem muda (cache e URL)')
+
+    CAMPOS_VERSAO = (('imagem_base64', 'imagem_versao'),)
 
     class Meta:
         verbose_name = 'Grupo'
@@ -36,6 +83,7 @@ class Grupo(models.Model):
         """Gera codigo de convite unico ao criar o grupo"""
         if not self.codigo_convite:
             self.codigo_convite = secrets.token_urlsafe(24)
+        self._sincronizar_versoes(kwargs)
         super().save(*args, **kwargs)
 
     def get_link_convite(self):
@@ -46,16 +94,16 @@ class Grupo(models.Model):
 
     def tem_imagem(self):
         """Verifica se o grupo tem imagem"""
-        return bool(self.imagem_base64)
+        return self._tem_conteudo('imagem_base64', 'imagem_versao')
 
     def get_imagem_url(self):
         """Retorna a URL da imagem do grupo"""
-        if self.imagem_base64:
-            return f'/grupo/{self.id}/imagem/'
+        if self.tem_imagem():
+            return self._url_versionada(f'/grupo/{self.id}/imagem/', 'imagem_versao')
         return None
 
 
-class Usuario(AbstractUser):
+class Usuario(VersaoImagemMixin, AbstractUser):
     email = models.EmailField(unique=True)
     telefone = models.CharField(max_length=20, blank=True)
     ativo = models.BooleanField(default=True)
@@ -63,6 +111,8 @@ class Usuario(AbstractUser):
     avatar = models.CharField(max_length=50, blank=True, default='avatar-1', help_text='ID do avatar pre-definido')
     foto_base64 = models.TextField(blank=True, null=True, help_text='Foto do usuario em base64')
     foto_tipo = models.CharField(max_length=50, blank=True, null=True, help_text='MIME type da foto')
+    foto_versao = models.CharField(max_length=12, blank=True, default='', db_default='', editable=False,
+                                   help_text='Muda quando a foto muda (cache e URL)')
     grupo_ativo = models.ForeignKey(
         Grupo,
         on_delete=models.SET_NULL,
@@ -81,6 +131,20 @@ class Usuario(AbstractUser):
 
     def __str__(self):
         return f"{self.first_name} {self.last_name}"
+
+    CAMPOS_VERSAO = (('foto_base64', 'foto_versao'),)
+
+    def save(self, *args, **kwargs):
+        self._sincronizar_versoes(kwargs)
+        super().save(*args, **kwargs)
+
+    def tem_foto(self):
+        return self._tem_conteudo('foto_base64', 'foto_versao')
+
+    def get_foto_url(self):
+        if self.pk and self.tem_foto():
+            return self._url_versionada(f'/usuario/{self.pk}/foto/', 'foto_versao')
+        return None
 
     def get_grupos(self):
         """Retorna todos os grupos que o usuario pertence"""
@@ -126,7 +190,7 @@ class GrupoMembro(models.Model):
         return f"{self.usuario} - {self.grupo} ({tipo})"
 
 
-class Presente(models.Model):
+class Presente(VersaoImagemMixin, models.Model):
     STATUS_CHOICES = [
         ('ATIVO', 'Ativo'),
         ('COMPRADO', 'Comprado'),
@@ -154,6 +218,10 @@ class Presente(models.Model):
     imagem_base64 = models.TextField(blank=True, null=True, help_text='Imagem codificada em base64')
     imagem_nome = models.CharField(max_length=255, blank=True, null=True, help_text='Nome original do arquivo')
     imagem_tipo = models.CharField(max_length=50, blank=True, null=True, help_text='MIME type da imagem')
+    imagem_versao = models.CharField(max_length=12, blank=True, default='', db_default='', editable=False,
+                                     help_text='Muda quando a imagem muda (cache e URL)')
+
+    CAMPOS_VERSAO = (('imagem_base64', 'imagem_versao'),)
 
     # Resultado da ultima busca de imagem no site (link original)
     busca_imagem_em = models.DateTimeField(null=True, blank=True)
@@ -175,14 +243,18 @@ class Presente(models.Model):
     def __str__(self):
         return f"{self.descricao[:50]} - {self.usuario}"
 
+    def save(self, *args, **kwargs):
+        self._sincronizar_versoes(kwargs)
+        super().save(*args, **kwargs)
+
     def tem_imagem(self):
         """Verifica se o presente tem imagem (novo formato ou antigo)"""
-        return bool(self.imagem_base64 or self.imagem)
+        return self._tem_conteudo('imagem_base64', 'imagem_versao') or bool(self.imagem)
 
     def get_imagem_url(self):
         """Retorna a URL da imagem (novo formato tem prioridade)"""
-        if self.imagem_base64:
-            return f'/presente/{self.id}/imagem/'
+        if self._tem_conteudo('imagem_base64', 'imagem_versao'):
+            return self._url_versionada(f'/presente/{self.id}/imagem/', 'imagem_versao')
         elif self.imagem:
             return self.imagem.url
         return None

@@ -2519,8 +2519,9 @@ class EscapeDeNomesTest(TestCase):
     def test_avatar_escapa_o_nome(self):
         from .templatetags.avatar_tags import user_avatar_html
         import base64
-        usuario = Usuario(first_name=self.NOME, last_name='"', foto_base64=base64.b64encode(_imagem_bytes()).decode(),
-                          foto_tipo='image/png')
+        usuario = Usuario.objects.create_user(
+            email='nome@exemplo.com', username='nome', password='x', first_name=self.NOME, last_name='"',
+            foto_base64=base64.b64encode(_imagem_bytes()).decode(), foto_tipo='image/png')
         html = user_avatar_html(usuario)
         self.assertNotIn('<img src=x', html)
         self.assertIn('&lt;img src=x', html)
@@ -2557,3 +2558,125 @@ class CronTokenTest(TestCase):
             resposta = self.client.post(url + '?forcar=1', HTTP_X_CRON_TOKEN='segredo-do-cron')
         self.assertEqual(resposta.status_code, 200)
         thread.assert_called_once()
+
+
+class VersaoDaImagemTest(TestCase):
+    """A versao acompanha o base64 sem que as listagens precisem carrega-lo."""
+
+    def setUp(self):
+        import base64
+        self.png = base64.b64encode(_imagem_bytes('PNG')).decode()
+        self.jpeg = base64.b64encode(_imagem_bytes('JPEG')).decode()
+        self.usuario = Usuario.objects.create_user(email='v@exemplo.com', username='v', password='x')
+
+    def test_versao_acompanha_a_imagem(self):
+        from .models import versao_da_imagem
+        presente = Presente.objects.create(usuario=self.usuario, descricao='Livro', imagem_base64=self.png)
+        self.assertEqual(presente.imagem_versao, versao_da_imagem(self.png))
+        self.assertEqual(presente.get_imagem_url(), f'/presente/{presente.pk}/imagem/?v={presente.imagem_versao}')
+
+        # save com update_fields tambem grava a versao
+        presente.imagem_base64 = self.jpeg
+        presente.save(update_fields=['imagem_base64'])
+        presente.refresh_from_db()
+        self.assertEqual(presente.imagem_versao, versao_da_imagem(self.jpeg))
+
+        presente.imagem_base64 = None
+        presente.save()
+        presente.refresh_from_db()
+        self.assertEqual(presente.imagem_versao, '')
+        self.assertFalse(presente.tem_imagem())
+
+    def test_save_sem_o_base64_carregado_nao_apaga_a_versao(self):
+        self.usuario.foto_base64 = self.png
+        self.usuario.save(update_fields=['foto_base64'])
+        versao = Usuario.objects.get(pk=self.usuario.pk).foto_versao
+        self.assertTrue(versao)
+        adiado = Usuario.objects.defer('foto_base64').get(pk=self.usuario.pk)
+        adiado.first_name = 'Outro'
+        adiado.save()
+        self.assertEqual(Usuario.objects.get(pk=self.usuario.pk).foto_versao, versao)
+
+    def test_com_base64_adiado_nao_busca_a_imagem(self):
+        from django.db import connection
+        from django.test.utils import CaptureQueriesContext
+        Presente.objects.create(usuario=self.usuario, descricao='Livro', imagem_base64=self.png)
+        presente = Presente.objects.defer('imagem_base64').get()
+        with CaptureQueriesContext(connection) as consultas:
+            self.assertTrue(presente.tem_imagem())
+            self.assertIn('?v=', presente.get_imagem_url())
+        self.assertEqual(len(consultas), 0)
+
+    def test_migracao_preenche_versoes_existentes(self):
+        import importlib
+        from django.apps import apps
+        from .models import versao_da_imagem
+        grupo = Grupo.objects.create(nome='G', imagem_base64=self.png)
+        Grupo.objects.filter(pk=grupo.pk).update(imagem_versao='')
+        Usuario.objects.filter(pk=self.usuario.pk).update(foto_base64=self.jpeg, foto_versao='')
+        migracao = importlib.import_module('presentes.migrations.0013_versao_das_imagens')
+        migracao.preencher_versoes(apps, None)
+        self.assertEqual(Grupo.objects.get(pk=grupo.pk).imagem_versao, versao_da_imagem(self.png))
+        self.assertEqual(Usuario.objects.get(pk=self.usuario.pk).foto_versao, versao_da_imagem(self.jpeg))
+
+
+class ListagemSemBase64Test(TestCase):
+    """As listagens nao embutem fotos no HTML nem trazem o base64 do banco."""
+
+    def setUp(self):
+        import base64
+        self.foto = base64.b64encode(_imagem_bytes('PNG')).decode()
+        self.grupo = Grupo.objects.create(nome='Familia', imagem_base64=self.foto)
+        self.eu = Usuario.objects.create_user(email='eu@exemplo.com', username='eu', password='x',
+                                              first_name='Eu')
+        self.outro = Usuario.objects.create_user(email='outro@exemplo.com', username='outro', password='x',
+                                                 first_name='Outro', foto_base64=self.foto, foto_tipo='image/png')
+        GrupoMembro.objects.create(grupo=self.grupo, usuario=self.eu, e_mantenedor=True)
+        GrupoMembro.objects.create(grupo=self.grupo, usuario=self.outro)
+        self.eu.grupo_ativo = self.grupo
+        self.eu.save()
+        for i in range(5):
+            Presente.objects.create(grupo=self.grupo, usuario=self.outro, descricao=f'Presente {i}',
+                                    imagem_base64=self.foto, imagem_tipo='image/png')
+        self.client.force_login(self.eu)
+
+    def test_avatar_vem_pela_url_versionada(self):
+        html = self.client.get(reverse('lista_usuarios')).content.decode()
+        self.assertNotIn('data:image', html)
+        self.assertNotIn(self.foto[:40], html)
+        self.assertIn(f'/usuario/{self.outro.pk}/foto/?v={self.outro.foto_versao}', html)
+
+    def test_listagens_nao_selecionam_o_base64_dos_presentes(self):
+        from django.db import connection
+        from django.test.utils import CaptureQueriesContext
+        urls = (reverse('lista_usuarios'), reverse('presentes_usuario', args=[self.outro.pk]),
+                reverse('grupos_lista'), reverse('gerenciar_membros', args=[self.grupo.pk]))
+        for url in urls:
+            with self.subTest(url=url), CaptureQueriesContext(connection) as consultas:
+                self.assertEqual(self.client.get(url).status_code, 200)
+            for consulta in consultas.captured_queries:
+                sql = consulta['sql']
+                if 'FROM "presentes_presente"' in sql:
+                    self.assertNotIn('"imagem_base64"', sql)
+                if 'FROM "presentes_grupomembro"' in sql:
+                    self.assertNotIn('"foto_base64"', sql)
+                    self.assertNotIn('"imagem_base64"', sql)
+
+    def test_quantidade_de_consultas_nao_cresce_com_as_imagens(self):
+        from django.db import connection
+        from django.test.utils import CaptureQueriesContext
+        with CaptureQueriesContext(connection) as antes:
+            self.client.get(reverse('lista_usuarios'))
+        for i in range(5):
+            Presente.objects.create(grupo=self.grupo, usuario=self.outro, descricao=f'Mais {i}',
+                                    imagem_base64=self.foto, imagem_tipo='image/png')
+        with CaptureQueriesContext(connection) as depois:
+            self.client.get(reverse('lista_usuarios'))
+        self.assertEqual(len(depois), len(antes))
+
+    def test_cache_longo_so_com_a_versao_atual(self):
+        url = self.outro.get_foto_url()
+        self.assertIn('immutable', self.client.get(url)['Cache-Control'])
+        caminho = url.split('?')[0]
+        self.assertEqual(self.client.get(caminho)['Cache-Control'], 'private, max-age=300')
+        self.assertEqual(self.client.get(caminho + '?v=antiga')['Cache-Control'], 'private, max-age=300')

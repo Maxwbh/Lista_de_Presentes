@@ -10,7 +10,7 @@
         <!-- Imagem do grupo -->
         <div class="shrink-0 w-24 h-24 sm:w-28 sm:h-28 rounded-2xl overflow-hidden ring-4 ring-white/30 shadow-lg bg-white/15 flex items-center justify-center">
             {% if grupo.tem_imagem %}
-                <img src="{% url 'servir_imagem_grupo' grupo.pk %}" alt="{{ grupo.nome }}" class="w-full h-full object-cover">
+                <img src="{{ grupo.get_imagem_url }}" alt="{{ grupo.nome }}" class="w-full h-full object-cover">
             {% else %}
                 <i class="bi bi-people-fill text-4xl text-white/70"></i>
             {% endif %}

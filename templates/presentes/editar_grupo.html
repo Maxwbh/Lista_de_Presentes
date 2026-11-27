@@ -68,8 +68,8 @@
             <div class="flex items-start gap-5">
                 <!-- Preview: imagem atual ou nova -->
                 <div class="w-20 h-20 rounded-2xl bg-base-200 border border-base-300/40 flex items-center justify-center overflow-hidden shrink-0" id="logo-preview-box">
-                    {% if grupo.imagem_base64 %}
-                        <img src="{% url 'servir_imagem_grupo' grupo.id %}" alt="{{ grupo.nome }}"
+                    {% if grupo.tem_imagem %}
+                        <img src="{{ grupo.get_imagem_url }}" alt="{{ grupo.nome }}"
                              class="w-full h-full object-cover" id="logo-current">
                         <i class="bi bi-people text-2xl text-base-content/20" id="logo-placeholder" style="display: none;"></i>
                     {% else %}
