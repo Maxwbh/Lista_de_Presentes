@@ -11,7 +11,7 @@ Navegador / PWA (Tailwind + daisyUI, service worker, Web Push)
 Render (gunicorn + WhiteNoise)  ◄──  GitHub Actions (keep-alive, pesquisa de preços, relatório de acessos)
         │
         ▼
-Django 5.1 (app "presentes")
+Django 5.2 LTS (app "presentes")
    ├─ PostgreSQL (Supabase, schema lista_presentes) ou SQLite em desenvolvimento
    ├─ Lojas: páginas dos produtos e API do Mercado Livre (leitura de título, preço e foto)
    ├─ Brevo (e-mail por HTTP)

@@ -10,7 +10,7 @@ def versao_da_imagem(conteudo):
     """Identificador curto do conteudo da imagem (muda quando a imagem muda)."""
     if not conteudo:
         return ''
-    return hashlib.sha1(conteudo.encode('ascii', 'ignore')).hexdigest()[:12]
+    return hashlib.sha1(conteudo.encode('ascii', 'ignore'), usedforsecurity=False).hexdigest()[:12]
 
 
 class VersaoImagemMixin:

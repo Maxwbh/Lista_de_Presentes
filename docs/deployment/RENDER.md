@@ -36,18 +36,18 @@ Gunicorn (`gunicorn.conf.py`): 1 worker `gthread` com 4 threads, timeout de 120 
 3. Roda `collectstatic`.
 4. Testa a conexão com o banco e **falha se estiver em SQLite** (falta `DATABASE_URL`).
 5. Garante o schema `lista_presentes` (`scripts/ensure_schema.py`).
-6. Roda `makemigrations` e `migrate --run-syncdb`; se der `InconsistentMigrationHistory`, tenta `--fake-initial` e depois `fix_migration_history --reset`.
+6. Confere que nenhuma migração ficou sem commit (`makemigrations --check`) e roda `migrate --run-syncdb`. Qualquer falha para o deploy; um `InconsistentMigrationHistory` não é corrigido automaticamente.
 7. Roda `fix_admin` (cria/promove o superusuário).
 
 ### Arquivos estáticos
 
-Servidos pelo **WhiteNoise** via `STORAGES` do Django 5.1 com `CompressedManifestStaticFilesStorage`: cada versão do CSS/JS ganha nome com hash (ex.: `styles.<hash>.css`), então o navegador não fica com arquivo antigo após o deploy. O antigo `STATICFILES_STORAGE` é ignorado pelo Django 5.1; não o use.
+Servidos pelo **WhiteNoise** via `STORAGES` do Django com `CompressedManifestStaticFilesStorage`: cada versão do CSS/JS ganha nome com hash (ex.: `styles.<hash>.css`), então o navegador não fica com arquivo antigo após o deploy. O antigo `STATICFILES_STORAGE` não existe mais no Django 5.1+; não o use.
 
 ---
 
 ## 🔑 Variáveis de ambiente
 
-Já definidas no `render.yaml`: `PYTHON_VERSION=3.11.0`, `DEBUG=false`, `DJANGO_SETTINGS_MODULE`, `SECRET_KEY` (gerada), `ALLOWED_HOSTS`, `SITE_URL`, `GITHUB_REPO_OWNER`, `GITHUB_REPO_NAME`, `GITHUB_AUTO_CREATE_ISSUES`, `WEB_CONCURRENCY=1`, `GUNICORN_TIMEOUT=120`, `MAX_REQUESTS=1000`.
+Já definidas no `render.yaml`: `PYTHON_VERSION=3.11.18`, `DEBUG=false`, `DJANGO_SETTINGS_MODULE`, `SECRET_KEY` (gerada), `ALLOWED_HOSTS`, `SITE_URL`, `GITHUB_REPO_OWNER`, `GITHUB_REPO_NAME`, `GITHUB_AUTO_CREATE_ISSUES`, `WEB_CONCURRENCY=1`, `GUNICORN_TIMEOUT=120`, `MAX_REQUESTS=1000`.
 
 Preencher no Dashboard:
 
@@ -94,7 +94,7 @@ Configuração no GitHub (**Settings → Secrets and variables → Actions**):
 | `Using SQLite instead of PostgreSQL!` | `DATABASE_URL` ausente. Adicione em Environment e refaça o deploy |
 | `Network is unreachable` | Host direto do Supabase (IPv6). Use o Connection Pooler (`*.pooler.supabase.com`) |
 | `password authentication failed` | Senha com caracteres especiais sem URL encoding (`@` → `%40`, `#` → `%23`, `!` → `%21`) |
-| `InconsistentMigrationHistory` | O `build.sh` tenta corrigir sozinho. Se persistir, veja [migrations.md](../database/migrations.md) |
+| `InconsistentMigrationHistory` | O deploy para sem alterar o histórico. Corrija da sua máquina com `fix_migration_history` (veja [migrations.md](../database/migrations.md)) e refaça o deploy |
 | CSS/JS desatualizado ou 404 em estáticos | Confira no log do build a compilação do Tailwind e o `collectstatic`; não defina `STATICFILES_STORAGE` |
 | E-mail não chega | Confira `BREVO_API_KEY` e se o remetente de `DEFAULT_FROM_EMAIL` está verificado na Brevo. SMTP não funciona no Free |
 | Workflows de cron falham com 403/503 | `CRON_TOKEN` diferente entre Render e GitHub, ou ausente no Render |

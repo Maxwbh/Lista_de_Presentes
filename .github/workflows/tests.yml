@@ -44,7 +44,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-          pip install coverage pytest pytest-django
+          pip install coverage
 
       - name: Create .env file
         run: |
@@ -66,14 +66,11 @@ jobs:
           python manage.py makemigrations --check --dry-run
           python manage.py migrate --noinput
 
-      - name: Run tests
-        run: |
-          python manage.py test --verbosity=2
-
       - name: Run tests with coverage
         run: |
-          coverage run --source='.' manage.py test
-          coverage report
+          coverage run manage.py test --verbosity=2
+          # Piso de cobertura: a suite nao pode encolher sem alguem perceber
+          coverage report --fail-under=60
           coverage html
 
       - name: Upload coverage report
@@ -82,10 +79,6 @@ jobs:
         with:
           name: coverage-report
           path: htmlcov/
-
-      - name: Check for missing migrations
-        run: |
-          python manage.py makemigrations --check --dry-run
 
   lint:
     runs-on: ubuntu-latest
@@ -102,25 +95,16 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install flake8 black isort
+          pip install flake8
 
-      - name: Run flake8
-        continue-on-error: true
+      - name: flake8 (erros que quebram o codigo)
+        # Falha o job: erros de sintaxe e nomes indefinidos
         run: |
-          # Stop the build if there are Python syntax errors or undefined names
           flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
-          # Exit-zero treats all errors as warnings
+
+      - name: flake8 (relatorio de estilo, nao bloqueia)
+        run: |
           flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
-
-      - name: Check code formatting with black
-        continue-on-error: true
-        run: |
-          black --check --diff .
-
-      - name: Check import sorting with isort
-        continue-on-error: true
-        run: |
-          isort --check-only --diff .
 
   security:
     runs-on: ubuntu-latest
@@ -137,16 +121,18 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          pip install safety bandit
+          pip install pip-audit bandit
 
-      - name: Check for known security vulnerabilities
-        continue-on-error: true
+      - name: Vulnerabilidades conhecidas nas dependencias (pip-audit)
+        # Falha o job se alguma dependencia tiver aviso de seguranca.
+        # PYSEC-2025-183 (CVE-2025-45768, PyJWT): contestado pelo mantenedor e
+        # sem versao corrigida; o tamanho da chave e responsabilidade de quem
+        # chama, e o PyJWT so e usado pelo login social (desativado).
         run: |
-          safety check --json
+          pip-audit -r requirements.txt --progress-spinner off --ignore-vuln PYSEC-2025-183
 
-      - name: Run bandit security linter
-        continue-on-error: true
+      - name: Analise estatica de seguranca (bandit)
+        # Falha o job com achados de severidade media ou alta
         run: |
           bandit -r presentes/ lista_presentes/ -f json -o bandit-report.json || true
           bandit -r presentes/ lista_presentes/ -ll

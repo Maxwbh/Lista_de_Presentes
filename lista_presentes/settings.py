@@ -32,9 +32,7 @@ INSTALLED_APPS = [
     'presentes',
     'theme',
     'tailwind',
-    'rest_framework',
     'pwa',
-    'corsheaders',
     # Django-allauth
     'allauth',
     'allauth.account',
@@ -53,7 +51,6 @@ MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',  # Servir arquivos estáticos em produção
     'django.contrib.sessions.middleware.SessionMiddleware',
-    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -435,11 +432,10 @@ AUTHENTICATION_BACKENDS = [
 # ACCOUNT_LOGIN_METHODS substitui o ACCOUNT_AUTHENTICATION_METHOD (deprecado) e
 # EXIGE ACCOUNT_EMAIL_REQUIRED = True — sem essa chave o system check derruba o boot.
 ACCOUNT_LOGIN_METHODS = {'email'}  # login por email (não por username)
-ACCOUNT_EMAIL_REQUIRED = True
 ACCOUNT_UNIQUE_EMAIL = True
-ACCOUNT_USERNAME_REQUIRED = False
+# E-mail obrigatorio, sem username e e-mail digitado uma vez so
+ACCOUNT_SIGNUP_FIELDS = ['email*', 'password1*', 'password2*']
 ACCOUNT_EMAIL_VERIFICATION = 'optional'  # 'mandatory', 'optional', ou 'none'
-ACCOUNT_SIGNUP_EMAIL_ENTER_TWICE = False
 ACCOUNT_SESSION_REMEMBER = True
 ACCOUNT_LOGOUT_ON_GET = False
 

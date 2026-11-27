@@ -126,42 +126,37 @@ else
     echo "   Continuing anyway (schema may already exist)..."
 fi
 
-# Create migrations (if any model changes)
-echo "🔄 Creating migrations..."
-python manage.py makemigrations --noinput || echo "⚠️  No migrations to create"
+# Migrações são criadas no desenvolvimento e versionadas no Git; o deploy
+# só confere que nenhuma ficou faltando (gerar aqui criaria arquivos que
+# não existem no repositório).
+echo "🔍 Checking that all migrations are committed..."
+if ! python manage.py makemigrations --check --dry-run; then
+    echo "❌ Há mudanças nos models sem migração versionada."
+    echo "   Rode 'python manage.py makemigrations' localmente e faça commit."
+    exit 1
+fi
 
 # Check for pending migrations
 echo "🔍 Checking for pending migrations..."
 python manage.py showmigrations --plan || echo "⚠️  Could not show migrations"
 
-# Run migrations with automatic fix for inconsistent history
+# Run migrations. Falha para o deploy em vez de mexer no histórico sozinho:
+# corrigir histórico de migrações (fake/reset) é decisão manual.
 echo "🗄️  Running migrations..."
+set -o pipefail
 if ! python manage.py migrate --noinput --run-syncdb 2>&1 | tee /tmp/migrate_output.log; then
-    # Check if error is InconsistentMigrationHistory
     if grep -q "InconsistentMigrationHistory" /tmp/migrate_output.log; then
         echo ""
-        echo "⚠️  InconsistentMigrationHistory detected!"
-        echo "🔧 Auto-fixing migration history..."
-        echo ""
-
-        # Try to fix with --fake-initial first
-        if python manage.py migrate --fake-initial --noinput; then
-            echo "✅ Fixed with --fake-initial"
-        else
-            echo "⚠️  --fake-initial failed, trying full reset..."
-            # Use fix_migration_history command as last resort
-            python manage.py fix_migration_history --reset
-        fi
-
-        echo ""
-        echo "🔄 Retrying migrations after fix..."
-        python manage.py migrate --noinput --run-syncdb
+        echo "❌ InconsistentMigrationHistory: o histórico de migrações no banco não bate com o código."
+        echo "   Nada foi alterado automaticamente. Para corrigir, da sua máquina, com a"
+        echo "   DATABASE_URL do Supabase: python manage.py fix_migration_history"
+        echo "   (veja docs/deployment/RENDER.md)."
     else
-        echo "❌ Migration failed with different error"
-        cat /tmp/migrate_output.log
-        exit 1
+        echo "❌ Migration failed"
     fi
+    exit 1
 fi
+set +o pipefail
 
 # Verify migrations applied
 echo "✅ Verifying migrations..."

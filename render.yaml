@@ -21,7 +21,7 @@ services:
     # Variáveis de ambiente
     envVars:
       - key: PYTHON_VERSION
-        value: 3.11.0
+        value: 3.11.18  # último patch do 3.11 (o Django só dá suporte oficial ao patch mais recente)
 
       - key: DEBUG
         value: false

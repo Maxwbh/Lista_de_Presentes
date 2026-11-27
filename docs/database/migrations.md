@@ -1,4 +1,4 @@
-# 🔧 Correção Automática de Histórico de Migrações
+# 🔧 Correção de Histórico de Migrações
 
 ## 🎯 Problema Resolvido
 
@@ -27,24 +27,27 @@ Este erro ocorre quando as migrações Django foram aplicadas em ordem incorreta
 
 ---
 
-## ✅ Solução Automática Implementada
+## ✅ Como corrigir
 
-### 🔄 Correção Automática no Build
+### O deploy não corrige sozinho
 
-O script `build.sh` agora detecta e corrige automaticamente este problema:
+O `build.sh` **para o deploy** quando encontra este erro e não mexe no histórico.
+Marcar migrações como aplicadas (`--fake-initial`) ou apagar o histórico
+(`--reset`) pode esconder uma tabela que de fato não foi criada, então é uma
+decisão manual. No log do build aparece:
 
 ```bash
 🗄️  Running migrations...
-⚠️  InconsistentMigrationHistory detected!
-🔧 Auto-fixing migration history...
-✅ Fixed with --fake-initial
-🔄 Retrying migrations after fix...
-✅ All migrations applied successfully
+❌ InconsistentMigrationHistory: o histórico de migrações no banco não bate com o código.
+   Nada foi alterado automaticamente. ...
 ```
 
-### 📋 Estratégias de Correção (em ordem de tentativa)
+Como o Render Free não tem shell, rode os comandos abaixo **da sua máquina**,
+com a `DATABASE_URL` do Supabase, e depois refaça o deploy.
 
-#### 1️⃣ **Método 1: --fake-initial** (Primeiro tentado)
+### 📋 Estratégias de correção (nesta ordem)
+
+#### 1️⃣ **Método 1: --fake-initial** (tente primeiro)
 
 ```bash
 python manage.py migrate --fake-initial --noinput
@@ -61,7 +64,7 @@ python manage.py migrate --fake-initial --noinput
 - ✅ Não modifica dados
 - ✅ Resolve 90% dos casos
 
-#### 2️⃣ **Método 2: Reset + --fake-initial** (Fallback)
+#### 2️⃣ **Método 2: Reset + --fake-initial** (último recurso)
 
 ```bash
 python manage.py fix_migration_history --reset
@@ -90,7 +93,7 @@ python manage.py showmigrations --list
 
 Se você ver o erro `InconsistentMigrationHistory`, use:
 
-### Opção 1: Correção Automática
+### Opção 1: Deixar o comando escolher
 
 ```bash
 # Deixa o comando decidir a melhor estratégia
