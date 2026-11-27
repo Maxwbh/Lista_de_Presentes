@@ -90,7 +90,8 @@ def obter(url, **kwargs):
     if callable(existentes):
         existentes = [existentes]
     hooks['response'] = [_conferir_redirecionamento, *existentes]
-    return requests.get(url, hooks=hooks, **kwargs)
+    timeout = kwargs.pop('timeout', 15)
+    return requests.get(url, hooks=hooks, timeout=timeout, **kwargs)
 
 
 def identificar_imagem(dados):

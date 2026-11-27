@@ -11,7 +11,7 @@ Guia técnico da **Lista de Presentes**: instalação local, configuração, tes
 - Opcional: PostgreSQL 15+ (sem ele, o app usa SQLite)
 - Opcional: Node.js/npm, só para recompilar o CSS (Tailwind)
 
-Stack: Django 5.1.9, Tailwind CSS 3 + daisyUI 4, WhiteNoise, Gunicorn. Dependências em [`requirements.txt`](../../requirements.txt).
+Stack: Django 5.2 LTS, Tailwind CSS 3 + daisyUI 4, WhiteNoise, Gunicorn. Dependências em [`requirements.txt`](../../requirements.txt).
 
 ---
 

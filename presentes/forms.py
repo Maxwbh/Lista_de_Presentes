@@ -1,6 +1,15 @@
 from django import forms
 from django.contrib.auth.forms import UserCreationForm
+from django.db import models
 from .models import Usuario, Presente, Grupo, GrupoMembro
+
+
+def _url_assume_https(campo, **kwargs):
+    """Links digitados sem esquema viram https:// (padrao do Django 6)."""
+    if isinstance(campo, models.URLField):
+        kwargs.setdefault('assume_scheme', 'https')
+    return campo.formfield(**kwargs)
+
 
 class UsuarioRegistroForm(UserCreationForm):
     email = forms.EmailField(required=True, widget=forms.EmailInput(attrs={
@@ -91,6 +100,7 @@ class LoginForm(forms.Form):
 class PresenteForm(forms.ModelForm):
     url_imagem = forms.URLField(
         required=False,
+        assume_scheme='https',
         label='URL da Imagem',
         widget=forms.URLInput(attrs={
             'class': 'input input-bordered w-full flex-1 min-w-0 rounded-xl',
@@ -102,6 +112,7 @@ class PresenteForm(forms.ModelForm):
     class Meta:
         model = Presente
         fields = ['descricao', 'url', 'preco', 'imagem']
+        formfield_callback = _url_assume_https
         widgets = {
             'descricao': forms.Textarea(attrs={
                 'class': 'textarea textarea-bordered w-full rounded-xl text-base',
@@ -150,6 +161,7 @@ class GrupoForm(forms.ModelForm):
     """Form para criacao e edicao de grupos"""
     url_imagem = forms.URLField(
         required=False,
+        assume_scheme='https',
         label='URL da Imagem do Grupo',
         widget=forms.URLInput(attrs={
             'class': 'form-control',

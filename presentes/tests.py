@@ -2680,3 +2680,220 @@ class ListagemSemBase64Test(TestCase):
         caminho = url.split('?')[0]
         self.assertEqual(self.client.get(caminho)['Cache-Control'], 'private, max-age=300')
         self.assertEqual(self.client.get(caminho + '?v=antiga')['Cache-Control'], 'private, max-age=300')
+
+
+class FluxosDePresentesTest(TestCase):
+    """Cadastro, edicao, exclusao e precos de presentes pelas telas."""
+
+    def setUp(self):
+        self.grupo = Grupo.objects.create(nome='Familia')
+        self.eu = Usuario.objects.create_user(email='eu@exemplo.com', username='eu', password='x', first_name='Eu')
+        self.outro = Usuario.objects.create_user(email='outro@exemplo.com', username='outro', password='x')
+        for usuario in (self.eu, self.outro):
+            GrupoMembro.objects.create(grupo=self.grupo, usuario=usuario)
+            usuario.grupo_ativo = self.grupo
+            usuario.save()
+        self.client.force_login(self.eu)
+        # A busca de precos roda numa thread; nos testes ela nao deve sair para a rede
+        self.thread = mock.patch('threading.Thread').start()
+        self.addCleanup(mock.patch.stopall)
+
+    def test_telas_principais_abrem(self):
+        Presente.objects.create(grupo=self.grupo, usuario=self.eu, descricao='Livro', preco=10)
+        for nome in ('dashboard', 'meus_presentes', 'adicionar_presente', 'notificacoes', 'grupos_lista',
+                     'criar_grupo', 'editar_perfil'):
+            with self.subTest(tela=nome):
+                self.assertEqual(self.client.get(reverse(nome)).status_code, 200)
+
+    def test_adicionar_presente_vindo_do_compartilhamento_ja_preenche(self):
+        resposta = self.client.get(reverse('adicionar_presente'),
+                                   {'url': 'https://loja.com.br/produto', 'descricao': 'Livro'})
+        self.assertEqual(resposta.context['form'].initial['url'], 'https://loja.com.br/produto')
+        self.assertTrue(resposta.context['buscar_automaticamente'])
+
+    def test_adicionar_presente_com_foto(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        foto = SimpleUploadedFile('foto.png', _imagem_bytes('PNG'), content_type='image/png')
+        resposta = self.client.post(reverse('adicionar_presente'), {
+            'descricao': 'Livro de receitas', 'preco': '59.90', 'url': 'loja.com.br/livro', 'imagem': foto,
+        })
+        self.assertRedirects(resposta, reverse('meus_presentes'), fetch_redirect_response=False)
+        presente = Presente.objects.get()
+        self.assertEqual((presente.usuario, presente.grupo), (self.eu, self.grupo))
+        self.assertEqual(presente.imagem_tipo, 'image/png')
+        self.assertTrue(presente.imagem_versao)
+        # Link sem esquema vira https (padrao do Django 6)
+        self.assertEqual(presente.url, 'https://loja.com.br/livro')
+        self.assertEqual(presente.historico_precos.get().fonte, 'cadastro')
+        self.thread.assert_called_once()
+
+    def test_adicionar_presente_sem_preco_nao_salva(self):
+        resposta = self.client.post(reverse('adicionar_presente'), {'descricao': 'Livro'})
+        self.assertEqual(resposta.status_code, 200)
+        self.assertIn('preco', resposta.context['form'].errors)
+        self.assertFalse(Presente.objects.exists())
+
+    def test_editar_e_excluir_so_o_proprio_presente(self):
+        meu = Presente.objects.create(grupo=self.grupo, usuario=self.eu, descricao='Livro', preco=10)
+        dele = Presente.objects.create(grupo=self.grupo, usuario=self.outro, descricao='Bola', preco=20)
+
+        self.assertEqual(self.client.get(reverse('editar_presente', args=[meu.pk])).status_code, 200)
+        self.client.post(reverse('editar_presente', args=[meu.pk]), {'descricao': 'Livro novo', 'preco': '12.50'})
+        meu.refresh_from_db()
+        self.assertEqual((meu.descricao, str(meu.preco)), ('Livro novo', '12.50'))
+
+        for nome in ('editar_presente', 'deletar_presente'):
+            with self.subTest(tela=nome):
+                self.assertEqual(self.client.get(reverse(nome, args=[dele.pk])).status_code, 404)
+
+        self.assertEqual(self.client.get(reverse('deletar_presente', args=[meu.pk])).status_code, 200)
+        self.client.post(reverse('deletar_presente', args=[meu.pk]))
+        self.assertFalse(Presente.objects.filter(pk=meu.pk).exists())
+        self.assertTrue(Presente.objects.filter(pk=dele.pk).exists())
+
+    def test_aplicar_preco_da_sugestao(self):
+        presente = Presente.objects.create(grupo=self.grupo, usuario=self.eu, descricao='Livro', preco=50)
+        sugestao = SugestaoCompra.objects.create(grupo=self.grupo, presente=presente, local_compra='Loja',
+                                                 url_compra='https://loja.com.br/livro', preco_sugerido=39)
+        url = reverse('aplicar_preco', args=[presente.pk, sugestao.pk])
+        self.assertRedirects(self.client.get(url), reverse('ver_sugestoes', args=[presente.pk]))
+        presente.refresh_from_db()
+        self.assertEqual(presente.preco, 50)
+
+        self.client.post(url)
+        presente.refresh_from_db()
+        self.assertEqual(presente.preco, 39)
+        self.assertEqual(presente.historico_precos.get().fonte, 'aplicado')
+        self.assertEqual(self.client.get(reverse('ver_sugestoes', args=[presente.pk])).status_code, 200)
+
+    def test_notificacoes_sao_marcadas_como_lidas(self):
+        Notificacao.objects.create(grupo=self.grupo, usuario=self.eu, mensagem='Oi')
+        self.assertEqual(self.client.get(reverse('notificacoes_json')).json()['count'], 1)
+        resposta = self.client.get(reverse('notificacoes'))
+        self.assertEqual(resposta.context['total_nao_lidas'], 1)
+        self.assertEqual(self.client.get(reverse('notificacoes_json')).json()['count'], 0)
+
+    def test_compras_do_grupo_em_json(self):
+        presente = Presente.objects.create(grupo=self.grupo, usuario=self.outro, descricao='Bola', preco=20)
+        self.client.post(reverse('marcar_comprado', args=[presente.pk]))
+        dados = self.client.get(reverse('compras_json')).json()
+        self.assertEqual(dados['total'], 1)
+
+
+class FluxosDeGruposTest(TestCase):
+    """Criacao, edicao e participacao em grupos."""
+
+    def setUp(self):
+        self.admin = Usuario.objects.create_user(email='admin@exemplo.com', username='admin', password='x',
+                                                 first_name='Ana')
+        self.membro = Usuario.objects.create_user(email='membro@exemplo.com', username='membro', password='x')
+        self.grupo = Grupo.objects.create(nome='Familia')
+        GrupoMembro.objects.create(grupo=self.grupo, usuario=self.admin, e_mantenedor=True)
+        GrupoMembro.objects.create(grupo=self.grupo, usuario=self.membro)
+        self.client.force_login(self.admin)
+
+    def test_criar_grupo_deixa_o_criador_como_mantenedor_e_ativo(self):
+        self.client.post(reverse('criar_grupo'), {'nome': 'Amigos', 'descricao': ''})
+        grupo = Grupo.objects.get(nome='Amigos')
+        self.assertTrue(GrupoMembro.objects.get(grupo=grupo, usuario=self.admin).e_mantenedor)
+        self.admin.refresh_from_db()
+        self.assertEqual(self.admin.grupo_ativo, grupo)
+
+    def test_so_mantenedor_edita_o_grupo(self):
+        url = reverse('editar_grupo', args=[self.grupo.pk])
+        self.assertEqual(self.client.get(url).status_code, 200)
+        self.client.post(url, {'nome': 'Familia Silva', 'descricao': 'Natal'})
+        self.grupo.refresh_from_db()
+        self.assertEqual(self.grupo.nome, 'Familia Silva')
+
+        self.client.force_login(self.membro)
+        self.assertRedirects(self.client.post(url, {'nome': 'Invadido'}), reverse('grupos_lista'),
+                             fetch_redirect_response=False)
+        self.grupo.refresh_from_db()
+        self.assertEqual(self.grupo.nome, 'Familia Silva')
+
+    def test_adicionar_membro_pelo_email(self):
+        novo = Usuario.objects.create_user(email='novo@exemplo.com', username='novo', password='x')
+        url = reverse('adicionar_membro', args=[self.grupo.pk])
+        self.client.post(url, {'email': 'NOVO@exemplo.com'})
+        self.assertTrue(GrupoMembro.objects.filter(grupo=self.grupo, usuario=novo).exists())
+        novo.refresh_from_db()
+        self.assertEqual(novo.grupo_ativo, self.grupo)
+        self.assertTrue(Notificacao.objects.filter(usuario=novo, grupo=self.grupo).exists())
+
+        self.client.post(url, {'email': 'ninguem@exemplo.com'})
+        self.assertEqual(GrupoMembro.objects.filter(grupo=self.grupo).count(), 3)
+
+        self.client.force_login(self.membro)
+        outro = Usuario.objects.create_user(email='outro@exemplo.com', username='outro', password='x')
+        self.client.post(url, {'email': 'outro@exemplo.com'})
+        self.assertFalse(GrupoMembro.objects.filter(usuario=outro).exists())
+
+    def test_entrar_com_codigo_aceita_codigo_ou_link(self):
+        url = reverse('entrar_com_codigo')
+        convite = reverse('convite_grupo', args=[self.grupo.codigo_convite])
+        for valor in (self.grupo.codigo_convite, 'https://site.com.br' + convite):
+            with self.subTest(valor=valor):
+                self.assertRedirects(self.client.post(url, {'codigo': valor}), convite,
+                                     fetch_redirect_response=False)
+        self.assertRedirects(self.client.post(url, {'codigo': 'nao-existe'}), reverse('grupos_lista'),
+                             fetch_redirect_response=False)
+
+    def test_ultimo_mantenedor_nao_sai_mas_membro_sai(self):
+        url = reverse('sair_grupo', args=[self.grupo.pk])
+        self.client.post(url)
+        self.assertTrue(GrupoMembro.objects.filter(grupo=self.grupo, usuario=self.admin).exists())
+
+        self.membro.grupo_ativo = self.grupo
+        self.membro.save()
+        self.client.force_login(self.membro)
+        self.client.post(url)
+        self.assertFalse(GrupoMembro.objects.filter(grupo=self.grupo, usuario=self.membro).exists())
+        self.membro.refresh_from_db()
+        self.assertIsNone(self.membro.grupo_ativo)
+
+    def test_mantenedor_desativa_e_reativa_o_grupo(self):
+        url = reverse('toggle_ativo_grupo', args=[self.grupo.pk])
+        self.client.post(url)
+        self.grupo.refresh_from_db()
+        self.assertFalse(self.grupo.ativo)
+        self.client.post(url)
+        self.grupo.refresh_from_db()
+        self.assertTrue(self.grupo.ativo)
+
+
+class PerfilESessaoTest(TestCase):
+
+    def setUp(self):
+        self.usuario = Usuario.objects.create_user(email='eu@exemplo.com', username='eu', password='x',
+                                                   first_name='Eu', last_name='Mesmo')
+        self.client.force_login(self.usuario)
+
+    def _dados(self, **extra):
+        dados = {'first_name': 'Novo', 'last_name': 'Nome', 'email': 'eu@exemplo.com', 'telefone': '',
+                 'username': 'eu', 'avatar': 'avatar-3'}
+        dados.update(extra)
+        return dados
+
+    def test_editar_perfil_trocar_e_remover_foto(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        foto = SimpleUploadedFile('eu.jpg', _imagem_bytes('JPEG'), content_type='image/jpeg')
+        self.client.post(reverse('editar_perfil'), self._dados(foto=foto))
+        self.usuario.refresh_from_db()
+        self.assertEqual((self.usuario.first_name, self.usuario.avatar), ('Novo', 'avatar-3'))
+        self.assertEqual(self.usuario.foto_tipo, 'image/jpeg')
+        self.assertTrue(self.usuario.foto_versao)
+
+        self.client.post(reverse('editar_perfil'), self._dados(remover_foto='True'))
+        self.usuario.refresh_from_db()
+        self.assertIsNone(self.usuario.foto_base64)
+        self.assertEqual(self.usuario.foto_versao, '')
+
+    def test_email_de_outra_conta_e_recusado(self):
+        Usuario.objects.create_user(email='outra@exemplo.com', username='outra', password='x')
+        resposta = self.client.post(reverse('editar_perfil'), self._dados(email='outra@exemplo.com'))
+        self.assertIn('email', resposta.context['form'].errors)
+
+    def test_logout_encerra_a_sessao(self):
+        self.assertRedirects(self.client.get(reverse('logout')), reverse('login'), fetch_redirect_response=False)
+        self.assertEqual(self.client.get(reverse('dashboard')).status_code, 302)

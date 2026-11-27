@@ -10,7 +10,7 @@ Cada pessoa monta a sua lista colando o link do produto. Os outros veem o que fa
 
 ![Tests](https://github.com/Maxwbh/Lista_de_Presentes/actions/workflows/tests.yml/badge.svg)
 ![Python](https://img.shields.io/badge/python-3.11%20%7C%203.12-0D1B4B.svg)
-![Django](https://img.shields.io/badge/django-5.1-0891B2.svg)
+![Django](https://img.shields.io/badge/django-5.2_LTS-0891B2.svg)
 ![PWA](https://img.shields.io/badge/PWA-instal%C3%A1vel-06B6D4.svg)
 ![License](https://img.shields.io/badge/license-MIT-5F6C88.svg)
 
@@ -89,7 +89,7 @@ Cada pessoa monta a sua lista colando o link do produto. Os outros veem o que fa
 
 ## 🛠️ Para desenvolvedores
 
-**Stack:** Python 3.11+ · Django 5.1 · PostgreSQL · Tailwind CSS + daisyUI · Render · GitHub Actions
+**Stack:** Python 3.11+ · Django 5.2 LTS · PostgreSQL · Tailwind CSS + daisyUI · Render · GitHub Actions
 
 ### Rodando localmente
 

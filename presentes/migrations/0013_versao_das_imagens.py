@@ -8,7 +8,7 @@ from django.db import migrations, models
 def _versao(conteudo):
     if not conteudo:
         return ''
-    return hashlib.sha1(conteudo.encode('ascii', 'ignore')).hexdigest()[:12]
+    return hashlib.sha1(conteudo.encode('ascii', 'ignore'), usedforsecurity=False).hexdigest()[:12]
 
 
 def preencher_versoes(apps, schema_editor):

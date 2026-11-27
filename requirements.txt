@@ -1,12 +1,8 @@
 # Core Django
-Django==5.1.9
+Django==5.2.19
 
 # Database drivers
 psycopg2-binary==2.9.10
-
-# API & REST
-djangorestframework==3.15.2
-django-cors-headers==4.6.0
 
 # PWA Support
 django-pwa==1.1.0
@@ -17,14 +13,14 @@ django-tailwind==3.8.0
 # AI Integration
 anthropic==0.52.0
 openai==1.82.0
-requests==2.32.3
+requests==2.34.2
 
 # Web Scraping
 beautifulsoup4==4.13.4
-lxml==5.4.0
+lxml==6.2.0
 
 # Image processing
-Pillow==11.2.1
+Pillow==13.0.0
 
 # Production server
 gunicorn==23.0.0
@@ -33,14 +29,14 @@ gunicorn==23.0.0
 whitenoise==6.9.0
 
 # Environment variables
-python-dotenv==1.1.0
+python-dotenv==1.2.4
 
 # Database URL parser
 dj-database-url==2.3.0
 
 # Social Authentication
-django-allauth==65.4.1
-PyJWT[crypto]==2.9.0
+django-allauth==65.23.0
+PyJWT[crypto]==2.15.1
 
 # Web Push Notifications
 pywebpush==2.0.1
