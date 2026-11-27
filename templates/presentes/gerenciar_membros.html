@@ -126,21 +126,27 @@
                 <!-- Ações -->
                 {% if membro.usuario != request.user %}
                 <div class="flex gap-1 shrink-0">
-                    <a href="{% url 'toggle_mantenedor' grupo.id membro.usuario.id %}"
-                       class="btn btn-ghost btn-sm btn-square rounded-xl text-base-content/40 hover:text-primary hover:bg-primary/10"
-                       title="{% if membro.e_mantenedor %}Remover privilégios de admin{% else %}Promover a admin{% endif %}">
-                        {% if membro.e_mantenedor %}
-                            <i class="bi bi-shield-slash"></i>
-                        {% else %}
-                            <i class="bi bi-shield-plus"></i>
-                        {% endif %}
-                    </a>
-                    <a href="{% url 'remover_membro' grupo.id membro.usuario.id %}"
-                       class="btn btn-ghost btn-sm btn-square rounded-xl text-base-content/40 hover:text-error hover:bg-error/10"
-                       onclick="return confirm('Deseja realmente remover {{ membro.usuario.get_full_name|default:membro.usuario.email }} do grupo?')"
-                       title="Remover do grupo">
-                        <i class="bi bi-person-x"></i>
-                    </a>
+                    <form method="post" action="{% url 'toggle_mantenedor' grupo.id membro.usuario.id %}">
+                        {% csrf_token %}
+                        <button type="submit"
+                           class="btn btn-ghost btn-sm btn-square rounded-xl text-base-content/40 hover:text-primary hover:bg-primary/10"
+                           title="{% if membro.e_mantenedor %}Remover privilégios de admin{% else %}Promover a admin{% endif %}">
+                            {% if membro.e_mantenedor %}
+                                <i class="bi bi-shield-slash"></i>
+                            {% else %}
+                                <i class="bi bi-shield-plus"></i>
+                            {% endif %}
+                        </button>
+                    </form>
+                    <form method="post" action="{% url 'remover_membro' grupo.id membro.usuario.id %}"
+                          onsubmit="return confirm('Deseja realmente remover {{ membro.usuario.get_full_name|default:membro.usuario.email|escapejs }} do grupo?')">
+                        {% csrf_token %}
+                        <button type="submit"
+                           class="btn btn-ghost btn-sm btn-square rounded-xl text-base-content/40 hover:text-error hover:bg-error/10"
+                           title="Remover do grupo">
+                            <i class="bi bi-person-x"></i>
+                        </button>
+                    </form>
                 </div>
                 {% endif %}
             </div>
@@ -167,7 +173,7 @@
                 {% csrf_token %}
                 {% if grupo.ativo %}
                 <button type="submit" class="btn btn-sm btn-ghost border border-error/30 text-error rounded-xl gap-1.5 text-xs font-semibold hover:bg-error/10"
-                        onclick="return confirm('Desativar o grupo {{ grupo.nome }}? Os membros não poderão mais acessá-lo.')">
+                        onclick="return confirm('Desativar o grupo {{ grupo.nome|escapejs }}? Os membros não poderão mais acessá-lo.')">
                     <i class="bi bi-pause-circle"></i> Desativar Grupo
                 </button>
                 {% else %}
@@ -208,7 +214,7 @@ function copiarCodigo(btn) {
 function compartilharLink() {
     if (navigator.share) {
         navigator.share({
-            title: 'Convite para {{ grupo.nome }}',
+            title: 'Convite para {{ grupo.nome|escapejs }}',
             text: 'Junte-se ao meu grupo na Lista de Presentes!',
             url: '{{ link_convite }}'
         }).catch(err => console.log('Erro ao compartilhar:', err));

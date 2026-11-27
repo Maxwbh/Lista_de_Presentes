@@ -16,6 +16,8 @@ import requests
 from django.conf import settings
 from django.utils import timezone
 
+from .rede import obter
+
 logger = logging.getLogger(__name__)
 
 API_BASE_URL = 'https://api.mercadolibre.com'
@@ -140,8 +142,8 @@ def expandir_link_curto(url, timeout=10):
     original vem no parametro "go". Retorna a URL original se nao achar nada.
     """
     try:
-        response = requests.get(url, timeout=timeout, allow_redirects=True,
-                                headers={'Accept-Language': 'pt-BR,pt;q=0.9'})
+        response = obter(url, timeout=timeout, allow_redirects=True,
+                         headers={'Accept-Language': 'pt-BR,pt;q=0.9'})
     except requests.exceptions.RequestException as e:
         logger.warning(f"Nao foi possivel expandir o link {url}: {e}")
         return url

@@ -1,5 +1,7 @@
 from django import template
-from django.utils.safestring import mark_safe
+from django.utils.html import format_html
+
+from ..rede import TIPOS_IMAGEM_PERMITIDOS
 
 register = template.Library()
 
@@ -23,16 +25,18 @@ def user_avatar_html(user, size='w-8 h-8', text_size='text-lg'):
     """
     Renderiza avatar do usuario como HTML (foto ou emoji).
     Uso: {% user_avatar_html user "w-10 h-10" "text-xl" %}
+
+    Nome, classes e tipo passam por format_html (escapados): o nome e
+    digitado pelo proprio usuario e aparece para o grupo inteiro.
     """
-    if hasattr(user, 'foto_base64') and user.foto_base64:
-        content_type = user.foto_tipo or 'image/jpeg'
-        return mark_safe(
-            f'<img src="data:{content_type};base64,{user.foto_base64}" '
-            f'alt="{user.get_full_name()}" '
-            f'class="{size} rounded-xl object-cover">'
+    content_type = (getattr(user, 'foto_tipo', None) or 'image/jpeg').lower()
+    if getattr(user, 'foto_base64', None) and content_type in TIPOS_IMAGEM_PERMITIDOS:
+        return format_html(
+            '<img src="data:{};base64,{}" alt="{}" class="{} rounded-xl object-cover">',
+            content_type, user.foto_base64, user.get_full_name(), size,
         )
     emoji = AVATAR_MAP.get(getattr(user, 'avatar', '') or 'avatar-1', '👩')
-    return mark_safe(
-        f'<div class="{size} rounded-xl bg-base-200 flex items-center justify-center {text_size}">'
-        f'{emoji}</div>'
+    return format_html(
+        '<div class="{} rounded-xl bg-base-200 flex items-center justify-center {}">{}</div>',
+        size, text_size, emoji,
     )

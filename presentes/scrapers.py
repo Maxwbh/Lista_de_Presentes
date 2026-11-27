@@ -12,6 +12,7 @@ from contextlib import contextmanager
 from urllib.parse import urlparse
 
 from .precos import converter_preco
+from .rede import obter, DestinoBloqueado
 
 logger = logging.getLogger(__name__)
 
@@ -176,8 +177,11 @@ class BaseScraper:
         Retorna BeautifulSoup se sucesso.
         """
         try:
-            response = requests.get(url, headers=self.headers, timeout=timeout)
+            response = obter(url, headers=self.headers, timeout=timeout)
             response.raise_for_status()
+        except DestinoBloqueado as e:
+            logger.warning(f"Destino recusado {url}: {str(e)}")
+            raise NetworkError(str(e))
         except requests.exceptions.Timeout as e:
             logger.error(f"Timeout ao acessar {url}: {str(e)}")
             raise NetworkError(f"Timeout ao acessar URL: {str(e)}")
