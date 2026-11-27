@@ -27,14 +27,14 @@
                 <i class="bi bi-stars text-primary animate-pulse"></i>
                 <h4 class="font-extrabold text-sm uppercase tracking-wider text-primary">Auto-Preenchimento Inteligente</h4>
             </div>
-            <p class="text-xs text-base-content/50 mb-4">Cole o link do produto e deixe a mágica acontecer — descrição, preço e imagem preenchidos automaticamente</p>
+            <p class="text-xs text-base-content/70 mb-4">Cole o link do produto e deixe a mágica acontecer — descrição, preço e imagem preenchidos automaticamente</p>
 
             <div class="flex flex-col sm:flex-row gap-2">
                 <div class="relative flex-1 min-w-0">
                     <i class="bi bi-link-45deg absolute left-3.5 top-1/2 -translate-y-1/2 text-lg text-base-content/40 pointer-events-none"></i>
                     {{ form.url }}
                     <div class="absolute right-1.5 top-1/2 -translate-y-1/2 flex items-center gap-0.5">
-                        <button type="button" id="btn-limpar-link" class="btn btn-ghost btn-sm btn-circle text-base-content/40 hover:text-base-content" title="Limpar link" aria-label="Limpar link" style="display: none;">
+                        <button type="button" id="btn-limpar-link" class="btn btn-ghost btn-sm btn-circle text-base-content/70 hover:text-base-content" title="Limpar link" aria-label="Limpar link" style="display: none;">
                             <i class="bi bi-x-lg"></i>
                         </button>
                         <button type="button" id="btn-colar-link" class="btn btn-ghost btn-sm rounded-lg gap-1 text-primary font-semibold" title="Colar o link copiado" aria-label="Colar link">
@@ -57,7 +57,7 @@
 
         <!-- Detalhes do Presente -->
         <div class="bg-base-100 border border-base-300/40 rounded-3xl p-6 sm:p-8 mb-6">
-            <h3 class="font-extrabold text-sm uppercase tracking-wider text-base-content/40 mb-5 flex items-center gap-2">
+            <h3 class="font-extrabold text-sm uppercase tracking-wider text-base-content/70 mb-5 flex items-center gap-2">
                 <i class="bi bi-card-text"></i> Detalhes
             </h3>
 
@@ -65,11 +65,11 @@
             <div class="form-control w-full mb-6">
                 <label class="label pb-1.5" for="{{ form.descricao.id_for_label }}">
                     <span class="label-text font-semibold text-sm">Descrição do Presente <span class="text-error">*</span></span>
-                    <span class="label-text-alt text-base-content/40 text-xs"><span id="char-count">0</span> caracteres</span>
+                    <span class="label-text-alt text-base-content/70 text-xs"><span id="char-count">0</span> caracteres</span>
                 </label>
                 {{ form.descricao }}
                 <label class="label pt-1">
-                    <span class="label-text-alt text-base-content/40 text-xs">Seja específico: modelo, cor, tamanho, voltagem...</span>
+                    <span class="label-text-alt text-base-content/70 text-xs">Seja específico: modelo, cor, tamanho, voltagem...</span>
                 </label>
                 {% if form.descricao.errors %}
                     <p class="text-error text-xs mt-1">{{ form.descricao.errors.0 }}</p>
@@ -86,7 +86,7 @@
                     {{ form.preco }}
                 </div>
                 <label class="label pt-1">
-                    <span class="label-text-alt text-base-content/40 text-xs">Não veio pelo link? Digite um valor aproximado</span>
+                    <span class="label-text-alt text-base-content/70 text-xs">Não veio pelo link? Digite um valor aproximado</span>
                 </label>
                 {% if form.preco.errors %}
                     <p class="text-error text-xs mt-1">{{ form.preco.errors.0 }}</p>
@@ -96,7 +96,7 @@
 
         <!-- Imagem -->
         <div class="bg-base-100 border border-base-300/40 rounded-3xl p-6 sm:p-8 mb-6">
-            <h3 class="font-extrabold text-sm uppercase tracking-wider text-base-content/40 mb-5 flex items-center gap-2">
+            <h3 class="font-extrabold text-sm uppercase tracking-wider text-base-content/70 mb-5 flex items-center gap-2">
                 <i class="bi bi-image"></i> Imagem
             </h3>
 
@@ -108,7 +108,7 @@
                     <i class="bi bi-cloud-upload text-xl text-primary"></i>
                 </div>
                 <p class="font-bold text-sm">Clique para fazer upload</p>
-                <p class="text-xs text-base-content/40 mt-0.5">arraste uma imagem ou Ctrl+V para colar</p>
+                <p class="text-xs text-base-content/70 mt-0.5">arraste uma imagem ou Ctrl+V para colar</p>
             </div>
             {{ form.imagem }}
 
@@ -123,12 +123,12 @@
             </div>
 
             <!-- Divider "ou" -->
-            <div class="divider text-base-content/30 text-xs my-5">ou use uma URL</div>
+            <div class="divider text-base-content/70 text-xs my-5">ou use uma URL</div>
 
             <!-- Image URL input -->
             <div class="flex gap-2">
                 {{ form.url_imagem }}
-                <button class="btn btn-ghost border border-base-300 rounded-xl shrink-0" type="button" id="load-from-url" title="Carregar imagem da URL">
+                <button aria-label="Carregar imagem da URL" class="btn btn-ghost border border-base-300 rounded-xl shrink-0" type="button" id="load-from-url" title="Carregar imagem da URL">
                     <i class="bi bi-download"></i>
                 </button>
             </div>
@@ -143,7 +143,7 @@
 
         <!-- Actions -->
         <div class="flex items-center justify-between gap-3 mb-4">
-            <a href="{% url 'meus_presentes' %}" class="btn btn-ghost rounded-xl gap-2 text-base-content/60">
+            <a href="{% url 'meus_presentes' %}" class="btn btn-ghost rounded-xl gap-2 text-base-content/70">
                 <i class="bi bi-arrow-left"></i>
                 Cancelar
             </a>

@@ -30,7 +30,7 @@
 
                 <!-- Avatar / Foto -->
                 <div class="mb-6">
-                    <h3 class="font-extrabold text-sm uppercase tracking-wider text-base-content/40 mb-3 flex items-center gap-2">
+                    <h3 class="font-extrabold text-sm uppercase tracking-wider text-base-content/70 mb-3 flex items-center gap-2">
                         <i class="bi bi-person-circle"></i> Sua foto ou avatar
                     </h3>
 
@@ -43,7 +43,7 @@
                                      {% if user.tem_foto %}src="{{ user.get_foto_url }}" style="display:block;"{% else %}style="display:none;"{% endif %}
                                      alt="Sua foto">
                             </div>
-                            <button type="button" id="btn-upload-foto"
+                            <button aria-label="Enviar sua foto" type="button" id="btn-upload-foto"
                                     class="absolute -bottom-1.5 -right-1.5 w-7 h-7 rounded-full bg-primary text-primary-content flex items-center justify-center text-xs shadow-md hover:scale-110 transition-transform"
                                     title="Enviar sua foto"
                                     onclick="document.getElementById('foto-input').click()">
@@ -53,7 +53,7 @@
 
                         <div class="flex-1">
                             <p class="text-sm font-semibold text-base-content/70 mb-1">Escolha um avatar ou envie uma foto</p>
-                            <p class="text-xs text-base-content/40">A foto aparecerá na toolbar e na lista de membros</p>
+                            <p class="text-xs text-base-content/70">A foto aparecerá na toolbar e na lista de membros</p>
                         </div>
                     </div>
 
@@ -92,7 +92,7 @@
 
                 <!-- Dados Pessoais -->
                 <div class="bg-base-200/40 rounded-2xl p-5 mb-6">
-                    <h3 class="font-extrabold text-sm uppercase tracking-wider text-base-content/40 mb-4 flex items-center gap-2">
+                    <h3 class="font-extrabold text-sm uppercase tracking-wider text-base-content/70 mb-4 flex items-center gap-2">
                         <i class="bi bi-person"></i> Dados Pessoais
                     </h3>
 

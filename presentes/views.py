@@ -321,12 +321,45 @@ def dashboard_view(request):
         lida=False
     ).count()
 
+    # Presentes dos outros membros. Os do próprio usuário ficam de fora de
+    # propósito: mostrar o que foi comprado para ele estragaria a surpresa.
+    dos_outros = (Presente.objects.filter(grupo=grupo_ativo, status='ATIVO', usuario__ativo=True)
+                  .exclude(usuario=request.user)
+                  .select_related('usuario').defer(*CAMPOS_PESADOS_PRESENTE))
+
+    limite_novidades = timezone.now() - timedelta(days=14)
+    novidades = list(dos_outros.filter(data_cadastro__gte=limite_novidades).order_by('-data_cadastro')[:6])
+
+    precos_em_queda = []
+    for presente in dos_outros.prefetch_related('historico_precos')[:200]:
+        temperatura = presente.temperatura()
+        if temperatura['codigo'] == 'quente':
+            presente.temperatura_atual = temperatura
+            precos_em_queda.append(presente)
+    precos_em_queda.sort(key=lambda p: p.temperatura_atual['variacao'])
+    precos_em_queda = precos_em_queda[:6]
+
+    # Membros com lista e nenhum presente comprado ainda (o próprio usuário não entra)
+    no_grupo = Q(presentes__grupo=grupo_ativo)
+    sem_presente = (Usuario.objects.filter(grupos_membro__grupo=grupo_ativo, ativo=True)
+                    .exclude(pk=request.user.pk)
+                    .annotate(total=Count('presentes', filter=no_grupo, distinct=True),
+                              comprados=Count('presentes', filter=no_grupo & Q(presentes__status='COMPRADO'),
+                                              distinct=True))
+                    .filter(total__gt=0, comprados=0)
+                    .defer('foto_base64')
+                    .order_by('first_name')[:8])
+
     context = {
         'grupo': grupo_ativo,
         'total_usuarios': total_usuarios,
         'meus_presentes_ativos': meus_presentes_ativos,
         'presentes_nao_comprados': presentes_nao_comprados,
         'notificacoes_nao_lidas': notificacoes_nao_lidas,
+        'novidades': novidades,
+        'precos_em_queda': precos_em_queda,
+        'sem_presente': sem_presente,
+        'tem_presentes': Presente.objects.filter(grupo=grupo_ativo, usuario=request.user).exists(),
     }
     return render(request, 'presentes/dashboard.html', context)
 
@@ -456,7 +489,7 @@ def adicionar_presente_view(request):
             thread = threading.Thread(target=_buscar_precos_background, args=(presente.id,), daemon=True)
             thread.start()
 
-            messages.success(request, 'Presente adicionado com sucesso! Sugestoes de preco serao buscadas em background.')
+            messages.success(request, 'Presente adicionado com sucesso! As sugestões de preço serão buscadas em seguida.')
 
             return redirect('meus_presentes')
     else:
@@ -936,7 +969,7 @@ def presentes_usuario_view(request, user_id):
 
     # Verificar se usuario e membro do grupo
     if not GrupoMembro.objects.filter(grupo=grupo_ativo, usuario=usuario).exists():
-        messages.error(request, 'Usuario nao e membro do grupo ativo.')
+        messages.error(request, 'Este usuário não é membro do grupo ativo.')
         return redirect('lista_usuarios')
 
     # Otimizar query com select_related e prefetch_related - FILTRADO POR GRUPO
@@ -1455,7 +1488,7 @@ def setup_grupos_view(request):
                 output = StringIO()
                 call_command('criar_grupo_padrao', stdout=output)
                 resultado_grupo = output.getvalue()
-                messages.success(request, '2/3 Grupo criado e usuarios adicionados')
+                messages.success(request, '2/3 Grupo criado e usuários adicionados')
 
                 # 3. Migrar dados
                 output = StringIO()
@@ -1535,7 +1568,7 @@ def grupos_lista_view(request):
 
     # Se usuario nao tem grupos, redirecionar para criar
     if not membros.exists():
-        messages.info(request, 'Voce ainda nao faz parte de nenhum grupo. Crie ou junte-se a um!')
+        messages.info(request, 'Você ainda não faz parte de nenhum grupo. Crie um ou entre em um!')
         return redirect('criar_grupo')
 
     context = {
@@ -1636,12 +1669,12 @@ def ativar_grupo_view(request, pk):
 
     # Verificar se usuario e membro
     if not GrupoMembro.objects.filter(grupo=grupo, usuario=request.user).exists():
-        messages.error(request, 'Voce nao e membro deste grupo.')
+        messages.error(request, 'Você não é membro deste grupo.')
         return redirect('grupos_lista')
 
     # Verificar se grupo esta ativo
     if not grupo.ativo:
-        messages.error(request, 'Este grupo esta desativado.')
+        messages.error(request, 'Este grupo está desativado.')
         return redirect('grupos_lista')
 
     # Definir como grupo ativo
@@ -1707,7 +1740,7 @@ def remover_membro_view(request, pk, user_id):
 
     # Nao pode remover a si mesmo
     if usuario_remover == request.user:
-        messages.error(request, 'Voce nao pode remover a si mesmo. Use a opcao de sair do grupo.')
+        messages.error(request, 'Você não pode remover a si mesmo. Use a opção de sair do grupo.')
         return redirect('gerenciar_membros', pk=pk)
 
     try:
@@ -1719,10 +1752,10 @@ def remover_membro_view(request, pk, user_id):
             usuario_remover.grupo_ativo = None
             usuario_remover.save()
 
-        messages.success(request, f'Usuario {usuario_remover} removido do grupo.')
+        messages.success(request, f'{usuario_remover} foi removido do grupo.')
         logger.info(f"Usuario {usuario_remover.email} removido do grupo {grupo.id} por {request.user.email}")
     except GrupoMembro.DoesNotExist:
-        messages.error(request, 'Usuario nao e membro deste grupo.')
+        messages.error(request, 'Este usuário não é membro deste grupo.')
 
     return redirect('gerenciar_membros', pk=pk)
 
@@ -1747,10 +1780,10 @@ def toggle_mantenedor_view(request, pk, user_id):
         membro.save()
 
         status = "mantenedor" if membro.e_mantenedor else "membro comum"
-        messages.success(request, f'Usuario {usuario_alvo} agora e {status}.')
+        messages.success(request, f'{usuario_alvo} agora é {status}.')
         logger.info(f"Usuario {usuario_alvo.email} agora e {status} do grupo {grupo.id}")
     except GrupoMembro.DoesNotExist:
-        messages.error(request, 'Usuario nao e membro deste grupo.')
+        messages.error(request, 'Este usuário não é membro deste grupo.')
 
     return redirect('gerenciar_membros', pk=pk)
 
@@ -1790,7 +1823,7 @@ def sair_grupo_view(request, pk):
         if membro.e_mantenedor:
             mantenedores_count = GrupoMembro.objects.filter(grupo=grupo, e_mantenedor=True).count()
             if mantenedores_count == 1:
-                messages.error(request, 'Voce e o ultimo mantenedor. Promova outro membro antes de sair.')
+                messages.error(request, 'Você é o último mantenedor. Promova outro membro antes de sair.')
                 return redirect('gerenciar_membros', pk=pk)
 
         membro.delete()
@@ -1800,10 +1833,10 @@ def sair_grupo_view(request, pk):
             request.user.grupo_ativo = None
             request.user.save()
 
-        messages.success(request, f'Voce saiu do grupo "{grupo.nome}".')
+        messages.success(request, f'Você saiu do grupo "{grupo.nome}".')
         logger.info(f"Usuario {request.user.email} saiu do grupo {grupo.id}")
     except GrupoMembro.DoesNotExist:
-        messages.error(request, 'Voce nao e membro deste grupo.')
+        messages.error(request, 'Você não é membro deste grupo.')
 
     return redirect('grupos_lista')
 
@@ -1884,12 +1917,12 @@ def convite_grupo_view(request, codigo):
 
     # Verificar se grupo esta ativo
     if not grupo.ativo:
-        messages.error(request, 'Este grupo esta desativado.')
+        messages.error(request, 'Este grupo está desativado.')
         return redirect('grupos_lista')
 
     # Verificar se ja e membro
     if GrupoMembro.objects.filter(grupo=grupo, usuario=request.user).exists():
-        messages.info(request, f'Voce ja e membro do grupo "{grupo.nome}".')
+        messages.info(request, f'Você já é membro do grupo "{grupo.nome}".')
         if request.user.grupo_ativo_id != grupo.id:
             request.user.grupo_ativo = grupo
             request.user.save(update_fields=['grupo_ativo'])
@@ -1936,7 +1969,7 @@ def servir_foto_usuario_view(request, pk):
 def push_subscription_save(request):
     """Salvar push subscription do navegador"""
     if request.method != 'POST':
-        return JsonResponse({'error': 'Metodo nao permitido'}, status=405)
+        return JsonResponse({'error': 'Método não permitido'}, status=405)
     try:
         import json as _json
         data = _json.loads(request.body)
@@ -1960,7 +1993,7 @@ def push_subscription_save(request):
 def push_subscription_delete(request):
     """Remover push subscription"""
     if request.method != 'POST':
-        return JsonResponse({'error': 'Metodo nao permitido'}, status=405)
+        return JsonResponse({'error': 'Método não permitido'}, status=405)
     try:
         import json as _json
         data = _json.loads(request.body)

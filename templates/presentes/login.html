@@ -73,7 +73,7 @@
                         <i class="bi bi-gift-fill text-2xl text-primary"></i>
                     </div>
                     <h2 class="text-2xl font-extrabold tracking-tight">Bem-vindo de volta!</h2>
-                    <p class="text-base-content/50 text-sm mt-1.5">Entre na sua conta para continuar</p>
+                    <p class="text-base-content/70 text-sm mt-1.5">Entre na sua conta para continuar</p>
                 </div>
 
                 <!-- Erros globais -->
@@ -113,7 +113,7 @@
                         <label class="input input-bordered rounded-xl flex items-center gap-2.5 focus-within:border-primary transition-colors">
                             <i class="bi bi-lock text-base-content/30"></i>
                             {{ form.password }}
-                            <button type="button" id="togglePassword" class="text-base-content/30 hover:text-base-content/60 transition-colors" tabindex="-1" title="Mostrar senha">
+                            <button type="button" id="togglePassword" class="text-base-content/60 hover:text-base-content/80 transition-colors" tabindex="-1" title="Mostrar senha" aria-label="Mostrar senha">
                                 <i class="bi bi-eye"></i>
                             </button>
                         </label>
@@ -128,7 +128,7 @@
                     <div class="flex items-center justify-between text-sm pt-1">
                         <label class="flex items-center gap-2 cursor-pointer">
                             <input type="checkbox" name="remember" class="checkbox checkbox-primary checkbox-sm rounded-md">
-                            <span class="text-base-content/60 text-xs font-medium">Lembrar-me</span>
+                            <span class="text-base-content/70 text-xs font-medium">Lembrar-me</span>
                         </label>
                         <a href="{% url 'esqueceu_senha' %}" class="link link-primary text-xs font-semibold no-underline hover:underline">
                             Esqueceu a senha?
@@ -145,7 +145,7 @@
 
                 {% if social_login_disponivel %}
                 <!-- Divider -->
-                <div class="divider text-base-content/30 text-[10px] uppercase tracking-widest my-6">Ou entre com</div>
+                <div class="divider text-base-content/70 text-[10px] uppercase tracking-widest my-6">Ou entre com</div>
 
                 <!-- Social Login (somente provedores com credenciais configuradas) -->
                 <div class="flex flex-wrap gap-2.5">
@@ -178,7 +178,7 @@
 
                 <!-- Cadastro -->
                 <div class="text-center mt-7 pt-5 border-t border-base-300/50">
-                    <p class="text-base-content/50 text-sm">
+                    <p class="text-base-content/70 text-sm">
                         Ainda não tem conta?
                         <a href="{% url 'registro' %}{% if request.GET.next %}?next={{ request.GET.next|urlencode }}{% endif %}" class="link link-primary font-bold no-underline hover:underline">
                             Cadastre-se grátis
@@ -187,7 +187,7 @@
                 </div>
 
                 <!-- Security badge -->
-                <div class="text-center text-[11px] text-base-content/30 flex items-center justify-center gap-1.5 mt-3">
+                <div class="text-center text-[11px] text-base-content/70 flex items-center justify-center gap-1.5 mt-3">
                     <i class="bi bi-shield-check text-success"></i>
                     Conexão segura e criptografada
                 </div>

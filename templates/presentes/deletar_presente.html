@@ -10,8 +10,8 @@
             <div class="absolute -top-10 -right-10 w-40 h-40 bg-white/10 rounded-full blur-2xl"></div>
             <div class="relative z-10">
                 <i class="bi bi-exclamation-triangle-fill text-6xl mb-4 block animate-pulse"></i>
-                <h2 class="text-2xl font-bold">Confirmar Exclusao</h2>
-                <p class="mt-2 opacity-90">Esta acao nao podera ser desfeita!</p>
+                <h2 class="text-2xl font-bold">Confirmar exclusão</h2>
+                <p class="mt-2 opacity-90">Esta ação não poderá ser desfeita!</p>
             </div>
         </div>
 
@@ -19,40 +19,40 @@
         <div class="card-body p-8">
             <!-- Gift details -->
             <div class="bg-base-100 border border-base-300/40 rounded-3xl p-5 mb-6">
-                <h5 class="font-extrabold text-sm uppercase tracking-wider text-base-content/40 mb-4">
+                <h5 class="font-extrabold text-sm uppercase tracking-wider text-base-content/70 mb-4">
                     <i class="bi bi-gift-fill mr-2"></i>
-                    Presente que sera excluido
+                    Presente que será excluído
                 </h5>
 
-                <div class="mb-2 text-base-content/60">
+                <div class="mb-2 text-base-content/70">
                     <i class="bi bi-card-text text-error w-6 inline-block"></i>
-                    <strong>Descricao:</strong> {{ presente.descricao }}
+                    <strong>Descrição:</strong> {{ presente.descricao }}
                 </div>
 
                 {% if presente.preco %}
-                    <div class="mb-2 text-base-content/60">
+                    <div class="mb-2 text-base-content/70">
                         <i class="bi bi-cash-coin text-error w-6 inline-block"></i>
-                        <strong>Preco:</strong> R$ {{ presente.preco }}
+                        <strong>Preço:</strong> R$ {{ presente.preco }}
                     </div>
                 {% endif %}
 
                 {% if presente.url %}
-                    <div class="mb-2 text-base-content/60">
+                    <div class="mb-2 text-base-content/70">
                         <i class="bi bi-link-45deg text-error w-6 inline-block"></i>
                         <strong>Link:</strong>
                         <a href="{{ presente.url }}" target="_blank" class="text-primary hover:underline">Ver produto</a>
                     </div>
                 {% endif %}
 
-                <div class="mb-2 text-base-content/60">
+                <div class="mb-2 text-base-content/70">
                     <i class="bi bi-calendar3 text-error w-6 inline-block"></i>
                     <strong>Cadastrado em:</strong> {{ presente.data_cadastro|date:"d/m/Y às H:i" }}
                 </div>
 
-                <div class="mb-2 text-base-content/60">
+                <div class="mb-2 text-base-content/70">
                     <i class="bi bi-flag-fill text-error w-6 inline-block"></i>
                     <strong>Status:</strong>
-                    <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold {% if presente.status == 'ATIVO' %}bg-success text-success-content{% else %}bg-base-300 text-base-content/60{% endif %}">
+                    <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold {% if presente.status == 'ATIVO' %}bg-success text-success-content{% else %}bg-base-300 text-base-content/70{% endif %}">
                         {{ presente.get_status_display }}
                     </span>
                 </div>
@@ -67,16 +67,16 @@
                 <div class="flex items-start gap-3">
                     <i class="bi bi-exclamation-triangle-fill text-warning text-xl mt-0.5"></i>
                     <div>
-                        <strong>Atencao!</strong> Ao excluir este presente:
+                        <strong>Atenção!</strong> Ao excluir este presente:
                         <ul class="list-none p-0 mt-3 space-y-2">
-                            <li class="py-2 border-b border-base-300/40 text-base-content/50">
-                                <i class="bi bi-x-circle text-error mr-2"></i> Todas as sugestoes de compra da IA serao perdidas
+                            <li class="py-2 border-b border-base-300/40 text-base-content/70">
+                                <i class="bi bi-x-circle text-error mr-2"></i> Todas as sugestões de compra da IA serão perdidas
                             </li>
-                            <li class="py-2 border-b border-base-300/40 text-base-content/50">
-                                <i class="bi bi-x-circle text-error mr-2"></i> O historico de pesquisas sera apagado
+                            <li class="py-2 border-b border-base-300/40 text-base-content/70">
+                                <i class="bi bi-x-circle text-error mr-2"></i> O histórico de pesquisas será apagado
                             </li>
-                            <li class="py-2 text-base-content/50">
-                                <i class="bi bi-x-circle text-error mr-2"></i> Esta acao e permanente e irreversivel
+                            <li class="py-2 text-base-content/70">
+                                <i class="bi bi-x-circle text-error mr-2"></i> Esta ação é permanente e irreversível
                             </li>
                         </ul>
                     </div>
@@ -100,9 +100,9 @@
             </form>
 
             <div class="text-center mt-6">
-                <p class="text-base-content/40 text-sm">
+                <p class="text-base-content/70 text-sm">
                     <i class="bi bi-shield-check"></i>
-                    Voce pode adicionar um novo presente a qualquer momento
+                    Você pode adicionar um novo presente a qualquer momento
                 </p>
             </div>
         </div>

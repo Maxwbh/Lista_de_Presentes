@@ -65,22 +65,22 @@
 
 {% block content %}
 <!-- Header -->
-<div class="relative bg-gradient-to-r from-primary via-primary/90 to-secondary text-white py-10 -mx-4 px-4 rounded-3xl mb-8 animate-fade-in overflow-hidden">
+<div class="relative bg-gradient-to-r from-primary via-primary/90 to-secondary text-white py-5 sm:py-10 -mx-4 px-4 rounded-3xl mb-4 sm:mb-8 animate-fade-in overflow-hidden">
     <div class="absolute -top-10 -right-10 w-40 h-40 bg-white/10 rounded-full blur-2xl"></div>
-    <div class="container mx-auto max-w-6xl flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <div class="container mx-auto max-w-6xl flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
         <div>
-            <h1 class="text-3xl font-extrabold tracking-tight flex items-center gap-2">
+            <h1 class="text-2xl sm:text-3xl font-extrabold tracking-tight flex items-center gap-2">
                 <i class="bi bi-gift-fill"></i>
                 Presentes do Grupo
             </h1>
-            <p class="mt-2 opacity-90">Escolha quem você quer presentear</p>
+            <p class="hidden sm:block mt-2 opacity-90">Escolha quem você quer presentear</p>
         </div>
         <!-- Toggle de Visualização -->
         <div class="inline-flex bg-white/15 backdrop-blur-sm rounded-xl p-1 self-start sm:self-auto">
-            <button class="px-4 py-2 rounded-lg font-semibold text-sm transition-all duration-300 flex items-center gap-2 bg-white text-primary shadow" onclick="switchView('usuarios')" id="btn-view-usuarios">
+            <button class="px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg font-semibold text-sm transition-all duration-300 flex items-center gap-2 bg-white text-primary shadow" onclick="switchView('usuarios')" id="btn-view-usuarios">
                 <i class="bi bi-people-fill"></i> Por Membro
             </button>
-            <button class="px-4 py-2 rounded-lg font-semibold text-sm transition-all duration-300 flex items-center gap-2 text-white/80 hover:bg-white/10" onclick="switchView('produtos')" id="btn-view-produtos">
+            <button class="px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg font-semibold text-sm transition-all duration-300 flex items-center gap-2 text-white/80 hover:bg-white/10" onclick="switchView('produtos')" id="btn-view-produtos">
                 <i class="bi bi-grid-3x3-gap-fill"></i> Por Produto
             </button>
         </div>
@@ -90,18 +90,26 @@
 <div class="container mx-auto max-w-6xl px-4">
 
     <!-- Barra de busca + filtros (compartilhada) -->
-    <div class="bg-base-100 border border-base-300/40 rounded-3xl shadow-sm mb-8 animate-slide-up">
-        <div class="p-4">
+    <div class="bg-base-100 border border-base-300/40 rounded-3xl shadow-sm mb-4 sm:mb-8 animate-slide-up">
+        <div class="p-3 sm:p-4">
             <form method="get" action="{% url 'lista_usuarios' %}" id="filtros-form">
                 <input type="hidden" name="view" value="usuarios" id="view-input">
+                {% with filtros_ativos=preco_min|default:preco_max %}
                 <div class="flex flex-col lg:flex-row gap-3">
+                    <div class="flex gap-2 flex-1">
                     <!-- Busca local (JS) -->
-                    <label class="input input-bordered input-sm h-11 rounded-xl flex items-center gap-2 flex-1">
+                    <label class="input input-bordered input-sm h-11 rounded-xl flex items-center gap-2 flex-1 min-w-0">
                         <i class="bi bi-search text-base-content/30"></i>
-                        <input type="text" id="search-global" class="grow border-0 outline-none bg-transparent" placeholder="Buscar por nome ou produto..." onkeyup="filtrarTudo()">
+                        <input type="text" id="search-global" aria-label="Buscar por nome ou produto" class="grow min-w-0 w-full border-0 outline-none bg-transparent" placeholder="Buscar por nome ou produto..." onkeyup="filtrarTudo()">
                     </label>
+                    <!-- No celular os filtros ficam recolhidos para os presentes aparecerem logo -->
+                    <button type="button" id="btn-filtros" class="btn btn-ghost btn-sm h-11 rounded-xl border border-base-300 gap-1.5 lg:hidden"
+                            aria-controls="filtros-avancados" aria-expanded="{% if filtros_ativos %}true{% else %}false{% endif %}" onclick="alternarFiltros(this)">
+                        <i class="bi bi-sliders"></i> Filtros{% if filtros_ativos %} <span class="badge badge-primary badge-xs">ativos</span>{% endif %}
+                    </button>
+                    </div>
 
-                    <div class="flex flex-wrap gap-3">
+                    <div id="filtros-avancados" class="{% if filtros_ativos %}flex{% else %}hidden{% endif %} lg:flex flex-wrap gap-3">
                         <select name="ordenar" class="select select-bordered select-sm h-11 rounded-xl min-w-[170px]" onchange="this.form.submit()">
                             <option value="-data" {% if ordenar_por == '-data' or ordenar_por == '-data_cadastro' %}selected{% endif %}>Mais recentes</option>
                             <option value="data" {% if ordenar_por == 'data' %}selected{% endif %}>Mais antigos</option>
@@ -119,17 +127,18 @@
                             <i class="bi bi-funnel-fill"></i> Filtrar
                         </button>
                         {% if preco_min or preco_max %}
-                        <a href="{% url 'lista_usuarios' %}" class="btn btn-ghost btn-sm h-11 rounded-xl" title="Limpar filtros">
+                        <a aria-label="Limpar filtros" href="{% url 'lista_usuarios' %}" class="btn btn-ghost btn-sm h-11 rounded-xl" title="Limpar filtros">
                             <i class="bi bi-x-lg"></i>
                         </a>
                         {% endif %}
                     </div>
                 </div>
+                {% endwith %}
             </form>
 
             <!-- Filtro por status (JS) -->
-            <div class="flex items-center gap-1.5 mt-3 pt-3 border-t border-base-300/40">
-                <span class="text-[11px] font-bold uppercase tracking-wider text-base-content/40 mr-1">Mostrar:</span>
+            <div class="flex items-center gap-1.5 mt-3 pt-3 border-t border-base-300/40 flex-wrap">
+                <span class="text-[11px] font-bold uppercase tracking-wider text-base-content/70 mr-1">Mostrar:</span>
                 <button type="button" class="status-pill btn btn-xs rounded-xl btn-primary" data-status="todos" onclick="filtrarStatus('todos', this)">Todos</button>
                 <button type="button" class="status-pill btn btn-xs rounded-xl btn-ghost border border-base-300" data-status="ATIVO" onclick="filtrarStatus('ATIVO', this)">Disponíveis</button>
                 <button type="button" class="status-pill btn btn-xs rounded-xl btn-ghost border border-base-300" data-status="COMPRADO" onclick="filtrarStatus('COMPRADO', this)">Comprados</button>
@@ -140,7 +149,7 @@
     <!-- VISUALIZAÇÃO POR MEMBRO -->
     <div id="view-usuarios" class="view-container">
         {% if usuarios %}
-            <div id="busca-vazia-usuarios" style="display:none;" class="text-center py-12 text-base-content/50">
+            <div id="busca-vazia-usuarios" style="display:none;" class="text-center py-12 text-base-content/70">
                 <i class="bi bi-search text-4xl text-base-300 block mb-2"></i>
                 Nenhum membro ou presente encontrado para a busca.
             </div>
@@ -199,7 +208,7 @@
                                                 <!-- Preço + temperatura + contador de lojas (linha única no corpo) -->
                                                 <div class="flex items-center gap-2 mb-3 min-h-[24px]">
                                                     {% if presente.preco %}
-                                                    <span class="text-base font-extrabold {% if presente.status == 'COMPRADO' %}text-base-content/50{% else %}text-success{% endif %}">R$ {{ presente.preco }}</span>
+                                                    <span class="text-base font-extrabold {% if presente.status == 'COMPRADO' %}text-base-content/70{% else %}text-success{% endif %}">R$ {{ presente.preco }}</span>
                                                     {% if presente.status == 'ATIVO' %}
                                                     {% with temp=presente.temperatura %}
                                                     {% if temp.codigo == 'quente' or temp.codigo == 'frio' %}
@@ -210,10 +219,10 @@
                                                     {% endwith %}
                                                     {% endif %}
                                                     {% else %}
-                                                    <span class="text-xs text-base-content/30">Sem preço</span>
+                                                    <span class="text-xs text-base-content/70">Sem preço</span>
                                                     {% endif %}
                                                     {% if presente.status == 'ATIVO' and presente.sugestoes.count > 0 %}
-                                                    <span class="ml-auto inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-base-200 text-base-content/50" title="{{ presente.sugestoes.count }} sugestões de lojas">
+                                                    <span class="ml-auto inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-base-200 text-base-content/70" title="{{ presente.sugestoes.count }} sugestões de lojas">
                                                         <i class="bi bi-shop"></i> {{ presente.sugestoes.count }}
                                                     </span>
                                                     {% endif %}
@@ -233,12 +242,12 @@
                                                         </button>
                                                     </form>
                                                     {% if presente.sugestoes.count > 0 %}
-                                                    <button type="button" class="btn btn-ghost btn-sm btn-square rounded-xl border border-base-300" title="Ver sugestões de lojas" onclick="document.getElementById('modalSugestoes{{ presente.id }}').showModal()">
+                                                    <button aria-label="Ver sugestões de lojas" type="button" class="btn btn-ghost btn-sm btn-square rounded-xl border border-base-300" title="Ver sugestões de lojas" onclick="document.getElementById('modalSugestoes{{ presente.id }}').showModal()">
                                                         <i class="bi bi-shop"></i>
                                                     </button>
                                                     {% endif %}
                                                     {% if presente.url %}
-                                                    <a href="{{ presente.url }}" target="_blank" rel="noopener noreferrer" class="btn btn-ghost btn-sm btn-square rounded-xl border border-base-300" title="Ver produto original">
+                                                    <a aria-label="Ver produto original" href="{{ presente.url }}" target="_blank" rel="noopener noreferrer" class="btn btn-ghost btn-sm btn-square rounded-xl border border-base-300" title="Ver produto original">
                                                         <i class="bi bi-box-arrow-up-right"></i>
                                                     </a>
                                                     {% endif %}
@@ -257,12 +266,12 @@
                                         </a>
                                     </div>
                                 {% endif %}
-                                <p class="status-vazio-membro text-base-content/50 text-center py-6 text-sm hidden">
+                                <p class="status-vazio-membro text-base-content/70 text-center py-6 text-sm hidden">
                                     <i class="bi bi-inbox block text-3xl text-base-300 mb-2"></i>
                                     Nenhum presente nesta categoria
                                 </p>
                             {% else %}
-                                <p class="text-base-content/50 text-center py-6 text-sm">
+                                <p class="text-base-content/70 text-center py-6 text-sm">
                                     <i class="bi bi-inbox block text-3xl text-base-300 mb-2"></i>
                                     Nenhum presente cadastrado
                                 </p>
@@ -276,7 +285,7 @@
                 <div class="p-6 text-center py-20">
                     <i class="bi bi-person-x text-7xl text-base-300 block mb-4"></i>
                     <h3 class="text-xl font-extrabold text-base-content mb-2">Nenhum outro membro no grupo</h3>
-                    <p class="text-base-content/60 mb-6">Convide seus familiares e amigos para participarem!</p>
+                    <p class="text-base-content/70 mb-6">Convide seus familiares e amigos para participarem!</p>
                     <a href="{% url 'grupos_lista' %}" class="btn btn-primary rounded-xl gap-2">
                         <i class="bi bi-people"></i> Gerenciar Grupos
                     </a>
@@ -288,7 +297,7 @@
     <!-- VISUALIZAÇÃO POR PRODUTO -->
     <div id="view-produtos" class="view-container hidden">
         {% if todos_presentes %}
-            <div id="busca-vazia-produtos" style="display:none;" class="text-center py-12 text-base-content/50">
+            <div id="busca-vazia-produtos" style="display:none;" class="text-center py-12 text-base-content/70">
                 <i class="bi bi-search text-4xl text-base-300 block mb-2"></i>
                 Nenhum produto encontrado para a busca.
             </div>
@@ -326,7 +335,7 @@
                             <!-- Status + preço + temperatura + melhor oferta (no corpo, sem sobrepor a imagem) -->
                             <div class="flex items-center flex-wrap gap-2 mb-3 min-h-[24px]">
                                 {% if presente.preco %}
-                                <span class="text-base font-extrabold {% if presente.status == 'COMPRADO' %}text-base-content/50{% else %}text-success{% endif %}">R$ {{ presente.preco }}</span>
+                                <span class="text-base font-extrabold {% if presente.status == 'COMPRADO' %}text-base-content/70{% else %}text-success{% endif %}">R$ {{ presente.preco }}</span>
                                 {% if presente.status == 'ATIVO' %}
                                 {% with temp=presente.temperatura %}
                                 {% if temp.codigo == 'quente' or temp.codigo == 'frio' %}
@@ -337,7 +346,7 @@
                                 {% endwith %}
                                 {% endif %}
                                 {% else %}
-                                <span class="text-xs text-base-content/30">Preço não informado</span>
+                                <span class="text-xs text-base-content/70">Preço não informado</span>
                                 {% endif %}
                                 {% if presente.status == 'ATIVO' and presente.melhor_preco and presente.preco and presente.melhor_preco < presente.preco %}
                                 <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-success/10 text-success ml-auto" title="Melhor oferta encontrada">
@@ -360,12 +369,12 @@
                                     </button>
                                 </form>
                                 {% if presente.sugestoes.count > 0 %}
-                                <button type="button" class="btn btn-ghost btn-sm btn-square rounded-xl border border-base-300" title="Ver {{ presente.sugestoes.count }} sugestões de lojas" onclick="document.getElementById('modalSugestoes{{ presente.id }}').showModal()">
+                                <button aria-label="Ver {{ presente.sugestoes.count }} sugestões de lojas" type="button" class="btn btn-ghost btn-sm btn-square rounded-xl border border-base-300" title="Ver {{ presente.sugestoes.count }} sugestões de lojas" onclick="document.getElementById('modalSugestoes{{ presente.id }}').showModal()">
                                     <i class="bi bi-shop"></i>
                                 </button>
                                 {% endif %}
                                 {% if presente.url %}
-                                <a href="{{ presente.url }}" target="_blank" rel="noopener noreferrer" class="btn btn-ghost btn-sm btn-square rounded-xl border border-base-300" title="Ver produto original">
+                                <a aria-label="Ver produto original" href="{{ presente.url }}" target="_blank" rel="noopener noreferrer" class="btn btn-ghost btn-sm btn-square rounded-xl border border-base-300" title="Ver produto original">
                                     <i class="bi bi-box-arrow-up-right"></i>
                                 </a>
                                 {% endif %}
@@ -380,7 +389,7 @@
                 <div class="p-6 text-center py-20">
                     <i class="bi bi-gift-fill text-7xl text-base-300 block mb-4"></i>
                     <h3 class="text-xl font-extrabold text-base-content mb-2">Nenhum presente disponível</h3>
-                    <p class="text-base-content/60">Aguarde novos presentes serem cadastrados</p>
+                    <p class="text-base-content/70">Aguarde novos presentes serem cadastrados</p>
                 </div>
             </div>
         {% endif %}
@@ -397,7 +406,7 @@
                             {{ presente.descricao|truncatewords:8 }}
                         </h3>
                         <form method="dialog">
-                            <button class="btn btn-ghost btn-sm btn-circle text-white hover:bg-white/20">
+                            <button aria-label="Fechar" class="btn btn-ghost btn-sm btn-circle text-white hover:bg-white/20">
                                 <i class="bi bi-x-lg"></i>
                             </button>
                         </form>
@@ -411,7 +420,7 @@
                                 <i class="bi {{ temp.icone }}"></i> {{ temp.label }}
                             </span>
                             {% if presente.preco %}
-                            <span class="text-[11px] text-base-content/40">Referência: R$ {{ presente.preco }}</span>
+                            <span class="text-[11px] text-base-content/70">Referência: R$ {{ presente.preco }}</span>
                             {% endif %}
                         </div>
                         {% endif %}
@@ -421,10 +430,10 @@
                         {% if presente.sparkline %}
                         <div class="bg-base-200/40 rounded-2xl p-3 mb-2">
                             <div class="flex items-center justify-between mb-1">
-                                <span class="text-[10px] font-bold uppercase tracking-wider text-base-content/40">
+                                <span class="text-[10px] font-bold uppercase tracking-wider text-base-content/70">
                                     <i class="bi bi-graph-down-arrow"></i> Evolução de preço
                                 </span>
-                                <span class="text-[10px] text-base-content/40">
+                                <span class="text-[10px] text-base-content/70">
                                     Mín R$ {{ presente.sparkline.min|floatformat:2 }} · Máx R$ {{ presente.sparkline.max|floatformat:2 }}
                                 </span>
                             </div>
@@ -474,7 +483,7 @@
                                         {% endif %}
                                     </div>
                                     {% if sugestao.titulo_produto %}
-                                    <p class="text-[11px] text-base-content/50 line-clamp-2 mt-0.5" title="{{ sugestao.titulo_produto }}">
+                                    <p class="text-[11px] text-base-content/70 line-clamp-2 mt-0.5" title="{{ sugestao.titulo_produto }}">
                                         {{ sugestao.titulo_produto }}
                                     </p>
                                     {% endif %}
@@ -490,7 +499,7 @@
                                         {% endif %}
                                     </div>
                                     {% else %}
-                                    <div class="text-sm text-base-content/40 mt-0.5">Consultar preço</div>
+                                    <div class="text-sm text-base-content/70 mt-0.5">Consultar preço</div>
                                     {% endif %}
                                 </div>
                                 {% if sugestao.url_compra %}
@@ -528,14 +537,14 @@
                     </div>
                     <div class="min-w-0">
                         <p id="confirma-descricao" class="font-bold text-sm leading-snug line-clamp-2"></p>
-                        <p class="text-xs text-base-content/50 mt-0.5">
+                        <p class="text-xs text-base-content/70 mt-0.5">
                             Para: <span id="confirma-destinatario" class="font-semibold"></span>
                         </p>
                         <p id="confirma-preco" class="text-success font-extrabold text-sm mt-0.5"></p>
                     </div>
                 </div>
 
-                <div class="flex items-start gap-2.5 text-xs text-base-content/50 bg-info/5 border border-info/10 rounded-xl p-3 mb-5">
+                <div class="flex items-start gap-2.5 text-xs text-base-content/70 bg-info/5 border border-info/10 rounded-xl p-3 mb-5">
                     <i class="bi bi-info-circle text-info mt-0.5"></i>
                     <span>O presente será marcado como comprado e os demais membros do grupo serão avisados para não comprarem em duplicidade.</span>
                 </div>
@@ -705,6 +714,15 @@
         const vazioProdutos = document.getElementById('busca-vazia-produtos');
         if (vazioMembros) vazioMembros.style.display = (filter && membrosVisiveis === 0) ? '' : 'none';
         if (vazioProdutos) vazioProdutos.style.display = (produtosVisiveis === 0) ? '' : 'none';
+    }
+
+    // Mostra/esconde os filtros de ordem e preço no celular
+    function alternarFiltros(botao) {
+        const painel = document.getElementById('filtros-avancados');
+        const abrir = painel.classList.contains('hidden');
+        painel.classList.toggle('hidden', !abrir);
+        painel.classList.toggle('flex', abrir);
+        botao.setAttribute('aria-expanded', abrir ? 'true' : 'false');
     }
 </script>
 {% endblock %}

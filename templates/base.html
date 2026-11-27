@@ -47,11 +47,11 @@
 
             <!-- Mobile menu -->
             <div class="dropdown lg:hidden">
-                <label tabindex="0" class="btn btn-ghost btn-sm btn-square rounded-xl">
+                <label aria-label="Abrir menu" tabindex="0" class="btn btn-ghost btn-sm btn-square rounded-xl">
                     <i class="bi bi-list text-lg"></i>
                 </label>
                 <ul tabindex="0" class="menu menu-sm dropdown-content mt-2 z-[1] p-2 shadow-lg bg-base-100 rounded-2xl w-52 border border-base-300/50">
-                    <li><a href="{% url 'dashboard' %}" class="rounded-xl gap-2"><i class="bi bi-speedometer2"></i> Dashboard</a></li>
+                    <li><a href="{% url 'dashboard' %}" class="rounded-xl gap-2"><i class="bi bi-house-heart"></i> Início</a></li>
                     <li><a href="{% url 'meus_presentes' %}" class="rounded-xl gap-2"><i class="bi bi-gift"></i> Meus Presentes</a></li>
                     <li><a href="{% url 'grupos_lista' %}" class="rounded-xl gap-2"><i class="bi bi-people-fill"></i> Grupos</a></li>
                     <li><a href="{% url 'lista_usuarios' %}" class="rounded-xl gap-2"><i class="bi bi-bag-heart"></i> Ver Presentes</a></li>
@@ -68,16 +68,16 @@
 
             <!-- Desktop nav links -->
             <div class="hidden lg:flex items-center gap-1 ml-6">
-                <a href="{% url 'dashboard' %}" class="px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors {% if request.resolver_match.url_name == 'dashboard' %}bg-primary/10 text-primary{% else %}text-base-content/60 hover:text-base-content hover:bg-base-200{% endif %}">
-                    Dashboard
+                <a href="{% url 'dashboard' %}" class="px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors {% if request.resolver_match.url_name == 'dashboard' %}bg-primary/10 text-primary{% else %}text-base-content/70 hover:text-base-content hover:bg-base-200{% endif %}">
+                    Início
                 </a>
-                <a href="{% url 'meus_presentes' %}" class="px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors {% if request.resolver_match.url_name == 'meus_presentes' %}bg-primary/10 text-primary{% else %}text-base-content/60 hover:text-base-content hover:bg-base-200{% endif %}">
+                <a href="{% url 'meus_presentes' %}" class="px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors {% if request.resolver_match.url_name == 'meus_presentes' %}bg-primary/10 text-primary{% else %}text-base-content/70 hover:text-base-content hover:bg-base-200{% endif %}">
                     Meus Presentes
                 </a>
-                <a href="{% url 'grupos_lista' %}" class="px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors {% if request.resolver_match.url_name == 'grupos_lista' %}bg-primary/10 text-primary{% else %}text-base-content/60 hover:text-base-content hover:bg-base-200{% endif %}">
+                <a href="{% url 'grupos_lista' %}" class="px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors {% if request.resolver_match.url_name == 'grupos_lista' %}bg-primary/10 text-primary{% else %}text-base-content/70 hover:text-base-content hover:bg-base-200{% endif %}">
                     Grupos
                 </a>
-                <a href="{% url 'lista_usuarios' %}" class="px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors {% if request.resolver_match.url_name == 'lista_usuarios' %}bg-primary/10 text-primary{% else %}text-base-content/60 hover:text-base-content hover:bg-base-200{% endif %}">
+                <a href="{% url 'lista_usuarios' %}" class="px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors {% if request.resolver_match.url_name == 'lista_usuarios' %}bg-primary/10 text-primary{% else %}text-base-content/70 hover:text-base-content hover:bg-base-200{% endif %}">
                     Ver Presentes
                 </a>
             </div>
@@ -96,7 +96,7 @@
                     <i class="bi bi-chevron-down text-[9px] text-base-content/40"></i>
                 </label>
                 <div tabindex="0" class="dropdown-content z-[1] p-2 shadow-xl bg-base-100 rounded-2xl w-64 border border-base-300/50 mt-2">
-                    <p class="text-[10px] font-bold uppercase tracking-widest text-base-content/30 px-3 py-1.5">Trocar grupo</p>
+                    <p class="text-[10px] font-bold uppercase tracking-widest text-base-content/70 px-3 py-1.5">Trocar grupo</p>
                     {% for membro in user_grupos %}
                     <form method="post" action="{% url 'ativar_grupo' membro.grupo.pk %}">
                     {% csrf_token %}
@@ -116,10 +116,10 @@
                     </form>
                     {% endfor %}
                     <div class="border-t border-base-300/40 mt-1.5 pt-1.5">
-                        <a href="{% url 'grupos_lista' %}" class="flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm hover:bg-base-200 text-base-content/60">
+                        <a href="{% url 'grupos_lista' %}" class="flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm hover:bg-base-200 text-base-content/70">
                             <i class="bi bi-gear text-xs"></i> Gerenciar Grupos
                         </a>
-                        <a href="{% url 'criar_grupo' %}" class="flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm hover:bg-base-200 text-base-content/60">
+                        <a href="{% url 'criar_grupo' %}" class="flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm hover:bg-base-200 text-base-content/70">
                             <i class="bi bi-plus-circle text-xs"></i> Criar Novo Grupo
                         </a>
                     </div>
@@ -128,7 +128,7 @@
             {% endif %}
 
             <!-- Notificações -->
-            <a href="{% url 'notificacoes' %}" class="btn btn-ghost btn-sm btn-square rounded-xl relative">
+            <a aria-label="Notificações" href="{% url 'notificacoes' %}" class="btn btn-ghost btn-sm btn-square rounded-xl relative">
                 <i class="bi bi-bell text-base"></i>
                 <span id="notif-count"
                       class="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 flex items-center justify-center rounded-full bg-error text-white text-[10px] font-bold hidden">
@@ -137,11 +137,11 @@
 
             <!-- Seletor de Tema -->
             <div class="dropdown dropdown-end">
-                <label tabindex="0" class="btn btn-ghost btn-sm btn-square rounded-xl" title="Tema">
+                <label aria-label="Tema" tabindex="0" class="btn btn-ghost btn-sm btn-square rounded-xl" title="Tema">
                     <i class="bi bi-circle-half text-base"></i>
                 </label>
                 <div tabindex="0" class="dropdown-content z-[1] p-2 shadow-xl bg-base-100 rounded-2xl w-48 border border-base-300/50 mt-2">
-                    <p class="text-[10px] font-bold uppercase tracking-widest text-base-content/30 px-3 py-1">Claros</p>
+                    <p class="text-[10px] font-bold uppercase tracking-widest text-base-content/70 px-3 py-1">Claros</p>
                     <a onclick="setTheme('lpii_light')" class="flex items-center gap-2.5 px-3 py-1.5 rounded-xl text-sm cursor-pointer hover:bg-base-200" id="theme-lpii_light">
                         <span class="w-3 h-3 rounded-full bg-rose-500 border border-rose-200"></span> Rose
                     </a>
@@ -152,7 +152,7 @@
                         <span class="w-3 h-3 rounded-full bg-sky-500 border border-sky-200"></span> Ocean
                     </a>
                     <div class="border-t border-base-300/40 mt-1 pt-1">
-                        <p class="text-[10px] font-bold uppercase tracking-widest text-base-content/30 px-3 py-1">Escuros</p>
+                        <p class="text-[10px] font-bold uppercase tracking-widest text-base-content/70 px-3 py-1">Escuros</p>
                         <a onclick="setTheme('lpii_dark')" class="flex items-center gap-2.5 px-3 py-1.5 rounded-xl text-sm cursor-pointer hover:bg-base-200" id="theme-lpii_dark">
                             <span class="w-3 h-3 rounded-full bg-rose-400"></span> Rose Dark
                         </a>
@@ -171,7 +171,7 @@
                 <div tabindex="0" class="dropdown-content z-[1] p-2 shadow-xl bg-base-100 rounded-2xl w-56 border border-base-300/50 mt-2">
                     <div class="px-3 py-2.5 mb-1">
                         <p class="font-bold text-sm truncate">{{ user.get_full_name|default:user.username }}</p>
-                        <p class="text-xs text-base-content/40 truncate">{{ user.email }}</p>
+                        <p class="text-xs text-base-content/70 truncate">{{ user.email }}</p>
                     </div>
                     <div class="border-t border-base-300/40 pt-1">
                         <a href="{% url 'editar_perfil' %}" class="flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm hover:bg-base-200">
@@ -206,7 +206,7 @@
 
     <!-- Footer -->
     <footer class="mt-12 border-t border-base-300 bg-base-200/50">
-        <div class="container mx-auto max-w-7xl px-4 py-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-sm text-base-content/50">
+        <div class="container mx-auto max-w-7xl px-4 py-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-sm text-base-content/70">
             <div class="flex items-center gap-2 font-medium">
                 <i class="bi bi-gift-fill text-primary"></i>
                 <span>Lista de Presentes</span>
