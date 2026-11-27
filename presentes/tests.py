@@ -3104,6 +3104,216 @@ class RecomprimirImagensTest(TestCase):
         self.assertIn('Imagens reduzidas: 1', str(imprimir.call_args_list))
 
 
+class SupabaseFalso:
+    """Imita a API do Supabase Storage (enviar, assinar, remover, criar bucket)."""
+
+    def __init__(self, falhar_envio=False):
+        self.arquivos = {}
+        self.removidos = []
+        self.assinaturas = 0
+        self.cabecalhos = []
+        self.falhar_envio = falhar_envio
+
+    def _resposta(self, status, dados=None):
+        resposta = mock.Mock(status_code=status, text=json.dumps(dados or {}))
+        resposta.json.return_value = dados or {}
+        return resposta
+
+    def post(self, url, **kwargs):
+        self.cabecalhos.append(kwargs.get('headers', {}))
+        base = 'https://proj.supabase.co/storage/v1'
+        assert url.startswith(base), url
+        caminho = url[len(base):]
+        if caminho == '/bucket':
+            return self._resposta(200, {'name': 'lista-presentes'})
+        if caminho.startswith('/object/sign/lista-presentes/'):
+            self.assinaturas += 1
+            objeto = caminho[len('/object/sign/lista-presentes/'):]
+            return self._resposta(200, {'signedURL': f'/object/sign/lista-presentes/{objeto}?token=t{self.assinaturas}'})
+        if caminho.startswith('/object/lista-presentes/'):
+            if self.falhar_envio:
+                return self._resposta(500, {'error': 'falhou'})
+            self.arquivos[caminho[len('/object/lista-presentes/'):]] = kwargs['data']
+            return self._resposta(200, {'Key': caminho})
+        raise AssertionError(f'URL inesperada: {url}')
+
+    def delete(self, url, **kwargs):
+        self.removidos += kwargs['json']['prefixes']
+        return self._resposta(200, [])
+
+    def ativo(self):
+        pilha = contextlib.ExitStack()
+        pilha.enter_context(override_settings(SUPABASE_URL='https://proj.supabase.co',
+                                              SUPABASE_SERVICE_ROLE_KEY='sb_secret_teste'))
+        pilha.enter_context(mock.patch('presentes.storage.requests.post', side_effect=self.post))
+        pilha.enter_context(mock.patch('presentes.storage.requests.delete', side_effect=self.delete))
+        return pilha
+
+
+class SupabaseStorageTest(TestCase):
+    """Imagens no bucket privado do Supabase, servidas por URL assinada."""
+
+    def setUp(self):
+        import base64
+        from django.core.cache import cache
+        cache.clear()
+        self.supabase = SupabaseFalso()
+        self.png = _imagem_bytes('PNG')
+        self.png_b64 = base64.b64encode(self.png).decode()
+        self.grupo = Grupo.objects.create(nome='Familia')
+        self.eu = Usuario.objects.create_user(email='eu@exemplo.com', username='eu', password='x', first_name='Eu')
+        GrupoMembro.objects.create(grupo=self.grupo, usuario=self.eu)
+        self.eu.grupo_ativo = self.grupo
+        self.eu.save()
+        self.client.force_login(self.eu)
+
+    def _presente(self, **extra):
+        return Presente.objects.create(grupo=self.grupo, usuario=self.eu, descricao='Livro',
+                                       imagem_base64=self.png_b64, imagem_tipo='image/png', **extra)
+
+    def test_sem_storage_configurado_a_imagem_fica_no_banco(self):
+        presente = self._presente()
+        self.assertEqual(presente.imagem_storage, '')
+        self.assertEqual(presente.imagem_base64, self.png_b64)
+
+    def test_ao_salvar_a_imagem_vai_para_o_bucket(self):
+        from .models import versao_da_imagem
+        with self.supabase.ativo():
+            presente = self._presente()
+        presente.refresh_from_db()
+        self.assertIsNone(presente.imagem_base64)
+        self.assertRegex(presente.imagem_storage, r'^presente/[0-9a-f]{32}\.png$')
+        self.assertEqual(self.supabase.arquivos[presente.imagem_storage], self.png)
+        # A versao vem do conteudo: igual a de quando estava no banco
+        self.assertEqual(presente.imagem_versao, versao_da_imagem(self.png_b64))
+        self.assertTrue(presente.tem_imagem())
+        # Chave nova (sb_secret_) vai so no apikey; nunca no navegador
+        self.assertEqual(self.supabase.cabecalhos[0]['apikey'], 'sb_secret_teste')
+        self.assertNotIn('Authorization', self.supabase.cabecalhos[0])
+
+    def test_se_o_envio_falha_a_imagem_continua_no_banco(self):
+        falho = SupabaseFalso(falhar_envio=True)
+        with falho.ativo():
+            presente = self._presente()
+        presente.refresh_from_db()
+        self.assertEqual(presente.imagem_base64, self.png_b64)
+        self.assertEqual(presente.imagem_storage, '')
+
+    def test_rota_redireciona_para_url_assinada_com_cache(self):
+        with self.supabase.ativo():
+            presente = self._presente()
+            url = presente.get_imagem_url()
+            resposta = self.client.get(url)
+            self.assertEqual(resposta.status_code, 302)
+            self.assertTrue(resposta['Location'].startswith(
+                f'https://proj.supabase.co/storage/v1/object/sign/lista-presentes/{presente.imagem_storage}?token='))
+            self.assertEqual(resposta['Cache-Control'], 'private, max-age=86400')
+            # A segunda vez usa a URL guardada, sem chamar o Supabase
+            self.assertEqual(self.client.get(url)['Location'], resposta['Location'])
+            self.assertEqual(self.supabase.assinaturas, 1)
+            # ETag continua valendo
+            self.assertEqual(self.client.get(url, HTTP_IF_NONE_MATCH=resposta['ETag']).status_code, 304)
+
+            estranho = Usuario.objects.create_user(email='fora@exemplo.com', username='fora', password='x')
+            self.client.force_login(estranho)
+            self.assertEqual(self.client.get(url).status_code, 404)
+
+    def test_trocar_e_excluir_apagam_o_arquivo_antigo(self):
+        import base64
+        with self.supabase.ativo():
+            presente = self._presente()
+            antigo = presente.imagem_storage
+            with self.captureOnCommitCallbacks(execute=True):
+                presente.imagem_base64 = base64.b64encode(_imagem_bytes('JPEG')).decode()
+                presente.imagem_tipo = 'image/jpeg'
+                presente.save()
+            self.assertEqual(self.supabase.removidos, [antigo])
+            novo = presente.imagem_storage
+            with self.captureOnCommitCallbacks(execute=True):
+                presente.delete()
+            self.assertEqual(self.supabase.removidos, [antigo, novo])
+
+    def test_remover_foto_do_perfil_apaga_do_bucket(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        dados = {'first_name': 'Eu', 'last_name': 'Mesmo', 'email': 'eu@exemplo.com', 'telefone': '',
+                 'username': 'eu', 'avatar': 'avatar-1'}
+        with self.supabase.ativo():
+            foto = SimpleUploadedFile('eu.png', self.png, content_type='image/png')
+            self.client.post(reverse('editar_perfil'), {**dados, 'foto': foto})
+            self.eu.refresh_from_db()
+            caminho = self.eu.foto_storage
+            self.assertTrue(caminho.startswith('usuario/'))
+            self.assertTrue(self.eu.tem_foto())
+            with self.captureOnCommitCallbacks(execute=True):
+                self.client.post(reverse('editar_perfil'), {**dados, 'remover_foto': 'True'})
+        self.eu.refresh_from_db()
+        self.assertEqual((self.eu.foto_storage, self.eu.foto_versao), ('', ''))
+        self.assertFalse(self.eu.tem_foto())
+        self.assertIn(caminho, self.supabase.removidos)
+
+    def test_listagens_mostram_imagem_do_storage_sem_ler_base64(self):
+        from django.db import connection
+        from django.test.utils import CaptureQueriesContext
+        outro = Usuario.objects.create_user(email='outro@exemplo.com', username='outro', password='x')
+        GrupoMembro.objects.create(grupo=self.grupo, usuario=outro)
+        with self.supabase.ativo():
+            presente = Presente.objects.create(grupo=self.grupo, usuario=outro, descricao='Bola', preco=10,
+                                               imagem_base64=self.png_b64, imagem_tipo='image/png')
+        with CaptureQueriesContext(connection) as consultas:
+            html = self.client.get(reverse('lista_usuarios')).content.decode()
+        self.assertIn(presente.get_imagem_url(), html)
+        self.assertFalse(any('"imagem_base64"' in c['sql'] for c in consultas.captured_queries))
+
+
+class MigrarImagensStorageTest(TestCase):
+
+    def setUp(self):
+        import base64
+        self.supabase = SupabaseFalso()
+        self.usuario = Usuario.objects.create_user(email='m@exemplo.com', username='m', password='x')
+        self.b64 = base64.b64encode(_imagem_bytes('PNG')).decode()
+        # Criados sem Storage configurado: ficam no banco, como os antigos
+        self.presente = Presente.objects.create(usuario=self.usuario, descricao='Antigo',
+                                                imagem_base64=self.b64, imagem_tipo='image/png')
+        self.grupo = Grupo.objects.create(nome='G', imagem_base64=self.b64, imagem_tipo='image/png')
+
+    def _rodar(self, *args):
+        saida = StringIO()
+        call_command('migrar_imagens_storage', *args, stdout=saida)
+        return saida.getvalue()
+
+    def test_sem_configuracao_nao_faz_nada(self):
+        self.assertIn('Storage não configurado', self._rodar())
+        self.presente.refresh_from_db()
+        self.assertEqual(self.presente.imagem_base64, self.b64)
+
+    def test_dry_run_so_conta(self):
+        with self.supabase.ativo():
+            saida = self._rodar('--dry-run')
+        self.assertIn('Presente: 1 imagem(ns) no banco', saida)
+        self.assertEqual(self.supabase.arquivos, {})
+
+    def test_move_para_o_bucket_e_mantem_a_versao(self):
+        versao = self.presente.imagem_versao
+        with self.supabase.ativo():
+            saida = self._rodar()
+            self.assertIn('2 imagem(ns) levadas ao Storage', saida)
+            self.assertIn('Nenhuma imagem no banco', self._rodar())
+        self.presente.refresh_from_db()
+        self.assertIsNone(self.presente.imagem_base64)
+        self.assertTrue(self.presente.imagem_storage.startswith('presente/'))
+        self.assertEqual(self.presente.imagem_versao, versao)
+        self.assertIn(self.presente.imagem_storage, self.supabase.arquivos)
+
+    def test_falha_no_envio_mantem_no_banco(self):
+        falho = SupabaseFalso(falhar_envio=True)
+        with falho.ativo():
+            self.assertIn('ficaram no banco', self._rodar())
+        self.presente.refresh_from_db()
+        self.assertEqual(self.presente.imagem_base64, self.b64)
+        self.assertEqual(self.presente.imagem_storage, '')
+
+
 class ConsultasSemImagemTest(TestCase):
     """Nenhuma pagina comum le colunas base64; as rotas de imagem usam ETag."""
 

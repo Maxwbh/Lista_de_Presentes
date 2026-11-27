@@ -15,7 +15,7 @@ DATABASE_URL=postgresql://postgres.SEU_PROJETO:SENHA_COM_URL_ENCODING@aws-1-us-e
 - **Não** adicione `?options=...`: o `settings.py` acrescenta `search_path=lista_presentes` automaticamente.
 - Use o pooler (`*.pooler.supabase.com`), não o host direto `db.SEU_PROJETO.supabase.co:5432`, que é só IPv6 e costuma dar `Network is unreachable` no Render.
 - Senha com caracteres especiais precisa de URL encoding (`@` → `%40`, `#` → `%23`, `!` → `%21`).
-- `SUPABASE_URL` e `SUPABASE_KEY` existem no `settings.py`, mas o Django não as usa hoje.
+- `SUPABASE_URL` e `SUPABASE_SERVICE_ROLE_KEY` ligam o Storage das imagens (abaixo). `SUPABASE_KEY` não é usada.
 
 ### O que o `settings.py` configura
 
@@ -24,7 +24,7 @@ DATABASE_URL=postgresql://postgres.SEU_PROJETO:SENHA_COM_URL_ENCODING@aws-1-us-e
 | `search_path=lista_presentes` (na URL e em `OPTIONS`) | Tabelas só no schema próprio, nunca em `public` |
 | Signal `connection_created` (`presentes/apps.py`) roda `SET search_path TO lista_presentes` | O pooler em modo transação (porta 6543) ignora as opções de conexão |
 | `DISABLE_SERVER_SIDE_CURSORS = True` | O modo transação não suporta cursores do lado do servidor (`.iterator()`) |
-| `conn_max_age=600`, `conn_health_checks=True` | Reaproveita conexões e descarta as quebradas |
+| `conn_max_age=60` (`DB_CONN_MAX_AGE`), `conn_health_checks=True` | Reaproveita conexões e descarta as quebradas |
 | `connect_timeout=10` e TCP keepalives | Falha rápido e detecta conexões ociosas fechadas pelo pooler |
 
 O pooler tem dois modos: **transação** (porta 6543, usado acima) e **sessão** (porta 5432 no mesmo host do pooler). O comentário do `settings.py` recomenda o modo sessão para conexões persistentes (`conn_max_age`); o signal e o `DISABLE_SERVER_SIDE_CURSORS` mantêm o modo transação funcionando.
@@ -107,3 +107,23 @@ O script confirma que a `DATABASE_URL` foi lida, que o Django está em PostgreSQ
 - Supabase Dashboard: https://supabase.com/dashboard
 - Conexão com o banco: https://supabase.com/docs/guides/database/connecting-to-postgres
 - RLS no Supabase: https://supabase.com/docs/guides/database/postgres/row-level-security
+
+## Imagens no Supabase Storage
+
+As fotos de presentes, grupos e usuários ficam num bucket **privado** do
+Storage, não na tabela. O navegador nunca recebe a chave: as rotas
+`/presente/<id>/imagem/`, `/grupo/<id>/imagem/` e `/usuario/<id>/foto/`
+conferem login e grupo e redirecionam para uma URL assinada que vale 7 dias.
+
+| Variável (Render) | Valor |
+|---|---|
+| `SUPABASE_URL` | `https://SEU_PROJETO.supabase.co` |
+| `SUPABASE_SERVICE_ROLE_KEY` | Chave secreta (Project Settings → API Keys: `service_role` ou `sb_secret_...`). Nunca use a chave `anon`/publicável |
+| `SUPABASE_STORAGE_BUCKET` | `lista-presentes` (padrão) |
+
+- Sem `SUPABASE_URL` ou sem a chave, nada muda: as imagens continuam no banco em base64.
+- O bucket é criado sozinho, privado e só aceitando JPEG, PNG, GIF e WEBP.
+- A cada deploy, o `build.sh` roda `migrar_imagens_storage`, que leva ao bucket as imagens que ainda estão no banco (uma por vez) e só então apaga o base64. Sem pendências, não faz nada; se um envio falhar, a imagem fica no banco e o próximo deploy tenta de novo.
+- Imagem nova vai direto para o bucket ao salvar. Se o envio falhar, ela fica no banco.
+- Trocar ou excluir a imagem, o presente, o grupo ou o usuário apaga o arquivo antigo do bucket.
+

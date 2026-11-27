@@ -58,6 +58,14 @@ services:
       - key: SUPABASE_KEY
         sync: false  # Opcional
 
+      # Supabase Storage (imagens): com SUPABASE_URL e a chave de serviço, as
+      # imagens vão para um bucket privado; sem elas, ficam no banco
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false  # Secreta: Project Settings > API Keys (service_role ou secret)
+
+      - key: SUPABASE_STORAGE_BUCKET
+        value: lista-presentes
+
       # ==============================================================================
       # Render PostgreSQL (Alternativa - mais simples, mas menos armazenamento)
       # ==============================================================================

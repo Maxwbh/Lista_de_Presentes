@@ -104,9 +104,12 @@ WSGI_APPLICATION = 'lista_presentes.wsgi.application'
 DATABASE_URL = os.getenv('DATABASE_URL')
 USE_SQLITE = os.getenv('USE_SQLITE', 'False') == 'True'
 
-# Supabase - Variáveis adicionais (opcionais, para uso futuro com Supabase SDK)
+# Supabase Storage: com URL e chave de serviço, as imagens vão para um bucket
+# privado (presentes/storage.py). Sem elas, ficam no banco em base64.
 SUPABASE_URL = os.getenv('SUPABASE_URL', '')
-SUPABASE_KEY = os.getenv('SUPABASE_KEY', '')
+SUPABASE_KEY = os.getenv('SUPABASE_KEY', '')  # não usada pelo Django
+SUPABASE_SERVICE_ROLE_KEY = os.getenv('SUPABASE_SERVICE_ROLE_KEY', '')
+SUPABASE_STORAGE_BUCKET = os.getenv('SUPABASE_STORAGE_BUCKET', 'lista-presentes')
 
 # True durante 'manage.py test'. O banco de teste e criado do zero pelo Django
 # e nao tem o schema lista_presentes; quem o cria e o signal connection_created

@@ -45,12 +45,16 @@ class UsuarioManager(UserManager):
 
 class VersaoImagemMixin:
     """
-    Mantem um campo curto de versao sincronizado com cada campo base64.
+    Mantem um campo curto de versao sincronizado com cada campo base64 e, com
+    o Supabase Storage configurado, leva a imagem para o bucket ao salvar.
 
     Com a versao, as listagens sabem se existe imagem e montam a URL com
-    ?v= (cache longo no navegador) sem carregar o base64 do banco.
+    ?v= (cache longo no navegador) sem carregar o base64 do banco. A versao
+    e calculada do conteudo, entao continua a mesma quando a imagem muda de
+    lugar (banco -> Storage) e os caches do navegador seguem validos.
     """
-    CAMPOS_VERSAO = ()  # pares (campo_base64, campo_versao)
+    # (campo_base64, campo_versao, campo_storage, campo_tipo)
+    CAMPOS_VERSAO = ()
 
     def refresh_from_db(self, using=None, fields=None, from_queryset=None):
         # O manager base adia o base64; sem isto, refresh_from_db() deixaria
@@ -59,22 +63,77 @@ class VersaoImagemMixin:
             from_queryset = models.QuerySet(model=type(self), using=using)
         return super().refresh_from_db(using=using, fields=fields, from_queryset=from_queryset)
 
+    def _campos_da_imagem(self, campo_base64):
+        return next(c for c in self.CAMPOS_VERSAO if c[0] == campo_base64)
+
+    def limpar_imagem(self, campo_base64):
+        """Remove a imagem (do banco e do Storage). Devolve os campos alterados."""
+        _, campo_versao, campo_storage, campo_tipo = self._campos_da_imagem(campo_base64)
+        antigo = getattr(self, campo_storage)
+        if antigo:
+            self.__dict__.setdefault('_storage_remover', []).append(antigo)
+        setattr(self, campo_base64, None)
+        setattr(self, campo_tipo, None)
+        setattr(self, campo_storage, '')
+        setattr(self, campo_versao, '')
+        return [campo_base64, campo_tipo, campo_storage, campo_versao]
+
     def _sincronizar_versoes(self, kwargs):
+        from . import storage
         adiados = self.get_deferred_fields()
         update_fields = kwargs.get('update_fields')
         extras = []
-        for campo_base64, campo_versao in self.CAMPOS_VERSAO:
+        for campo_base64, campo_versao, campo_storage, campo_tipo in self.CAMPOS_VERSAO:
             if campo_base64 in adiados:
                 continue
             if update_fields is not None and campo_base64 not in update_fields:
                 continue
-            setattr(self, campo_versao, versao_da_imagem(getattr(self, campo_base64)))
+            conteudo = getattr(self, campo_base64)
+            if not conteudo:
+                # Sem base64: ou nao ha imagem, ou ela ja esta no Storage
+                if not getattr(self, campo_storage):
+                    setattr(self, campo_versao, '')
+                    extras.append(campo_versao)
+                continue
+            setattr(self, campo_versao, versao_da_imagem(conteudo))
             extras.append(campo_versao)
+            if storage.configurado():
+                extras += self._enviar_para_storage(campo_base64, campo_storage, campo_tipo, conteudo)
         if update_fields is not None and extras:
             kwargs['update_fields'] = set(update_fields) | set(extras)
 
+    def _enviar_para_storage(self, campo_base64, campo_storage, campo_tipo, conteudo):
+        """Sobe a imagem; se falhar, ela fica no banco como antes."""
+        import base64
+        import logging
+        from . import storage
+        from .rede import EXTENSOES
+        tipo = (getattr(self, campo_tipo) or 'image/jpeg').lower()
+        caminho = storage.novo_caminho(self._meta.model_name, EXTENSOES.get(tipo, 'bin'))
+        try:
+            storage.enviar(caminho, base64.b64decode(conteudo), tipo)
+        except Exception as e:
+            logging.getLogger(__name__).warning(f'Imagem mantida no banco (Storage falhou): {e}')
+            return []
+        antigo = getattr(self, campo_storage)
+        if antigo:
+            self.__dict__.setdefault('_storage_remover', []).append(antigo)
+        setattr(self, campo_storage, caminho)
+        setattr(self, campo_base64, None)
+        return [campo_storage]
+
+    def _depois_de_salvar(self):
+        """Apaga do Storage as imagens substituidas, depois do commit."""
+        from django.db import transaction
+        from . import storage
+        for caminho in self.__dict__.pop('_storage_remover', []):
+            transaction.on_commit(lambda c=caminho: storage.remover(c))
+
     def _tem_conteudo(self, campo_base64, campo_versao):
         """True se ha imagem, sem buscar o base64 quando ele foi adiado."""
+        campo_storage = self._campos_da_imagem(campo_base64)[2]
+        if getattr(self, campo_storage, ''):
+            return True
         if campo_base64 in self.get_deferred_fields():
             return bool(getattr(self, campo_versao))
         return bool(getattr(self, campo_base64))
@@ -101,8 +160,10 @@ class Grupo(VersaoImagemMixin, models.Model):
     imagem_tipo = models.CharField(max_length=50, blank=True, null=True, help_text='MIME type da imagem')
     imagem_versao = models.CharField(max_length=12, blank=True, default='', db_default='', editable=False,
                                      help_text='Muda quando a imagem muda (cache e URL)')
+    imagem_storage = models.CharField(max_length=200, blank=True, default='', db_default='', editable=False,
+                                      help_text='Caminho da imagem no Supabase Storage')
 
-    CAMPOS_VERSAO = (('imagem_base64', 'imagem_versao'),)
+    CAMPOS_VERSAO = (('imagem_base64', 'imagem_versao', 'imagem_storage', 'imagem_tipo'),)
 
     objects = GrupoManager()
 
@@ -126,6 +187,7 @@ class Grupo(VersaoImagemMixin, models.Model):
             self.codigo_convite = secrets.token_urlsafe(24)
         self._sincronizar_versoes(kwargs)
         super().save(*args, **kwargs)
+        self._depois_de_salvar()
 
     def get_link_convite(self):
         """Retorna o link de convite completo"""
@@ -154,6 +216,8 @@ class Usuario(VersaoImagemMixin, AbstractUser):
     foto_tipo = models.CharField(max_length=50, blank=True, null=True, help_text='MIME type da foto')
     foto_versao = models.CharField(max_length=12, blank=True, default='', db_default='', editable=False,
                                    help_text='Muda quando a foto muda (cache e URL)')
+    foto_storage = models.CharField(max_length=200, blank=True, default='', db_default='', editable=False,
+                                    help_text='Caminho da foto no Supabase Storage')
     grupo_ativo = models.ForeignKey(
         Grupo,
         on_delete=models.SET_NULL,
@@ -176,11 +240,12 @@ class Usuario(VersaoImagemMixin, AbstractUser):
     def __str__(self):
         return f"{self.first_name} {self.last_name}"
 
-    CAMPOS_VERSAO = (('foto_base64', 'foto_versao'),)
+    CAMPOS_VERSAO = (('foto_base64', 'foto_versao', 'foto_storage', 'foto_tipo'),)
 
     def save(self, *args, **kwargs):
         self._sincronizar_versoes(kwargs)
         super().save(*args, **kwargs)
+        self._depois_de_salvar()
 
     def tem_foto(self):
         return self._tem_conteudo('foto_base64', 'foto_versao')
@@ -264,8 +329,10 @@ class Presente(VersaoImagemMixin, models.Model):
     imagem_tipo = models.CharField(max_length=50, blank=True, null=True, help_text='MIME type da imagem')
     imagem_versao = models.CharField(max_length=12, blank=True, default='', db_default='', editable=False,
                                      help_text='Muda quando a imagem muda (cache e URL)')
+    imagem_storage = models.CharField(max_length=200, blank=True, default='', db_default='', editable=False,
+                                      help_text='Caminho da imagem no Supabase Storage')
 
-    CAMPOS_VERSAO = (('imagem_base64', 'imagem_versao'),)
+    CAMPOS_VERSAO = (('imagem_base64', 'imagem_versao', 'imagem_storage', 'imagem_tipo'),)
 
     # Resultado da ultima busca de imagem no site (link original)
     busca_imagem_em = models.DateTimeField(null=True, blank=True)
@@ -293,6 +360,7 @@ class Presente(VersaoImagemMixin, models.Model):
     def save(self, *args, **kwargs):
         self._sincronizar_versoes(kwargs)
         super().save(*args, **kwargs)
+        self._depois_de_salvar()
 
     def tem_imagem(self):
         """Verifica se o presente tem imagem (novo formato ou antigo)"""
@@ -578,3 +646,18 @@ class AcessoHora(models.Model):
 
     def __str__(self):
         return f"{self.data:%d/%m/%Y} {self.hora:02d}h: {self.acessos} acesso(s)"
+
+
+def _apagar_do_storage(sender, instance, **kwargs):
+    """Ao excluir presente, grupo ou usuario, apaga a imagem do Storage."""
+    from django.db import transaction
+    from . import storage
+    for _, _, campo_storage, _ in getattr(instance, 'CAMPOS_VERSAO', ()):
+        caminho = getattr(instance, campo_storage, '')
+        if caminho:
+            transaction.on_commit(lambda c=caminho: storage.remover(c))
+
+
+for _modelo in (Grupo, Usuario, Presente):
+    models.signals.post_delete.connect(_apagar_do_storage, sender=_modelo,
+                                       dispatch_uid=f'apagar-storage-{_modelo.__name__}')
