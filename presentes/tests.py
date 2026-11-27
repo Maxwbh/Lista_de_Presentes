@@ -2379,8 +2379,9 @@ class ImagemPeloConteudoTest(TestCase):
                            return_value=self._resposta(_imagem_bytes('PNG'), 'text/html')):
             dados, nome, tipo = baixar_imagem_da_url('https://loja.exemplo.com.br/foto')
         self.assertTrue(dados)
-        self.assertEqual(tipo, 'image/png')
-        self.assertEqual(nome, 'imagem.png')
+        # Regravada a partir do conteudo (o text/html do site nao vale)
+        self.assertEqual(tipo, 'image/webp')
+        self.assertEqual(nome, 'foto.webp')
 
     def test_foto_do_site_em_svg_e_recusada(self):
         presente = Presente(descricao='X')
@@ -2395,8 +2396,9 @@ class ImagemPeloConteudoTest(TestCase):
         from django.core.files.uploadedfile import SimpleUploadedFile
         from .views import converter_imagem_para_base64
         arquivo = SimpleUploadedFile('foto.svg', _imagem_bytes('PNG'), content_type='image/svg+xml')
-        _, _, tipo = converter_imagem_para_base64(arquivo)
-        self.assertEqual(tipo, 'image/png')
+        _, nome, tipo = converter_imagem_para_base64(arquivo)
+        self.assertEqual(tipo, 'image/webp')
+        self.assertEqual(nome, 'foto.webp')
         svg = SimpleUploadedFile('foto.png', SVG_COM_SCRIPT, content_type='image/png')
         self.assertEqual(converter_imagem_para_base64(svg), (None, None, None))
 
@@ -2678,8 +2680,8 @@ class ListagemSemBase64Test(TestCase):
         url = self.outro.get_foto_url()
         self.assertIn('immutable', self.client.get(url)['Cache-Control'])
         caminho = url.split('?')[0]
-        self.assertEqual(self.client.get(caminho)['Cache-Control'], 'private, max-age=300')
-        self.assertEqual(self.client.get(caminho + '?v=antiga')['Cache-Control'], 'private, max-age=300')
+        self.assertEqual(self.client.get(caminho)['Cache-Control'], 'private, max-age=86400')
+        self.assertEqual(self.client.get(caminho + '?v=antiga')['Cache-Control'], 'private, max-age=86400')
 
 
 class FluxosDePresentesTest(TestCase):
@@ -2720,7 +2722,7 @@ class FluxosDePresentesTest(TestCase):
         self.assertRedirects(resposta, reverse('meus_presentes'), fetch_redirect_response=False)
         presente = Presente.objects.get()
         self.assertEqual((presente.usuario, presente.grupo), (self.eu, self.grupo))
-        self.assertEqual(presente.imagem_tipo, 'image/png')
+        self.assertEqual(presente.imagem_tipo, 'image/webp')
         self.assertTrue(presente.imagem_versao)
         # Link sem esquema vira https (padrao do Django 6)
         self.assertEqual(presente.url, 'https://loja.com.br/livro')
@@ -2881,7 +2883,7 @@ class PerfilESessaoTest(TestCase):
         self.client.post(reverse('editar_perfil'), self._dados(foto=foto))
         self.usuario.refresh_from_db()
         self.assertEqual((self.usuario.first_name, self.usuario.avatar), ('Novo', 'avatar-3'))
-        self.assertEqual(self.usuario.foto_tipo, 'image/jpeg')
+        self.assertEqual(self.usuario.foto_tipo, 'image/webp')
         self.assertTrue(self.usuario.foto_versao)
 
         self.client.post(reverse('editar_perfil'), self._dados(remover_foto='True'))
@@ -2988,3 +2990,190 @@ class InterfaceTest(TestCase):
         self.assertIn('aria-expanded="false"', html)
         html = self.client.get(reverse('lista_usuarios'), {'preco_min': '10'}).content.decode()
         self.assertIn('id="filtros-avancados" class="flex lg:flex', html)
+
+
+def _foto_grande(largura=2400, altura=1600, formato='JPEG', **extra):
+    """Foto com ruido (comprime mal, como uma foto de verdade)."""
+    from io import BytesIO
+    from PIL import Image
+    canais = [Image.effect_noise((largura, altura), 80) for _ in range(3)]
+    imagem = Image.merge('RGB', canais)
+    saida = BytesIO()
+    imagem.save(saida, format=formato, quality=95, **extra)
+    return saida.getvalue()
+
+
+class CompressaoDeImagensTest(TestCase):
+    """Toda imagem gravada fica com no maximo 800 px e mira menos de 100 KB."""
+
+    def _abrir(self, dados):
+        from io import BytesIO
+        from PIL import Image
+        return Image.open(BytesIO(dados))
+
+    def test_foto_grande_fica_pequena(self):
+        from .imagens import otimizar_imagem
+        original = _foto_grande()
+        self.assertGreater(len(original), 1024 * 1024)
+        dados, tipo = otimizar_imagem(original)
+        self.assertEqual(tipo, 'image/webp')
+        self.assertLessEqual(max(self._abrir(dados).size), 800)
+        self.assertLess(len(dados), 100 * 1024)
+
+    def test_orientacao_exif_e_aplicada(self):
+        from PIL import Image
+        from .imagens import otimizar_imagem
+        exif = Image.Exif()
+        exif[0x0112] = 6  # foto de celular "deitada": girar 90 graus
+        dados, _ = otimizar_imagem(_foto_grande(400, 200, exif=exif.tobytes()))
+        self.assertEqual(self._abrir(dados).size, (200, 400))
+
+    def test_transparencia_e_mantida(self):
+        from io import BytesIO
+        from PIL import Image
+        from .imagens import otimizar_imagem
+        saida = BytesIO()
+        Image.new('RGBA', (1200, 900), (200, 30, 60, 0)).save(saida, format='PNG')
+        dados, tipo = otimizar_imagem(saida.getvalue())
+        self.assertEqual(self._abrir(dados).mode, 'RGBA')
+        self.assertEqual(self._abrir(dados).size, (800, 600))
+
+    def test_conteudo_que_nao_e_imagem_e_recusado(self):
+        from .imagens import otimizar_imagem
+        self.assertEqual(otimizar_imagem(SVG_COM_SCRIPT), (None, None))
+        self.assertEqual(otimizar_imagem(b''), (None, None))
+
+    def test_upload_de_presente_grava_a_versao_reduzida(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        from .views import converter_imagem_para_base64
+        import base64
+        arquivo = SimpleUploadedFile('ferias.jpg', _foto_grande(), content_type='image/jpeg')
+        texto, nome, tipo = converter_imagem_para_base64(arquivo)
+        self.assertEqual((nome, tipo), ('ferias.webp', 'image/webp'))
+        self.assertLess(len(base64.b64decode(texto)), 100 * 1024)
+
+
+class RecomprimirImagensTest(TestCase):
+
+    def setUp(self):
+        import base64
+        self.usuario = Usuario.objects.create_user(email='r@exemplo.com', username='r', password='x')
+        self.grande = base64.b64encode(_foto_grande()).decode()
+        self.presente = Presente.objects.create(usuario=self.usuario, descricao='Foto grande',
+                                                imagem_base64=self.grande, imagem_tipo='image/jpeg',
+                                                imagem_nome='foto.jpg')
+        self.svg = Presente.objects.create(usuario=self.usuario, descricao='Antigo',
+                                           imagem_base64=base64.b64encode(SVG_COM_SCRIPT).decode(),
+                                           imagem_tipo='image/svg+xml')
+
+    def _rodar(self, *args):
+        saida = StringIO()
+        call_command('recomprimir_imagens', *args, stdout=saida)
+        return saida.getvalue()
+
+    def test_dry_run_nao_grava(self):
+        saida = self._rodar('--dry-run')
+        self.assertIn('Seriam reduzidas 1 imagem(ns)', saida)
+        self.presente.refresh_from_db()
+        self.assertEqual(self.presente.imagem_base64, self.grande)
+
+    def test_reduz_e_atualiza_tipo_nome_e_versao(self):
+        from .models import versao_da_imagem
+        versao_antiga = self.presente.imagem_versao
+        saida = self._rodar()
+        self.assertIn('Reduzidas 1 imagem(ns)', saida)
+        self.assertIn('mantida(s)', saida)
+        self.presente.refresh_from_db()
+        self.assertLess(len(self.presente.imagem_base64), len(self.grande) // 10)
+        self.assertEqual((self.presente.imagem_tipo, self.presente.imagem_nome), ('image/webp', 'foto.webp'))
+        self.assertEqual(self.presente.imagem_versao, versao_da_imagem(self.presente.imagem_base64))
+        self.assertNotEqual(self.presente.imagem_versao, versao_antiga)
+        # Rodar de novo nao muda nada
+        self.assertIn('Reduzidas 0 imagem(ns)', self._rodar())
+
+    def test_migracao_reduz_no_deploy(self):
+        """O Render Free nao tem console: a reducao das antigas roda no migrate."""
+        import importlib
+        from django.apps import apps
+        migracao = importlib.import_module('presentes.migrations.0015_recomprimir_imagens_existentes')
+        with mock.patch('builtins.print') as imprimir:
+            migracao.recomprimir(apps, None)
+        self.presente.refresh_from_db()
+        self.assertEqual(self.presente.imagem_tipo, 'image/webp')
+        self.assertLess(len(self.presente.imagem_base64), len(self.grande) // 10)
+        self.assertIn('Imagens reduzidas: 1', str(imprimir.call_args_list))
+
+
+class ConsultasSemImagemTest(TestCase):
+    """Nenhuma pagina comum le colunas base64; as rotas de imagem usam ETag."""
+
+    def setUp(self):
+        import base64
+        foto = base64.b64encode(_imagem_bytes('PNG')).decode()
+        self.grupo = Grupo.objects.create(nome='Familia', imagem_base64=foto, imagem_tipo='image/png')
+        self.eu = Usuario.objects.create_user(email='eu@exemplo.com', username='eu', password='x',
+                                              first_name='Eu', foto_base64=foto, foto_tipo='image/png')
+        self.outro = Usuario.objects.create_user(email='outro@exemplo.com', username='outro', password='x',
+                                                 first_name='Outro', foto_base64=foto, foto_tipo='image/png')
+        GrupoMembro.objects.create(grupo=self.grupo, usuario=self.eu, e_mantenedor=True)
+        GrupoMembro.objects.create(grupo=self.grupo, usuario=self.outro)
+        self.eu.grupo_ativo = self.grupo
+        self.eu.save()
+        self.presente = Presente.objects.create(grupo=self.grupo, usuario=self.outro, descricao='Livro',
+                                                preco=10, imagem_base64=foto, imagem_tipo='image/png')
+        Presente.objects.create(grupo=self.grupo, usuario=self.eu, descricao='Meu', preco=10,
+                                imagem_base64=foto, imagem_tipo='image/png')
+        self.client.force_login(self.eu)
+
+    def _consultas(self, url, **extra):
+        from django.db import connection
+        from django.test.utils import CaptureQueriesContext
+        with CaptureQueriesContext(connection) as consultas:
+            resposta = self.client.get(url, **extra)
+        return resposta, [c['sql'] for c in consultas.captured_queries]
+
+    def test_paginas_nao_leem_base64(self):
+        urls = [reverse(nome) for nome in ('dashboard', 'lista_usuarios', 'meus_presentes', 'grupos_lista',
+                                           'notificacoes', 'editar_perfil')]
+        urls += [reverse('presentes_usuario', args=[self.outro.pk]),
+                 reverse('gerenciar_membros', args=[self.grupo.pk]),
+                 reverse('editar_grupo', args=[self.grupo.pk])]
+        for url in urls:
+            with self.subTest(url=url):
+                resposta, sqls = self._consultas(url)
+                self.assertEqual(resposta.status_code, 200)
+                for sql in sqls:
+                    self.assertNotIn('"imagem_base64"', sql)
+                    self.assertNotIn('"foto_base64"', sql)
+
+    def test_etag_responde_304_sem_ler_a_imagem(self):
+        url = reverse('servir_imagem', args=[self.presente.pk])
+        primeira = self.client.get(url)
+        self.assertEqual(primeira.status_code, 200)
+        self.assertEqual(primeira['ETag'], f'"{self.presente.imagem_versao}"')
+
+        resposta, sqls = self._consultas(url, HTTP_IF_NONE_MATCH=primeira['ETag'])
+        self.assertEqual(resposta.status_code, 304)
+        self.assertEqual(resposta['ETag'], primeira['ETag'])
+        self.assertFalse(any('"imagem_base64"' in sql for sql in sqls))
+
+        # ETag antigo: manda a imagem de novo, lendo so a coluna da imagem
+        resposta, sqls = self._consultas(url, HTTP_IF_NONE_MATCH='"antigo"')
+        self.assertEqual(resposta.status_code, 200)
+        com_imagem = [sql for sql in sqls if '"imagem_base64"' in sql]
+        self.assertEqual(len(com_imagem), 1)
+        self.assertNotIn('"descricao"', com_imagem[0])
+
+    def test_sem_permissao_nem_com_etag(self):
+        estranho = Usuario.objects.create_user(email='fora@exemplo.com', username='fora', password='x')
+        self.client.force_login(estranho)
+        resposta = self.client.get(reverse('servir_imagem', args=[self.presente.pk]),
+                                   HTTP_IF_NONE_MATCH=f'"{self.presente.imagem_versao}"')
+        self.assertEqual(resposta.status_code, 404)
+
+    def test_refresh_from_db_recarrega_a_imagem(self):
+        import base64
+        nova = base64.b64encode(_imagem_bytes('JPEG')).decode()
+        Presente.objects.filter(pk=self.presente.pk).update(imagem_base64=nova)
+        self.presente.refresh_from_db()
+        self.assertEqual(self.presente.imagem_base64, nova)

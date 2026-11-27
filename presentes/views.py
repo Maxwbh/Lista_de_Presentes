@@ -19,7 +19,8 @@ from .forms import UsuarioRegistroForm, PresenteForm, LoginForm, GrupoForm, Edit
 from .services import IAService
 from .github_helper import criar_issue_falha_imagem
 from . import rede
-from .rede import identificar_imagem, EXTENSOES, TAMANHO_MAXIMO_IMAGEM
+from .rede import EXTENSOES
+from .imagens import otimizar_imagem, TAMANHO_MAXIMO_ENTRADA
 import base64
 import hmac
 import re
@@ -64,20 +65,28 @@ def requer_grupo_ativo(view_func):
         return view_func(request, *args, **kwargs)
     return wrapper
 
+def _nome_com_extensao(nome, content_type):
+    """Troca a extensao do nome do arquivo pela do formato gravado."""
+    base = (nome or '').rsplit('/', 1)[-1].split('?')[0]
+    base = base.rsplit('.', 1)[0] if '.' in base else base
+    return f"{(base or 'imagem')[:200]}.{EXTENSOES[content_type]}"
+
+
 def converter_imagem_para_base64(imagem_file):
-    """Converte um arquivo de imagem para base64.
+    """Converte um arquivo de imagem para base64, ja reduzida.
 
     O tipo vem do conteudo do arquivo (Pillow), nunca do que o navegador
-    declarou; formatos fora da lista (ex.: SVG) sao recusados.
+    declarou; formatos fora da lista (ex.: SVG) sao recusados. A imagem e
+    redimensionada e regravada (ver imagens.otimizar_imagem).
     """
     try:
-        imagem_data = imagem_file.read()
-        content_type = identificar_imagem(imagem_data)
+        imagem_data = imagem_file.read(TAMANHO_MAXIMO_ENTRADA + 1)
+        imagem_data, content_type = otimizar_imagem(imagem_data)
         if not content_type:
             logger.warning("Upload recusado: arquivo nao e uma imagem aceita")
             return None, None, None
         imagem_base64 = base64.b64encode(imagem_data).decode('utf-8')
-        nome_arquivo = imagem_file.name
+        nome_arquivo = _nome_com_extensao(imagem_file.name, content_type)
         return imagem_base64, nome_arquivo, content_type
     except Exception as e:
         logger.error(f"Erro ao converter imagem para base64: {str(e)}")
@@ -101,24 +110,19 @@ def baixar_imagem_da_url(url):
         response.raise_for_status()
 
         imagem_data = response.content
-        if len(imagem_data) > TAMANHO_MAXIMO_IMAGEM:
-            logger.warning("Imagem muito grande (> 5MB)")
+        if len(imagem_data) > TAMANHO_MAXIMO_ENTRADA:
+            logger.warning("Imagem muito grande (> 15MB)")
             return None, None, None
 
-        # O tipo vem do conteudo; o content-type informado pelo site nao vale
-        content_type = identificar_imagem(imagem_data)
+        # O tipo vem do conteudo; o content-type informado pelo site nao vale.
+        # A imagem e reduzida antes de ir para o banco.
+        imagem_data, content_type = otimizar_imagem(imagem_data)
         if not content_type:
             logger.warning(f"URL nao devolveu uma imagem aceita: {url}")
             return None, None, None
 
         imagem_base64 = base64.b64encode(imagem_data).decode('utf-8')
-
-        # Extrair nome do arquivo da URL
-        parsed_url = urlparse(url)
-        nome_arquivo = parsed_url.path.split('/')[-1] or ''
-        nome_arquivo = nome_arquivo.split('?')[0][:255]
-        if not nome_arquivo or '.' not in nome_arquivo:
-            nome_arquivo = f'imagem.{EXTENSOES[content_type]}'
+        nome_arquivo = _nome_com_extensao(urlparse(url).path, content_type)
 
         logger.info(f"Imagem baixada da URL: {nome_arquivo} ({content_type})")
         return imagem_base64, nome_arquivo, content_type
@@ -566,34 +570,49 @@ def deletar_presente_view(request, pk):
         return redirect('meus_presentes')
     return render(request, 'presentes/deletar_presente.html', {'presente': presente})
 
-def _resposta_imagem(request, imagem_base64, tipo, versao, rotulo):
+def _resposta_imagem(request, modelo, pk, campo_base64, tipo, versao, rotulo):
     """Resposta HTTP para uma imagem guardada em base64.
 
     So serve os formatos da lista de permitidos (imagens antigas em SVG ou com
     tipo desconhecido ficam de fora) e manda cabecalhos que impedem o
     navegador de tratar o arquivo como pagina.
+
+    A versao da imagem vira o ETag: se o navegador ja tem essa versao, a
+    resposta e 304 sem ler o base64 do banco. Quando precisa, so a coluna da
+    imagem e lida.
     """
-    if not imagem_base64:
-        return HttpResponse('Imagem não encontrada', status=404)
     content_type = (tipo or 'image/jpeg').split(';')[0].strip().lower()
     if content_type not in rede.TIPOS_IMAGEM_PERMITIDOS:
         logger.warning(f"Imagem {rotulo} com tipo nao permitido ({content_type}); nao sera servida")
+        return HttpResponse('Imagem não encontrada', status=404)
+
+    def _cabecalhos(resposta):
+        resposta['X-Content-Type-Options'] = 'nosniff'
+        resposta['Content-Security-Policy'] = "default-src 'none'; sandbox"
+        # Com ?v= igual a versao atual a URL muda quando a imagem muda, entao
+        # o navegador pode guardar por bastante tempo.
+        if versao and request.GET.get('v') == versao:
+            resposta['Cache-Control'] = 'private, max-age=2592000, immutable'
+        else:
+            resposta['Cache-Control'] = 'private, max-age=86400'
+        if versao:
+            resposta['ETag'] = f'"{versao}"'
+        return resposta
+
+    if versao:
+        recebido = request.headers.get('If-None-Match', '')
+        if recebido.strip() == '*' or f'"{versao}"' in recebido:
+            return _cabecalhos(HttpResponse(status=304))
+
+    imagem_base64 = modelo.objects.filter(pk=pk).values_list(campo_base64, flat=True).first()
+    if not imagem_base64:
         return HttpResponse('Imagem não encontrada', status=404)
     try:
         imagem_data = base64.b64decode(imagem_base64)
     except Exception as e:
         logger.error(f"Erro ao decodificar imagem {rotulo}: {str(e)}")
         return HttpResponse('Erro ao carregar imagem', status=500)
-    resposta = HttpResponse(imagem_data, content_type=content_type)
-    resposta['X-Content-Type-Options'] = 'nosniff'
-    resposta['Content-Security-Policy'] = "default-src 'none'; sandbox"
-    # Com ?v= igual a versao atual a URL muda quando a imagem muda, entao o
-    # navegador pode guardar por bastante tempo. Sem versao, cache curto.
-    if versao and request.GET.get('v') == versao:
-        resposta['Cache-Control'] = 'private, max-age=2592000, immutable'
-    else:
-        resposta['Cache-Control'] = 'private, max-age=300'
-    return resposta
+    return _cabecalhos(HttpResponse(imagem_data, content_type=content_type))
 
 
 def _compartilha_grupo(usuario, outro_id):
@@ -616,7 +635,7 @@ def servir_imagem_view(request, pk):
         permitido = _compartilha_grupo(request.user, presente.usuario_id)
     if not permitido:
         return HttpResponse('Imagem não encontrada', status=404)
-    return _resposta_imagem(request, presente.imagem_base64, presente.imagem_tipo,
+    return _resposta_imagem(request, Presente, presente.pk, 'imagem_base64', presente.imagem_tipo,
                             presente.imagem_versao, f'do presente {pk}')
 
 @requer_grupo_ativo
@@ -1951,7 +1970,7 @@ def servir_imagem_grupo_view(request, pk):
     grupo = get_object_or_404(Grupo, pk=pk)
     if not GrupoMembro.objects.filter(grupo=grupo, usuario=request.user).exists():
         return HttpResponse('Imagem não encontrada', status=404)
-    return _resposta_imagem(request, grupo.imagem_base64, grupo.imagem_tipo,
+    return _resposta_imagem(request, Grupo, grupo.pk, 'imagem_base64', grupo.imagem_tipo,
                             grupo.imagem_versao, f'do grupo {pk}')
 
 
@@ -1961,7 +1980,7 @@ def servir_foto_usuario_view(request, pk):
     usuario = get_object_or_404(Usuario, pk=pk)
     if not _compartilha_grupo(request.user, usuario.pk):
         return HttpResponse('Imagem não encontrada', status=404)
-    return _resposta_imagem(request, usuario.foto_base64, usuario.foto_tipo,
+    return _resposta_imagem(request, Usuario, usuario.pk, 'foto_base64', usuario.foto_tipo,
                             usuario.foto_versao, f'do usuario {pk}')
 
 

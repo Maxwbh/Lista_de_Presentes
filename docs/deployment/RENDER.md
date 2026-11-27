@@ -25,6 +25,7 @@ Gunicorn (`gunicorn.conf.py`): 1 worker `gthread` com 4 threads, timeout de 120 
 ## 🛠️ Criar o serviço
 
 1. No Render: **New → Blueprint** e selecione o repositório (o `render.yaml` cria o web service `lista-presentes`).
+   Use a **mesma região do banco**: o Supabase deste projeto está em Ohio (us-east-2). A região não muda depois que o serviço é criado.
    Manualmente, use: Build Command `bash build.sh` e Start Command `gunicorn --config gunicorn.conf.py lista_presentes.wsgi:application`.
 2. Preencha as variáveis marcadas como `sync: false` (abaixo) em **Environment**.
 3. Faça o deploy e acompanhe os logs do build.
